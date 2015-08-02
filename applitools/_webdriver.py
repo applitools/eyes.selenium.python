@@ -348,6 +348,39 @@ class EyesWebElement(object):
         self._eyes.add_text_trigger_by_element(self, text)
         self.element.send_keys(*value)
 
+    def set_overflow(self, overflow, stabilization_time=None):
+        """
+        Sets the overflow of the current element.
+        :param overflow: The overflow value to set. If the given value is None, then overflow will be set to
+                         undefined.
+        :param stabilization_time: The time to wait for the page to stabilize after overflow is set. If the value is
+                                    None, then no waiting will take place. (Milliseconds)
+        :return: The previous overflow value.
+        """
+        logger.debug("Setting overflow: %s" % overflow)
+        if overflow is None:
+            script = "var elem = arguments[0]; var origOverflow = elem.style.overflow; " \
+                     "elem.style.overflow = undefined; " \
+                     "return origOverflow;"
+        else:
+            script = "var elem = arguments[0]; var origOverflow = elem.style.overflow; " \
+                     "elem.style.overflow = \"{0}\"; " \
+                     "return origOverflow;".format(overflow)
+        # noinspection PyUnresolvedReferences
+        original_overflow = self._driver.execute_script(script, self.element)
+        logger.debug("Original overflow: %s" % original_overflow)
+        if stabilization_time is not None:
+            time.sleep(stabilization_time / 1000)
+        return original_overflow
+
+    def hide_scrollbars(self):
+        """
+        Hides the scrollbars of the current element.
+        :return: The previous value of the overflow property (could be None).
+        """
+        logger.debug('EyesWebElement.HideScrollbars()')
+        return self.set_overflow('hidden')
+
 
 class _EyesSwitchTo(object):
     """
