@@ -9,7 +9,7 @@ import os
 driver = webdriver.Chrome()
 
 logger.set_logger(StdoutLogger())
-eyes = Eyes("https://localhost.applitools.com")
+eyes = Eyes()
 eyes.api_key = os.environ['APPLITOOLS_API_KEY']
 eyes.hide_scrollbars = True
 # For browser which only take screenshot of the viewport, you can uncomment the setting below, and
