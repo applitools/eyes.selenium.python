@@ -73,7 +73,6 @@ class AgentConnector(object):
             see :mod:'requests'
         """
         data = '{"startInfo": %s}' % (general_utils.to_json(session_start_info))
-        logger.debug("Starting session: %s " % data)
         response = requests.post(self._endpoint_uri, data=data, verify=False, params=dict(apiKey=self.api_key),
                                  headers=AgentConnector._DEFAULT_HEADERS,
                                  timeout=AgentConnector._TIMEOUT)
@@ -95,7 +94,7 @@ class AgentConnector(object):
             see :mod:'requests'
         """
         logger.debug('Stop session called..')
-        session_uri = "%s/%d" % (self._endpoint_uri, running_session['session_id'])
+        session_uri = "%s/%s" % (self._endpoint_uri, running_session['session_id'])
         params = {'aborted': is_aborted, 'updateBaseline': save, 'apiKey': self.api_key}
         response = AgentConnector._send_long_request("stop_session", requests.delete, session_uri,
                                                      params=params, verify=False,
@@ -120,7 +119,7 @@ class AgentConnector(object):
             see :mod:'requests'
         """
         # logger.debug("Data length: %d, data: %s" % (len(data), repr(data)))
-        session_uri = "%s/%d" % (self._endpoint_uri, running_session['session_id'])
+        session_uri = "%s/%s" % (self._endpoint_uri, running_session['session_id'])
         # Using the default headers, but modifying the "content type" to binary
         headers = AgentConnector._DEFAULT_HEADERS.copy()
         headers['Content-Type'] = 'application/octet-stream'
