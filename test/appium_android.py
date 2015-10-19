@@ -20,9 +20,8 @@ desired_capabilities = {'platformName': 'Android',
 driver = webdriver.Remote('http://127.0.0.1:4723/wd/hub', desired_capabilities)
 driver.orientation = 'LANDSCAPE'
 logger.set_logger(StdoutLogger())
-eyes = Eyes("https://localhost.applitools.com")
+eyes = Eyes()
 eyes.api_key = os.environ['APPLITOOLS_API_KEY']
-eyes.baseline_name = "NotesList 1080x1794"
 try:
     eyes.open(driver, 'Appium', 'Notes list')
     eyes.check_window('Opening screen')
