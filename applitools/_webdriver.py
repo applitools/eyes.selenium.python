@@ -271,7 +271,8 @@ class EyesWebElement(object):
     # Properties require special handling since even testing if they're callable "activates"
     # them, which makes copying them automatically a problem.
     _READONLY_PROPERTIES = ['tag_name', 'text', 'location_once_scrolled_into_view', 'size',
-                            'location', 'parent', 'id', 'rect', 'screenshot_as_base64', 'screenshot_as_png']
+                            'location', 'parent', 'id', 'rect', 'screenshot_as_base64', 'screenshot_as_png',
+                            'location_in_view']
 
     def __init__(self, element, eyes, driver):
         self.element = element
@@ -490,7 +491,9 @@ class EyesWebDriver(object):
     # them, which makes copying them automatically a problem.
     _READONLY_PROPERTIES = ['application_cache', 'current_url', 'current_window_handle',
                             'desired_capabilities', 'log_types', 'name', 'page_source', 'title',
-                            'window_handles', 'switch_to', 'mobile']
+                            'window_handles', 'switch_to', 'mobile', 'current_context', 'context',
+                            'current_activity', 'network_connection', 'available_ime_engines',
+                            'active_ime_engine', 'device_time']
     _SETTABLE_PROPERTIES = ['orientation']
 
     _MAX_SCROLL_BAR_SIZE = 50  # This should pretty much cover all scroll bars (and some fixed
