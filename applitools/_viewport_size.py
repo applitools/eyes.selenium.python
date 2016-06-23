@@ -6,75 +6,40 @@ from applitools import logger
 from applitools.errors import EyesError
 from .errors import TestFailedError
 
-_GET_VIEWPORT_HEIGHT_JAVASCRIPT_FOR_NORMAL_BROWSER = 'return window.innerHeight'
-_GET_VIEWPORT_WIDTH_JAVASCRIPT_FOR_NORMAL_BROWSER = 'return window.innerWidth'
-
-_DOCUMENT_CLEAR_SCROLL_BARS_JAVASCRIPT = "var doc = document.documentElement; " + \
-                                         "var previousOverflow = doc.style.overflow;"
-_DOCUMENT_RESET_SCROLL_BARS_JAVASCRIPT = "doc.style.overflow = previousOverflow;"
-
-_DOCUMENT_RETURN_JAVASCRIPT = "return __applitools_result;"
-
-_GET_VIEWPORT_WIDTH_JAVASCRIPT_FOR_BAD_BROWSERS = _DOCUMENT_CLEAR_SCROLL_BARS_JAVASCRIPT + \
-                                                  "var __applitools_result = doc.clientWidth;" + \
-                                                  _DOCUMENT_RESET_SCROLL_BARS_JAVASCRIPT + \
-                                                  _DOCUMENT_RETURN_JAVASCRIPT
-
-_GET_VIEWPORT_HEIGHT_JAVASCRIPT_FOR_BAD_BROWSERS = _DOCUMENT_CLEAR_SCROLL_BARS_JAVASCRIPT + \
-                                                   "var __applitools_result = doc.clientHeight;" + \
-                                                   _DOCUMENT_RESET_SCROLL_BARS_JAVASCRIPT + \
-                                                   _DOCUMENT_RETURN_JAVASCRIPT
-
-
-def extract_viewport_width_no_scrollbar(driver):
-    return driver.execute_script("return document.documentElement.clientWidth")
-
-
-def extract_viewport_height_no_scrollbar(driver):
-    return driver.execute_script("return document.documentElement.clientHeight")
-
-
-def extract_viewport_size_no_scrollbars(driver):
-    return {'width': extract_viewport_width_no_scrollbar(driver),
-            'height': extract_viewport_height_no_scrollbar(driver)}
-
-
-def extract_viewport_width(driver):
-    # noinspection PyBroadException
-    try:
-        width = driver.execute_script(_GET_VIEWPORT_WIDTH_JAVASCRIPT_FOR_NORMAL_BROWSER)
-        if width is None:
-            width = driver.execute_script(_GET_VIEWPORT_WIDTH_JAVASCRIPT_FOR_BAD_BROWSERS)
-    except:
-        width = driver.execute_script(_GET_VIEWPORT_WIDTH_JAVASCRIPT_FOR_BAD_BROWSERS)
-    return width
-
-
-def extract_viewport_height(driver):
-    # noinspection PyBroadException
-    try:
-        height = driver.execute_script(_GET_VIEWPORT_HEIGHT_JAVASCRIPT_FOR_NORMAL_BROWSER)
-        if height is None:
-            height = driver.execute_script(_GET_VIEWPORT_HEIGHT_JAVASCRIPT_FOR_BAD_BROWSERS)
-    except:
-        height = driver.execute_script(_GET_VIEWPORT_HEIGHT_JAVASCRIPT_FOR_BAD_BROWSERS)
-    return height
+_JS_GET_VIEWPORT_SIZE = "var height = undefined;" \
+                        "var width = undefined;" \
+                        "  if (window.innerHeight) {height = window.innerHeight;}" \
+                        "  else if (document.documentElement " \
+                        "&& document.documentElement.clientHeight) " \
+                        "{height = document.documentElement.clientHeight;}" \
+                        "  else { var b = document.getElementsByTagName('body')[0]; " \
+                        "if (b.clientHeight) {height = b.clientHeight;}" \
+                        "};" \
+                        " if (window.innerWidth) {width = window.innerWidth;}" \
+                        " else if (document.documentElement " \
+                        "&& document.documentElement.clientWidth) " \
+                        "{width = document.documentElement.clientWidth;}" \
+                        " else { var b = document.getElementsByTagName('body')[0]; " \
+                        "if (b.clientWidth) {" \
+                        "width = b.clientWidth;}" \
+                        "};" \
+                        "return [width, height];"
 
 
 def get_viewport_size(driver):
     """
     Tries to get the viewport size using Javascript. If fails, gets the entire browser window
     size!
+    :param driver: The webdriver to use for getting the viewport size.
     """
     # noinspection PyBroadException
     try:
-        width = extract_viewport_width(driver)
-        height = extract_viewport_height(driver)
-        return {'width': width, 'height': height}
+        width, height = driver.execute_script(_JS_GET_VIEWPORT_SIZE)
     except:
         logger.info('Failed to get viewport size. Only window size is available')
         browser_size = driver.get_window_size()
-        return {'width': browser_size['width'], 'height': browser_size['height']}
+        width, height = browser_size['width'], browser_size['height']
+    return {'width': width, 'height': height}
 
 
 def _verify_size(to_verify, required_size, sleep_time=1, retries=3):
@@ -82,7 +47,7 @@ def _verify_size(to_verify, required_size, sleep_time=1, retries=3):
         time.sleep(sleep_time)
         current_size = to_verify()
         if current_size['width'] == required_size['width'] \
-           and current_size['height'] == required_size['height']:
+                and current_size['height'] == required_size['height']:
             return True
     return False
 
