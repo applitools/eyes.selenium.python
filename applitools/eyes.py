@@ -67,6 +67,10 @@ class Eyes(object):
     BASE_AGENT_ID = "eyes.selenium.python/%s" % VERSION
     DEFAULT_EYES_SERVER = 'https://eyessdk.applitools.com'
 
+    @staticmethod
+    def set_viewport_size(driver, viewport_size):
+        _viewport_size.set_viewport_size(driver, viewport_size)
+
     def __init__(self, server_url=DEFAULT_EYES_SERVER):
         """
         Creates a new (possibly disabled) Eyes instance that interacts with the Eyes server.
@@ -250,13 +254,21 @@ class Eyes(object):
         return self._driver
 
     def _assign_viewport_size(self):
-        if self._viewport_size:
-            logger.debug("Assigning viewport size {0}".format(self._viewport_size))
-            _viewport_size.set_viewport_size(self._driver, self._viewport_size)
-        else:
-            logger.debug("No viewport size given. Extracting the viewport size from the driver...")
-            self._viewport_size = _viewport_size.get_viewport_size(self._driver)
-            logger.debug("Viewport size {0}".format(self._viewport_size))
+        # When setting the viewport size we need to be in the default content frame
+        original_frame_chain = self._driver.get_frame_chain()
+        self._driver.switch_to.default_content()
+        try:
+            if self._viewport_size:
+                logger.debug("Assigning viewport size {0}".format(self._viewport_size))
+                _viewport_size.set_viewport_size(self._driver, self._viewport_size)
+            else:
+                logger.debug("No viewport size given. Extracting the viewport size from the driver...")
+                self._viewport_size = _viewport_size.get_viewport_size(self._driver)
+                logger.debug("Viewport size {0}".format(self._viewport_size))
+        except EyesError as e:
+            # Going back to the frame we started at
+            self._driver.switch_to.frames(original_frame_chain)
+            raise TestFailedError('Failed to assign viewport size!')
 
     def _get_environment(self):
         """
