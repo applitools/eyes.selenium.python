@@ -63,7 +63,7 @@ class Eyes(object):
     """
     Applitools Selenium Eyes API for python.
     """
-    _DEFAULT_MATCH_TIMEOUT = 2  # Seconds
+    _DEFAULT_MATCH_TIMEOUT = 2000  # Milliseconds
     BASE_AGENT_ID = "eyes.selenium.python/%s" % VERSION
     DEFAULT_EYES_SERVER = 'https://eyessdk.applitools.com'
 
@@ -95,10 +95,9 @@ class Eyes(object):
         self._start_info = None
         self._test_name = None
         self._viewport_size = None
+        self._match_timeout = Eyes._DEFAULT_MATCH_TIMEOUT
         self.agent_id = None
         """An optional string identifying the current library using the SDK."""
-        self.match_timeout = Eyes._DEFAULT_MATCH_TIMEOUT
-        """The default timeout for check_XXXX operations."""
         self.failure_reports = FailureReports.ON_CLOSE
         """Whether the current test will report mismatches immediately or when it is finished. See FailureReports."""
         self.match_level = MatchLevel.STRICT
@@ -125,6 +124,20 @@ class Eyes(object):
         returns the viewport screenshot."""
         self.hide_scrollbars = False
         """(Boolean) if true, Eyes will remove the scrollbars from the pages before taking the screenshot."""
+        self.fail_on_new_test = False
+        """(Boolean) if true, Eyes will treat new tests the same as failed tests."""
+
+    @property
+    def match_timeout(self):
+        """Get the default timeout for check_XXXX operations. (milliseconds)"""
+        return self._match_timeout
+
+    @match_timeout.setter
+    def match_timeout(self, match_timeout):
+        """Set the default timeout for check_XXXX operations. (milliseconds)"""
+        if 0 < match_timeout < MatchWindowTask.MINIMUM_MATCH_TIMEOUT:
+            raise ValueError("Match timeout must be at least 60ms.")
+        self._match_timeout = match_timeout
 
     @property
     def api_key(self):
@@ -367,15 +380,13 @@ class Eyes(object):
                                           (self._start_info['scenarioIdOrName'],
                                            self._start_info['appIdOrName']))
 
-    def check_window(self, tag=None, specific_match_timeout=-1):
+    def check_window(self, tag=None, match_timeout=-1):
         """
         Takes a snapshot from the browser using the web driver and matches it with the expected
         output.
         Args:
-            (str) tag: (Optional) Description of the visual validation checkpoint.
-            (float) specific_match_timeout: (Optional) Timeout for the visual validation
-                                            checkpoint (given in order to let the current page time
-                                            to stabilize).
+            :param tag: (str) Description of the visual validation checkpoint.
+            :param match_timeout: (int) Timeout for the visual validation checkpoint (milliseconds).
         Returns:
             None
         """
@@ -386,7 +397,7 @@ class Eyes(object):
         if self.hide_scrollbars:
             original_overflow = self._driver.hide_scrollbars()
         self._prepare_to_check()
-        result = self._match_window_task.match_window(specific_match_timeout, tag,
+        result = self._match_window_task.match_window(match_timeout, tag,
                                                       self.force_full_page_screenshot,
                                                       self._user_inputs,
                                                       self._should_match_once_on_timeout)
@@ -395,18 +406,16 @@ class Eyes(object):
             self._driver.set_overflow(original_overflow)
         self._handle_match_result(result, tag)
 
-    def check_region(self, region, tag=None, specific_match_timeout=-1):
+    def check_region(self, region, tag=None, match_timeout=-1):
         """
         Takes a snapshot of the given region from the browser using the web driver and matches it
         with the expected output. If the current context is a frame, the region is offsetted
         relative to the frame.
         Args:
-            (Region) region: The region which will be visually validated. The coordinates are
+            :param region: (Region) The region which will be visually validated. The coordinates are
                              relative to the viewport of the current frame.
-            (str) tag: (Optional) Description of the visual validation checkpoint.
-            (float) specific_match_timeout: (Optional) Timeout for the visual validation
-                                            checkpoint (given in order to let the current page time
-                                            to stabilize).
+            :param tag: (str) Description of the visual validation checkpoint.
+            :param match_timeout: (int) Timeout for the visual validation checkpoint (milliseconds).
         Returns:
             None
         """
@@ -419,7 +428,7 @@ class Eyes(object):
         if self.hide_scrollbars:
             original_overflow = self._driver.hide_scrollbars()
         self._prepare_to_check()
-        result = self._match_window_task.match_region(region, specific_match_timeout, tag,
+        result = self._match_window_task.match_region(region, match_timeout, tag,
                                                       self.force_full_page_screenshot,
                                                       self._user_inputs,
                                                       self._should_match_once_on_timeout)
@@ -428,16 +437,14 @@ class Eyes(object):
             self._driver.set_overflow(original_overflow)
         self._handle_match_result(result, tag)
 
-    def check_region_by_element(self, element, tag=None, specific_match_timeout=-1):
+    def check_region_by_element(self, element, tag=None, match_timeout=-1):
         """
         Takes a snapshot of the region of the given element from the browser using the web driver
         and matches it with the expected output.
         Args:
-            (WebElement) element: The element which region will be visually validated.
-            (str) tag: (Optional) Description of the visual validation checkpoint.
-            (float) specific_match_timeout: (Optional) Timeout for the visual validation
-                                            checkpoint (given in order to let the current page time
-                                            to stabilize).
+            :param element: (WebElement)  The element which region will be visually validated.
+            :param tag: (str) Description of the visual validation checkpoint.
+            :param match_timeout: (int) Timeout for the visual validation checkpoint (milliseconds).
         Returns:
             None
         """
@@ -448,7 +455,7 @@ class Eyes(object):
         if self.hide_scrollbars:
             original_overflow = self._driver.hide_scrollbars()
         self._prepare_to_check()
-        result = self._match_window_task.match_element(element, specific_match_timeout, tag,
+        result = self._match_window_task.match_element(element, match_timeout, tag,
                                                        self.force_full_page_screenshot,
                                                        self._user_inputs,
                                                        self._should_match_once_on_timeout)
@@ -458,17 +465,15 @@ class Eyes(object):
             self._driver.set_overflow(original_overflow)
         self._handle_match_result(result, tag)
 
-    def check_region_by_selector(self, by, value, tag=None, specific_match_timeout=-1):
+    def check_region_by_selector(self, by, value, tag=None, match_timeout=-1):
         """
         Takes a snapshot of the region of the element found by calling find_element(by, value)
         and matches it with the expected output.
         Args:
-            (By) by: The way by which an element to be validated should be found (e.g., By.ID).
-            (str) selector: The value identifying the element using the "by" type.
-            (str) tag: (Optional) Description of the visual validation checkpoint.
-            (float) specific_match_timeout: (Optional) Timeout for the visual validation
-                                            checkpoint (given in order to let the current page time
-                                            to stabilize).
+            :param by: (By) The way by which an element to be validated should be found (e.g., By.ID).
+            :param value: (str) The value identifying the element using the "by" type.
+            :param tag: (str) Description of the visual validation checkpoint.
+            :param match_timeout: (int) Timeout for the visual validation checkpoint (milliseconds).
         Returns:
             None
         """
@@ -477,20 +482,18 @@ class Eyes(object):
             return
         logger.debug("calling 'check_region_by_element'...")
         self.check_region_by_element(self._driver.find_element(by, value), tag,
-                                     specific_match_timeout)
+                                     match_timeout)
 
     def check_region_in_frame_by_selector(self, frame_reference, by, value, tag=None,
-                                          specific_match_timeout=-1):
+                                          match_timeout=-1):
         """
         Checks a region within a frame, and returns to the current frame.
         Args:
-            (int/str/WebElement): A reference to the frame in which the region should be checked.
-            (By) by: The way by which an element to be validated should be found (e.g., By.ID).
-            (str) selector: The value identifying the element using the "by" type.
-            (str) tag: (Optional) Description of the visual validation checkpoint.
-            (float) specific_match_timeout: (Optional) Timeout for the visual validation
-                                            checkpoint (given in order to let the current page time
-                                            to stabilize).
+            :param frame_reference: (int/str/WebElement) A reference to the frame in which the region should be checked.
+            :param by: (By) The way by which an element to be validated should be found (e.g., By.ID).
+            :param value: (str) The value identifying the element using the "by" type.
+            :param tag: (str) Description of the visual validation checkpoint.
+            :param match_timeout: (int) Timeout for the visual validation checkpoint (milliseconds).
         Returns:
             None
         """
@@ -507,7 +510,7 @@ class Eyes(object):
         # Switching to the relevant frame
         self._driver.switch_to.frame(frame_reference)
         logger.debug("calling 'check_region_by_selector'...")
-        self.check_region_by_selector(by, value, tag, specific_match_timeout)
+        self.check_region_by_selector(by, value, tag, match_timeout)
         # Switching back to our original frame
         self._driver.switch_to.parent_frame()
         if original_hide_scrollbars_value:
@@ -568,7 +571,7 @@ class Eyes(object):
                 # New test
                 instructions = "Please approve the new baseline at %s" % results_url
                 logger.info("--- New test ended. %s" % instructions)
-                if raise_ex:
+                if raise_ex and self.fail_on_new_test:
                     message = "'%s' of '%s'. %s" % (self._start_info['scenarioIdOrName'],
                                                     self._start_info['appIdOrName'], instructions)
                     raise NewTestError(message, results)

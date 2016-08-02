@@ -12,17 +12,26 @@ from applitools.utils import general_utils
 
 class MatchWindowTask(object):
     """
-    Handles matching of output with the expected output (including retry and 'ignore mismatch'
-    when needed).
+    Handles matching of output with the expected output (including retry and 'ignore mismatch' when needed).
     """
     _MATCH_INTERVAL = 0.5
 
+    MINIMUM_MATCH_TIMEOUT = 60  # Milliseconds
+
     def __init__(self, eyes, agent_connector, running_session, driver, default_retry_timeout):
+        """
+
+        :param eyes: The Eyes instance which created this task.
+        :param agent_connector: The agent connector to use for communication.
+        :param running_session:  The current eyes session.
+        :param driver: The webdriver for which the current session is run.
+        :param default_retry_timeout: The default match timeout. (milliseconds)
+        """
         self._eyes = eyes
         self._agent_connector = agent_connector
         self._running_session = running_session
         self._driver = driver
-        self._default_retry_timeout = default_retry_timeout
+        self._default_retry_timeout = default_retry_timeout / 1000.0  # since we want the time in seconds.
         self._screenshot = None
 
     def _get_screenshot(self, force_full_page_screenshot):
@@ -83,7 +92,7 @@ class MatchWindowTask(object):
         if as_expected:
             return {"as_expected": True, "screenshot": self._screenshot}
         retry = time.time() - start
-        logger.debug("Failed. Elapsed time: {0}".format(retry))
+        logger.debug("Failed. Elapsed time: {0:.1f} seconds".format(retry))
         while retry < retry_timeout:
             logger.debug('Matching...')
             time.sleep(self._MATCH_INTERVAL)
@@ -92,7 +101,7 @@ class MatchWindowTask(object):
             if as_expected:
                 return {"as_expected": True, "screenshot": self._screenshot}
             retry = time.time() - start
-            logger.debug("Elapsed time: {0}".format(retry))
+            logger.debug("Elapsed time: {0:.1f} seconds".format(retry))
         # One last try
         logger.debug('One last matching attempt...')
         data = prepare_action()
@@ -100,9 +109,13 @@ class MatchWindowTask(object):
         return {"as_expected": as_expected, "screenshot": self._screenshot}
 
     def _run(self, prepare_action, run_once_after_wait=False, retry_timeout=-1):
+        if 0 < retry_timeout < MatchWindowTask.MINIMUM_MATCH_TIMEOUT:
+            raise ValueError("Match timeout must be at least 60ms, got {} instead.".format(retry_timeout))
         if retry_timeout < 0:
             retry_timeout = self._default_retry_timeout
-        logger.debug("Matching timeout set to: {0}".format(retry_timeout))
+        else:
+            retry_timeout /= 1000.0
+        logger.debug("Match timeout set to: {0} seconds".format(retry_timeout))
         start = time.time()
         if run_once_after_wait or retry_timeout == 0:
             logger.debug("Matching once...")
@@ -115,7 +128,7 @@ class MatchWindowTask(object):
             result = self._run_with_intervals(prepare_action, retry_timeout)
         logger.debug("Match result: {0}".format(result["as_expected"]))
         elapsed_time = time.time() - start
-        logger.debug("_run(): Completed in %.2f seconds" % elapsed_time)
+        logger.debug("_run(): Completed in {0:.1f} seconds".format(elapsed_time))
         return result
 
     def match_window(self, retry_timeout, tag, force_full_page_screenshot, user_inputs,
