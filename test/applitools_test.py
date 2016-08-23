@@ -9,27 +9,23 @@ from applitools.logger import StdoutLogger
 driver = webdriver.Chrome()
 
 logger.set_logger(StdoutLogger())
-eyes = Eyes("https://localhost.applitools.com")
+eyes = Eyes()
 eyes.api_key = os.environ['APPLITOOLS_API_KEY']
 eyes.force_full_page_screenshot = True
-eyes.save_new_tests = False
+eyes.hide_scrollbars = True
 
 try:
     ## First test
-    driver = eyes.open(driver, "Python app", "Python binary", {'width': 800, 'height': 600})
-
-    driver.get('http://www.applitools.com')
+    driver = eyes.open(driver, "Python app", "Github Website", {'width': 800, 'height': 600})
+    driver.get('http://www.github.com')
     eyes.check_window("initial")
+    results = eyes.close(False)
+    print(results)
 
     ## Second test
-    # driver.find_element_by_class_name("input-name").send_keys("my name is what?")
-    # eyes.check_window("name input")
-    # results = eyes.close(False)
-    # print(results)
-    #
-    # driver = eyes.open(driver, "Python app", "Python binary", {'width': 800, 'height': 600})
-    # driver.get('http://www.applitools.com')
-    # eyes.check_window("initial")
+    driver = eyes.open(driver, "Python app", "Applitools Website", {'width': 900, 'height': 600})
+    driver.get('http://www.applitools.com')
+    eyes.check_window("initial")
     results = eyes.close(False)
     print(results)
 finally:
