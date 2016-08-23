@@ -224,18 +224,13 @@ class Eyes(object):
         """
         Starts a test.
 
-        Args:
-            params (dictionary):
-                app_name (str): The name of the application under test.
-                test_name (str): The test name.
-                (Optional) viewport_size ({width, height}): The client's viewport size (i.e.,
-                                                            the visible part of the document's
-                                                            body) or None to allow any viewport
-                                                            size.
-        Returns:
-            An updated web driver
-        Raises:
-            EyesError
+        :param driver: The webdriver to use.
+        :param app_name: The name of the application under test.
+        :param test_name: The test name.
+        :param viewport_size: The client's viewport size (i.e., the visible part of the document's body) or None to
+                                allow any viewport size.
+        :return: An updated web driver
+         :raise EyesError: If the session was already open.
         """
         logger.open_()
         if self.is_disabled:
@@ -246,14 +241,14 @@ class Eyes(object):
             raise EyesError("API key not set! Log in to https://applitools.com to obtain your"
                             " API Key and use 'api_key' to set it.")
 
-        if isinstance(driver, RemoteWebDriver):
-            self._driver = EyesWebDriver(driver, self)
-        elif isinstance(driver, EyesWebDriver):
+        if isinstance(driver, EyesWebDriver):
             # If the driver is an EyesWebDriver (as might be the case when tests are ran
             # consecutively using the same driver object)
             self._driver = driver
         else:
-            raise EyesError("driver is not a RemoteWebDriver ({0})".format(driver.__class__))
+            if not isinstance(driver, RemoteWebDriver):
+                logger.info("WARNING: driver is not a RemoteWebDriver (class: {0})".format(driver.__class__))
+            self._driver = EyesWebDriver(driver, self)
 
         logger.info("open(%s, %s, %s, %s)" % (app_name, test_name, viewport_size, self.failure_reports))
 

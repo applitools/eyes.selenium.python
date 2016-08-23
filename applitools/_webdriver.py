@@ -1,35 +1,17 @@
 import base64
-import appium.webdriver
-
-import requests
 import time
+
+import appium.webdriver
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
+
 from applitools import logger, _viewport_size
 from applitools.errors import EyesError, OutOfBoundsError
 from applitools.geometry import Point
 from applitools.utils import _image_utils
 from .geometry import Region
 from .utils import general_utils
-
-
-class _ScreenshotTaker(object):
-    """
-    A wrapper class for taking screenshots from a remote web driver.
-    """
-
-    def __init__(self, driver_server_uri, driver_session_id):
-        self._endpoint_uri = "%s/session/%s/screenshot" % (driver_server_uri.rstrip('/'),
-                                                           driver_session_id)
-
-    def get_screenshot_as_base64(self):
-        """
-        Returns a base64 encoded screenshot from the web driver.
-        """
-        response = requests.get(self._endpoint_uri)
-        response.raise_for_status()
-        return response.json()['value']
 
 
 class EyesScreenshot(object):
@@ -508,13 +490,6 @@ class EyesWebDriver(object):
         # calculate elements' coordinates
         self._frames = []
         driver_takes_screenshot = driver.capabilities.get('takesScreenshot', False)
-        if driver_takes_screenshot:
-            self._screenshot_taker = None
-        else:
-            logger.debug('Driver can\'t take screenshots, using our own screenshot taker.')
-            # noinspection PyProtectedMember
-            self._screenshot_taker = _ScreenshotTaker(driver.command_executor._url,
-                                                      driver.session_id)
 
         # Creating the rest of the driver interface by simply forwarding it to the underlying
         # driver.
@@ -789,10 +764,7 @@ class EyesWebDriver(object):
         :Usage:
             driver.get_screenshot_as_base64()
         """
-        if self._screenshot_taker is None:
-            screenshot64 = self.driver.get_screenshot_as_base64()
-        else:
-            screenshot64 = self._screenshot_taker.get_screenshot_as_base64()
+        screenshot64 = self.driver.get_screenshot_as_base64()
         display_rotation = self.get_display_rotation()
         if display_rotation != 0:
             logger.info('Rotation required.')
