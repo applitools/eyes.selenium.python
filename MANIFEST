@@ -11,6 +11,7 @@ applitools/errors.py
 applitools/eyes.py
 applitools/geometry.py
 applitools/logger.py
+applitools/mock_webdriver.py
 applitools/test_results.py
 applitools/utils/__init__.py
 applitools/utils/_image_utils.py
