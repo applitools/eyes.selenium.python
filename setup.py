@@ -2,7 +2,7 @@ from distutils.core import setup
 from applitools import VERSION
 
 setup(
-    name='eyes-selenium',
+    name='eyes-selenium-images',
     version=VERSION,
     packages=['applitools', 'applitools.utils'],
     data_files=[('samples', ['samples/test_script.py'])],
