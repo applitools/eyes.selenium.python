@@ -42,13 +42,12 @@ class MatchWindowTask(object):
         return EyesScreenshot.create_from_base64(current_screenshot64, self._driver)
 
     @staticmethod
-    def _create_match_data_bytes(app_output, user_inputs, tag, ignore_mismatch, screenshot):
+    def _create_match_data_bytes(app_output, user_inputs, tag, ignore_mismatch, image_bytes):
         match_data = dict(appOutput=app_output, userInputs=user_inputs, tag=tag,
                           ignoreMismatch=ignore_mismatch)
         match_data_json_bytes = general_utils.to_json(match_data).encode('utf-8')
         match_data_size_bytes = pack(">L", len(match_data_json_bytes))
-        screenshot_bytes = screenshot.get_bytes()
-        body = match_data_size_bytes + match_data_json_bytes + screenshot_bytes
+        body = match_data_size_bytes + match_data_json_bytes + image_bytes
         return body
 
     def _prepare_match_data_for_window(self, tag, force_full_page_screenshot, user_inputs,
@@ -57,7 +56,11 @@ class MatchWindowTask(object):
         self._screenshot = self._get_screenshot(force_full_page_screenshot)
         app_output = {'title': title, 'screenshot64': None}
         return self._create_match_data_bytes(app_output, user_inputs, tag, ignore_mismatch,
-                                             self._screenshot)
+                                             self._screenshot.get_bytes())
+
+    def _prepare_match_data_for_image(self, image, tag, user_inputs, ignore_mismatch=False):
+        app_output = {'title': None, 'screenshot64': None}
+        return self._create_match_data_bytes(app_output, user_inputs, tag, ignore_mismatch, image)
 
     def _prepare_match_data_for_region(self, region, tag, force_full_page_screenshot, user_inputs,
                                        ignore_mismatch=False):
@@ -66,7 +69,7 @@ class MatchWindowTask(object):
             .get_sub_screenshot_by_region(region)
         app_output = {'title': title, 'screenshot64': None}
         return self._create_match_data_bytes(app_output, user_inputs, tag, ignore_mismatch,
-                                             self._screenshot)
+                                             self._screenshot.get_bytes())
 
     def _prepare_match_data_for_element(self, element, tag, force_full_page_screenshot, user_inputs,
                                         ignore_mismatch=False):
@@ -75,7 +78,7 @@ class MatchWindowTask(object):
         self._screenshot = self._screenshot.get_sub_screenshot_by_element(element)
         app_output = {'title': title, 'screenshot64': None}
         return self._create_match_data_bytes(app_output, user_inputs, tag, ignore_mismatch,
-                                             self._screenshot)
+                                             self._screenshot.get_bytes())
 
     def _run_with_intervals(self, prepare_action, retry_timeout):
         """
@@ -134,11 +137,18 @@ class MatchWindowTask(object):
     def match_window(self, retry_timeout, tag, force_full_page_screenshot, user_inputs,
                      run_once_after_wait=False):
         """
-        Performs a match for a given region.
+        Performs a match for the current window.
         """
         prepare_action = functools.partial(self._prepare_match_data_for_window, tag,
                                            force_full_page_screenshot, user_inputs)
         return self._run(prepare_action, run_once_after_wait, retry_timeout)
+
+    def match_image(self, image, tag, user_inputs):
+        """
+        Performs a match for a given image.
+        """
+        prepare_action = functools.partial(self._prepare_match_data_for_image, image, tag, user_inputs)
+        return self._run(prepare_action, False, 0)
 
     def match_region(self, region, retry_timeout, tag, force_full_page_screenshot, user_inputs,
                      run_once_after_wait=False):

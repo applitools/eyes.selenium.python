@@ -47,7 +47,7 @@ def quadrant_rotate(m, num_quadrants):
     if num_quadrants == 0:
         return m
     rotate_func = rotate_cw if num_quadrants > 0 else rotate_ccw
-    #Perform the rotation.
+    # Perform the rotation.
     result = m
     for i in range(abs(num_quadrants)):
         result = rotate_func(result)

@@ -28,7 +28,7 @@ class EyesScreenshot(object):
     @staticmethod
     def create_from_image(screenshot, driver):
         """
-        Creates an instance from the base64 data.
+        Creates an instance from a PNG data.
         Args:
             screenshot: (PngImage) The screenshot image.
             driver: (EyesWebDriver) The webdriver for the session.

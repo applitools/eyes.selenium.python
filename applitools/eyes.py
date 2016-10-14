@@ -1,20 +1,22 @@
 import uuid
 from datetime import datetime
 
+import png
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.remote.webdriver import WebDriver as RemoteWebDriver
 
-# noinspection PyProtectedMember
+from applitools import VERSION
 from applitools import logger, _viewport_size
+from applitools.mock_webdriver import MockWebDriver
+from applitools.utils import _image_utils
 from ._agent_connector import AgentConnector
-from ._webdriver import EyesWebDriver
 from ._match_window_task import MatchWindowTask
 from ._triggers import TextTrigger, MouseTrigger
 from ._webdriver import EyesFrame
+from ._webdriver import EyesWebDriver
 from .errors import EyesError, NewTestError, TestFailedError
 from .test_results import TestResults
 from .utils import general_utils
-from applitools import VERSION
 
 
 class FailureReports(object):
@@ -220,11 +222,11 @@ class Eyes(object):
         finally:
             logger.close()
 
-    def open(self, driver, app_name, test_name, viewport_size=None):
+    def open(self, driver=None, app_name=None, test_name=None, viewport_size=None):
         """
         Starts a test.
 
-        :param driver: The webdriver to use.
+        :param driver: The webdriver to use. If this is None, a mock will be used instead.
         :param app_name: The name of the application under test.
         :param test_name: The test name.
         :param viewport_size: The client's viewport size (i.e., the visible part of the document's body) or None to
@@ -240,6 +242,9 @@ class Eyes(object):
         if self.api_key is None:
             raise EyesError("API key not set! Log in to https://applitools.com to obtain your"
                             " API Key and use 'api_key' to set it.")
+
+        if driver is None:
+            driver = MockWebDriver()
 
         if isinstance(driver, EyesWebDriver):
             # If the driver is an EyesWebDriver (as might be the case when tests are ran
@@ -399,6 +404,34 @@ class Eyes(object):
         if self.hide_scrollbars:
             # noinspection PyUnboundLocalVariable
             self._driver.set_overflow(original_overflow)
+        self._handle_match_result(result, tag)
+
+    def check_image(self, image, region=None, tag=None):
+        """
+        Matches the given image with the expected output.
+        Args:
+            :param region: ({width: int, height: int}) Optional. The region to crop from the image. If None, no
+            cropping will be made.
+            :param image: (bytes) The image PNG bytes.
+            :param tag: (str) Description of the visual validation checkpoint.
+        Returns:
+            None
+        """
+        if self.is_disabled:
+            logger.info("check_image(%s): ignored (disabled)" % tag)
+            return
+        logger.info("check_image('%s')" % tag)
+        # Set the viewport size according to the image size.
+        png_image_obj = _image_utils.png_image_from_bytes(image)
+        self._driver.driver.viewport_size = dict(width=png_image_obj.width, height=png_image_obj.height)
+
+        if region is not None:
+            png_image_obj = png_image_obj.get_subimage(region)
+            image = png_image_obj.get_bytes()
+
+        self._prepare_to_check()
+        result = self._match_window_task.match_image(image, tag, self._user_inputs)
+
         self._handle_match_result(result, tag)
 
     def check_region(self, region, tag=None, match_timeout=-1):
