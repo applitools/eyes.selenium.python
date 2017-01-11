@@ -69,7 +69,8 @@ def set_viewport_size(driver, required_size):
             driver.set_window_size(required_browser_size['width'], required_browser_size['height'])
             time.sleep(_BROWSER_STABILIZATION_WAIT)
             browser_size = driver.get_window_size()
-            if browser_size == required_browser_size:
+            if (browser_size['width'] == required_browser_size['width'] and
+                   browser_size['height'] == required_browser_size['height']):
                 break
             logger.debug("Current browser size: {}".format(browser_size))
         else:
