@@ -254,7 +254,7 @@ class EyesWebElement(object):
     # them, which makes copying them automatically a problem.
     _READONLY_PROPERTIES = ['tag_name', 'text', 'location_once_scrolled_into_view', 'size',
                             'location', 'parent', 'id', 'rect', 'screenshot_as_base64', 'screenshot_as_png',
-                            'location_in_view']
+                            'location_in_view', 'anonymous_children']
 
     def __init__(self, element, eyes, driver):
         self.element = element
