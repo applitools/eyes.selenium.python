@@ -6,6 +6,7 @@ from selenium.webdriver.remote.webdriver import WebDriver as RemoteWebDriver
 
 # noinspection PyProtectedMember
 from applitools import logger, _viewport_size
+from applitools.common import StitchMode
 from ._agent_connector import AgentConnector
 from ._webdriver import EyesWebDriver
 from ._match_window_task import MatchWindowTask
@@ -157,6 +158,7 @@ class Eyes(object):
         self._test_name = None
         self._viewport_size = None
         self._match_timeout = Eyes._DEFAULT_MATCH_TIMEOUT
+        self._stitch_mode = StitchMode.Scroll
         self.agent_id = None
         """An optional string identifying the current library using the SDK."""
         self.failure_reports = FailureReports.ON_CLOSE
@@ -201,6 +203,16 @@ class Eyes(object):
         :param match_level: The match level to set. Should be one of the values defined by MatchLevel
         """
         self.default_match_settings.match_level = match_level
+
+    @property
+    def stitch_mode(self):
+        return self._stitch_mode
+
+    @stitch_mode.setter
+    def stitch_mode(self, stitch_mode):
+        self._stitch_mode = stitch_mode
+        if stitch_mode == StitchMode.CSS:
+            self.hide_scrollbars = True
 
     @property
     def match_timeout(self):

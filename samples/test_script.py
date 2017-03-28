@@ -5,17 +5,19 @@ from applitools.eyes import Eyes
 
 import os
 #os.environ['HTTPS_PROXY'] = "http://localhost:8888"
+from applitools.common import StitchMode
 
 driver = webdriver.Chrome()
 
 logger.set_logger(StdoutLogger())
-eyes = Eyes()
+eyes = Eyes('https://localhost.applitools.com')
 eyes.api_key = os.environ['APPLITOOLS_API_KEY']
-eyes.hide_scrollbars = True
+# eyes.hide_scrollbars = True
 # For browser which only take screenshot of the viewport, you can uncomment the setting below, and
 # eyes will automatically create a full page screenshot.
 
-# eyes.force_full_page_screenshot = True
+eyes.force_full_page_screenshot = True
+eyes.stitch_mode = StitchMode.CSS
 
 try:
     driver = eyes.open(driver, "Python app", "applitools", {'width': 800, 'height': 600})

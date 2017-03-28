@@ -9,6 +9,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 from applitools import logger, _viewport_size
 from applitools.errors import EyesError, OutOfBoundsError
 from applitools.geometry import Point
+from applitools.common import StitchMode
 from applitools.utils import _image_utils
 from .geometry import Region
 from .utils import general_utils
@@ -75,7 +76,7 @@ class EyesScreenshot(object):
                 self._frame_size = self._viewport_size
         # For native Appium Apps we can't get the scroll position, so we use (0,0)
         try:
-            self._scroll_position = driver.get_current_scroll_position()
+            self._scroll_position = driver.get_current_position()
         except WebDriverException:
             self._scroll_position = Point(0, 0)
         if is_viewport_screenshot is None:
@@ -243,6 +244,107 @@ class EyesScreenshot(object):
         return self.get_sub_screenshot_by_region(element_region)
 
 
+class ScrollPositionProvider(object):
+    _JS_GET_CURRENT_SCROLL_POSITION = "var doc = document.documentElement; " + \
+                                     "var x = window.scrollX || " + \
+                                     "((window.pageXOffset || doc.scrollLeft) - (doc.clientLeft || 0));" + \
+                                     " var y = window.scrollY || " + \
+                                     "((window.pageYOffset || doc.scrollTop) - (doc.clientTop || 0));" + \
+                                     "return [x, y]"
+
+    def __init__(self, driver):
+        self.driver = driver
+        self.states = []
+
+    def _execute_script(self, script):
+        return self.driver.execute_script(script)
+
+    def get_current_position(self):
+        """
+        Extracts the current scroll position from the browser.
+        Returns:
+            (Point) The scroll position
+        """
+        try:
+            x, y = self._execute_script(self._JS_GET_CURRENT_SCROLL_POSITION)
+            if x is None or y is None:
+                raise EyesError("Got None as scroll position! ({},{})".format(x, y))
+        except WebDriverException:
+            raise EyesError("Failed to extract current scroll position!")
+        return Point(x, y)
+
+    def set_position(self, point):
+        """
+        Commands the browser to scroll to a given position using javascript.
+        """
+        scroll_command = "window.scrollTo({0}, {1})".format(point.x, point.y)
+        logger.debug(scroll_command)
+        self._execute_script(scroll_command)
+
+    def push_state(self):
+        self.states.append(self.get_current_position())
+
+    def pop_state(self):
+        self.set_position(self.states.pop())
+
+
+class CSSTranslatePositionProvider(object):
+    _JS_TRANSFORM_KEYS = ["transform", "-webkit-transform" ]
+
+    def __init__(self, driver):
+        self.driver = driver
+        self.states = []
+        self.current_position = Point(0, 0)
+
+    def _execute_script(self, script):
+        return self.driver.execute_script(script)
+
+    def get_current_position(self):
+        """
+        Extracts the current scroll position from the browser.
+        Returns:
+            (Point) The scroll position
+        """
+        return self.current_position.clone()
+
+    def _set_transform(self, transform_list):
+        script = ''
+        for key, value in transform_list.items():
+            script += "document.documentElement.style['{}'] = '{}';".format(key, value)
+        self._execute_script(script)
+
+    def _get_current_transform(self):
+        script = 'return {'
+        for key in self._JS_TRANSFORM_KEYS:
+            script += "'{0}': document.documentElement.style['{0}'],".format(key)
+        script += ' }'
+        return self._execute_script(script)
+
+    def set_position(self, point):
+        """
+        Commands the browser to scroll to a given position using javascript.
+        """
+        translate_command = "translate(-{}px, -{}px)".format(point.x, point.y)
+        logger.debug(translate_command)
+        transform_list = dict((key, translate_command) for key in self._JS_TRANSFORM_KEYS)
+        self._set_transform(transform_list)
+        self.current_position = point.clone()
+
+    def push_state(self):
+        self.states.append(self._get_current_transform())
+
+    def pop_state(self):
+        self._set_transform(self.states.pop())
+
+
+def build_position_provider_for(stitch_mode, driver):
+    if stitch_mode == StitchMode.Scroll:
+        return ScrollPositionProvider(driver)
+    elif stitch_mode == StitchMode.CSS:
+        return CSSTranslatePositionProvider(driver)
+    raise ValueError("Invalid stitch mode: {}".format(stitch_mode))
+
+
 class EyesWebElement(object):
     """
     A wrapper for selenium web element. This enables eyes to be notified about actions/events for
@@ -399,7 +501,7 @@ class _EyesSwitchTo(object):
         Switches to the frames one after the other.
         """
         for frame in frame_chain:
-            self._driver.scroll_to(frame.parent_scroll_position)
+            self._driver.set_position(frame.parent_scroll_position)
             self.frame(frame.reference)
 
     def default_content(self):
@@ -478,14 +580,16 @@ class EyesWebDriver(object):
                             'active_ime_engine', 'device_time']
     _SETTABLE_PROPERTIES = ['orientation']
 
-    _MAX_SCROLL_BAR_SIZE = 50  # This should pretty much cover all scroll bars (and some fixed
-                               # position footer elements :).
+    # This should pretty much cover all scroll bars (and some fixed position footer elements :) ).
+    _MAX_SCROLL_BAR_SIZE = 50
 
     _MIN_SCREENSHOT_PART_HEIGHT = 10
 
-    def __init__(self, driver, eyes):
+    def __init__(self, driver, eyes, stitch_mode=StitchMode.Scroll):
         self.driver = driver
         self._eyes = eyes
+        self._origin_position_provider = build_position_provider_for(StitchMode.Scroll, driver)
+        self._position_provider = build_position_provider_for(stitch_mode, driver)
         # List of frames the user switched to, and the current offset, so we can properly
         # calculate elements' coordinates
         self._frames = []
@@ -806,36 +910,19 @@ class EyesWebDriver(object):
         max_body_height = max(body_client_height, body_scroll_height)
         return max(max_document_element_height, max_body_height)
 
-    def get_current_scroll_position(self):
+    def get_current_position(self):
         """
         Extracts the current scroll position from the browser.
         Returns:
             (Point) The scroll position
         """
-        # noinspection PyUnresolvedReferences
-        x = self.execute_script("return window.scrollX")
-        # For IE
-        if x is None:
-            # noinspection PyUnresolvedReferences
-            x = self.execute_script("var doc = document.documentElement; var left = (window.pageXOffset || doc.scrollLeft) - (doc.clientLeft || 0); return left")
-            if x is None:
-                raise EyesError("Could not get left scroll position!")
-        # noinspection PyUnresolvedReferences
-        y = self.execute_script("return window.scrollY")
-        # For IE
-        if y is None:
-            # noinspection PyUnresolvedReferences
-            y = self.execute_script("var doc = document.documentElement; var top = (window.pageYOffset || doc.scrollTop)  - (doc.clientTop || 0); return top")
-            if y is None:
-                raise EyesError("Could not get top scroll position!")
-        return Point(x, y)
+        return self._position_provider.get_current_position()
 
-    def scroll_to(self, p):
+    def scroll_to(self, point):
         """
-        Commands the browser to scroll to a given position using javascript.
+        Commands the browser to scroll to a given position.
         """
-        # noinspection PyUnresolvedReferences
-        self.execute_script("window.scrollTo({0}, {1})".format(p.x, p.y))
+        self._position_provider.set_position(point)
 
     def get_entire_page_size(self):
         """
@@ -921,18 +1008,25 @@ class EyesWebDriver(object):
         self.switch_to.frames(current_frames)
         return viewport_size
 
+    def reset_origin(self):
+        self._origin_position_provider.push_state()
+        self._origin_position_provider.set_position(Point(0, 0))
+        current_scroll_position = self._origin_position_provider.get_current_position()
+        if current_scroll_position.x != 0 or current_scroll_position.y != 0:
+            self._origin_position_provider.pop_state()
+            raise EyesError("Couldn't scroll to the top/left part of the screen!")
+
+    def restore_origin(self):
+        self._origin_position_provider.pop_state()
+
     def get_full_page_screenshot(self):
         logger.info('getting full page screenshot..')
 
         # Saving the current frame reference and moving to the outermost frame.
         original_frame = self.get_frame_chain()
-        original_scroll_position = self.get_current_scroll_position()
         self.switch_to.default_content()
 
-        self.scroll_to(Point(0, 0))
-        current_scroll_position = self.get_current_scroll_position()
-        if current_scroll_position.x != 0 or current_scroll_position.y != 0:
-            raise EyesError('Couldn\'t scroll to the top/left part of the screen!')
+        self.reset_origin()
 
         entire_page_size = self.get_entire_page_size()
 
@@ -944,8 +1038,8 @@ class EyesWebDriver(object):
         # we use a screenshot size which is a bit smaller (see comment below).
         if (screenshot.width >= entire_page_size['width']) and \
                 (screenshot.height >= entire_page_size['height']):
+            self.restore_origin()
             self.switch_to.frames(original_frame)
-            self.scroll_to(original_scroll_position)
             return screenshot
 
         #  We use a smaller size than the actual screenshot size in order to eliminate duplication
@@ -973,7 +1067,7 @@ class EyesWebDriver(object):
             self.scroll_to(Point(part.left, part.top))
             time.sleep(0.1)
             # Since screen size might cause the scroll to reach only part of the way
-            current_scroll_position = self.get_current_scroll_position()
+            current_scroll_position = self.get_current_position()
             logger.debug("Scrolled To ({0},{1})".format(current_scroll_position.x,
                                                         current_scroll_position.y))
             part64 = self.get_screenshot_as_base64()
@@ -981,8 +1075,8 @@ class EyesWebDriver(object):
             stitched_image.paste(current_scroll_position.x, current_scroll_position.y,
                                  part_image.pixel_bytes)
 
+        self.restore_origin()
         self.switch_to.frames(original_frame)
-        self.scroll_to(original_scroll_position)
 
         return stitched_image
 
@@ -994,7 +1088,7 @@ class EyesWebDriver(object):
             frame_location = frame_element.location
             frame_size = frame_element.size
             frame_id = frame_element.id
-            parent_scroll_position = self.get_current_scroll_position()
+            parent_scroll_position = self.get_current_position()
             # Frame border can affect location calculation for elements.
             # noinspection PyBroadException
             try:
