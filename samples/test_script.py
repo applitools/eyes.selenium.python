@@ -2,10 +2,10 @@ from selenium import webdriver
 from applitools import logger
 from applitools.logger import StdoutLogger
 from applitools.eyes import Eyes
+from applitools.common import StitchMode
 
 import os
 #os.environ['HTTPS_PROXY'] = "http://localhost:8888"
-from applitools.common import StitchMode
 
 driver = webdriver.Chrome()
 
