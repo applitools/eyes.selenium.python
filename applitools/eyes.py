@@ -335,7 +335,7 @@ class Eyes(object):
         else:
             if not isinstance(driver, RemoteWebDriver):
                 logger.info("WARNING: driver is not a RemoteWebDriver (class: {0})".format(driver.__class__))
-            self._driver = EyesWebDriver(driver, self)
+            self._driver = EyesWebDriver(driver, self, self._stitch_mode)
 
         logger.info("open(%s, %s, %s, %s)" % (app_name, test_name, viewport_size, self.failure_reports))
 

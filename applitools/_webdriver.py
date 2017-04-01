@@ -1019,6 +1019,12 @@ class EyesWebDriver(object):
     def restore_origin(self):
         self._origin_position_provider.pop_state()
 
+    def save_position(self):
+        self._position_provider.push_state()
+
+    def restore_position(self):
+        self._position_provider.pop_state()
+
     def get_full_page_screenshot(self):
         logger.info('getting full page screenshot..')
 
@@ -1057,6 +1063,8 @@ class EyesWebDriver(object):
         # Starting with the screenshot we already captured at (0,0).
         stitched_image = screenshot
 
+        self.save_position()
+
         for part in screenshot_parts:
             # Since we already took the screenshot for 0,0
             if part.left == 0 and part.top == 0:
@@ -1075,6 +1083,7 @@ class EyesWebDriver(object):
             stitched_image.paste(current_scroll_position.x, current_scroll_position.y,
                                  part_image.pixel_bytes)
 
+        self.restore_position()
         self.restore_origin()
         self.switch_to.frames(original_frame)
 
