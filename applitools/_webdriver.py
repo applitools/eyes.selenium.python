@@ -20,9 +20,9 @@ class EyesScreenshot(object):
     def create_from_base64(screenshot64, driver):
         """
         Creates an instance from the base64 data.
-        Args:
-            screenshot64: (str) The base64 representation of the png bytes.
-            driver: (EyesWebDriver) The webdriver for the session.
+
+        :param screenshot64: The base64 representation of the png bytes.
+        :param driver: The webdriver for the session.
         """
         return EyesScreenshot(driver, screenshot64=screenshot64)
 
@@ -30,9 +30,9 @@ class EyesScreenshot(object):
     def create_from_image(screenshot, driver):
         """
         Creates an instance from the base64 data.
-        Args:
-            screenshot: (PngImage) The screenshot image.
-            driver: (EyesWebDriver) The webdriver for the session.
+
+        :param screenshot: The screenshot image.
+        :param driver: The webdriver for the session.
         """
         return EyesScreenshot(driver, screenshot=screenshot)
 
@@ -42,17 +42,17 @@ class EyesScreenshot(object):
         Initializes a Screenshot instance. Either screenshot or screenshot64 must NOT be None.
         Should not be used directly. Use create_from_image/create_from_base64 instead.
 
-        Args:
-            driver: EyesWebDriver instance which handles the session from which the screenshot
+        :param driver: EyesWebDriver instance which handles the session from which the screenshot
                     was retrieved.
-            (Optional) screenshot: (PngImage) image instance. If screenshot64 is None,
+        :param screenshot: (PngImage) image instance. If screenshot64 is None,
                                     this variable must NOT be none.
-            (Optional) screenshot64: (str) The base64 representation of a png image. If screenshot
+        :param screenshot64: The base64 representation of a png image. If screenshot
                                      is None, this variable must NOT be none.
-            (Optional) frame_location_in_screenshot: (Point) The location of the frame relative
-                                                    to the top,left of the screenshot.
-            (Optional) is_viewport_screenshot: (boolean) Whether the screenshot object represents a
+        :param is_viewport_screenshot: Whether the screenshot object represents a
                                                 viewport screenshot or a full screenshot.
+        :param frame_location_in_screenshot: The location of the frame relative
+                                                    to the top,left of the screenshot.
+        :raise EyesError: If the screenshots are None.
         """
         self._screenshot64 = screenshot64
         if screenshot:
@@ -104,8 +104,10 @@ class EyesScreenshot(object):
     @staticmethod
     def calc_frame_location_in_screenshot(frame_chain, is_viewport_screenshot):
         """
-        Returns:
-            (Point) The frame location as it would be on the screenshot. Notice that this value
+
+        :param frame_chain: List of the frames.
+        :param is_viewport_screenshot: Whether the viewport is a screenshot or not.
+        :return: The frame location as it would be on the screenshot. Notice that this value
             might actually be OUTSIDE the screenshot (e.g, if this is a viewport screenshot and
             the frame is located outside the viewport). This is not an error. The value can also
             be negative.
@@ -127,16 +129,18 @@ class EyesScreenshot(object):
 
     def get_frame_chain(self):
         """
-        Returns:
-            (list) A copy of the frame chain, as received by the driver when the screenshot was
+        Returns a copy of the fram chain.
+
+        :return: A copy of the frame chain, as received by the driver when the screenshot was
             created.
         """
         return [frame.clone() for frame in self._frame_chain]
 
     def get_base64(self):
         """
-        Returns:
-            (str) The base64 representation of the png.
+        Returns a base64 screenshot.
+
+        :return: The base64 representation of the png.
         """
         if not self._screenshot64:
             self._screenshot64 = self._screenshot.get_base64()
@@ -144,21 +148,19 @@ class EyesScreenshot(object):
 
     def get_bytes(self):
         """
-        Returns:
-            (bytes) The bytes representation of the png.
+        Returns the bytes of the screenshot.
+
+        :return: The bytes representation of the png.
         """
         return self._screenshot.get_bytes()
 
     def get_location_relative_to_frame_viewport(self, location):
         """
-        If this is not a full screen screenshot, or we're inside a frame, adjust the location to the
-        current viewport.
+        Gets the relative location from a given location to the viewport.
 
-        Args:
-            (dictionary) location: A dict with 'x' and 'y' keys representing the location we want
+        :param location: A dict with 'x' and 'y' keys representing the location we want
             to adjust.
-        Returns:
-            (dictionary) A location (keys are 'x' and 'y') adjusted to the current frame/viewport.
+        :return: A location (keys are 'x' and 'y') adjusted to the current frame/viewport.
         """
         result = {'x': location['x'], 'y': location['y']}
         if self._frame_chain or self._is_viewport_screenshot:
@@ -168,8 +170,10 @@ class EyesScreenshot(object):
 
     def get_element_region_in_frame_viewport(self, element):
         """
-        Returns:
-            (Region) The element's region in the frame with scroll considered if necessary
+        Gets The element region in the frame.
+
+        :param element: The element to get the region in the frame.
+        :return: The element's region in the frame with scroll considered if necessary
         """
         location, size = element.location, element.size
 
@@ -196,8 +200,10 @@ class EyesScreenshot(object):
 
     def get_intersected_region(self, region):
         """
-        Returns:
-            (Region) The part of the region which intersects with
+        Gets the intersection of the region with the screenshot image.
+
+        :param region: The region in the frame.
+        :return: The part of the region which intersects with
             the screenshot image.
         """
         region_in_screenshot = region.clone()
@@ -208,8 +214,10 @@ class EyesScreenshot(object):
 
     def get_intersected_region_by_element(self, element):
         """
-        Returns:
-            (Region) The part of the element's region which intersects with
+        Gets the intersection of the element's region with the screenshot image.
+
+        :param element: The element in the frame.
+        :return: The part of the element's region which intersects with
             the screenshot image.
         """
         element_region = self.get_element_region_in_frame_viewport(element)
@@ -217,8 +225,10 @@ class EyesScreenshot(object):
 
     def get_sub_screenshot_by_region(self, region):
         """
-        Returns:
-            (EyesScreenshot) A screenshot object representing the given region part of the image.
+        Gets the region part of the screenshot image.
+
+        :param region: The region in the frame.
+        :return: A screenshot object representing the given region part of the image.
         """
         sub_screenshot_region = self.get_intersected_region(region)
         if sub_screenshot_region.is_empty():
@@ -236,8 +246,10 @@ class EyesScreenshot(object):
 
     def get_sub_screenshot_by_element(self, element):
         """
-        Returns:
-            (EyesScreenshot) A screenshot object representing the element's region part of the
+        Gets the element's region part of the screenshot image.
+
+        :param element: The element in the frame.
+        :return: A screenshot object representing the element's region part of the
             image.
         """
         element_region = self.get_element_region_in_frame_viewport(element)
@@ -253,6 +265,11 @@ class ScrollPositionProvider(object):
                                      "return [x, y]"
 
     def __init__(self, driver):
+        """
+        Ctor.
+
+        :param driver: EyesWebDriver instance.
+        """
         self.driver = driver
         self.states = []
 
@@ -262,8 +279,8 @@ class ScrollPositionProvider(object):
     def get_current_position(self):
         """
         Extracts the current scroll position from the browser.
-        Returns:
-            (Point) The scroll position
+
+        :return: The scroll position
         """
         try:
             x, y = self._execute_script(self._JS_GET_CURRENT_SCROLL_POSITION)
@@ -276,15 +293,23 @@ class ScrollPositionProvider(object):
     def set_position(self, point):
         """
         Commands the browser to scroll to a given position using javascript.
+
+        :param point: The point to scroll to.
         """
         scroll_command = "window.scrollTo({0}, {1})".format(point.x, point.y)
         logger.debug(scroll_command)
         self._execute_script(scroll_command)
 
     def push_state(self):
+        """
+        Adds the current position to the states list.
+        """
         self.states.append(self.get_current_position())
 
     def pop_state(self):
+        """
+        Sets the position to be the last position added to the states list.
+        """
         self.set_position(self.states.pop())
 
 
@@ -292,6 +317,11 @@ class CSSTranslatePositionProvider(object):
     _JS_TRANSFORM_KEYS = ["transform", "-webkit-transform" ]
 
     def __init__(self, driver):
+        """
+        Ctor.
+
+        :param driver: EyesWebDriver instance.
+        """
         self.driver = driver
         self.states = []
         self.current_position = Point(0, 0)
@@ -302,8 +332,8 @@ class CSSTranslatePositionProvider(object):
     def get_current_position(self):
         """
         Extracts the current scroll position from the browser.
-        Returns:
-            (Point) The scroll position
+
+        :return: The scroll position.
         """
         return self.current_position.clone()
 
@@ -323,6 +353,8 @@ class CSSTranslatePositionProvider(object):
     def set_position(self, point):
         """
         Commands the browser to scroll to a given position using javascript.
+
+        :param point: The point to set the position at.
         """
         translate_command = "translate(-{}px, -{}px)".format(point.x, point.y)
         logger.debug(translate_command)
@@ -331,9 +363,15 @@ class CSSTranslatePositionProvider(object):
         self.current_position = point.clone()
 
     def push_state(self):
+        """
+        Adds the transform to the states list.
+        """
         self.states.append(self._get_current_transform())
 
     def pop_state(self):
+        """
+        Sets the transform to be the last transform added to the states list.
+        """
         self._set_transform(self.states.pop())
 
 
@@ -359,6 +397,13 @@ class EyesWebElement(object):
                             'location_in_view', 'anonymous_children']
 
     def __init__(self, element, eyes, driver):
+        """
+        Ctor.
+
+        :param element: The element in the frame.
+        :param eyes: The eyes sdk instance.
+        :param driver: EyesWebDriver instance.
+        """
         self.element = element
         self._eyes = eyes
         self._driver = driver
@@ -398,6 +443,10 @@ class EyesWebElement(object):
     def find_element(self, by=By.ID, value=None):
         """
         Returns a WebElement denoted by "By".
+
+        :param by: By which option to search for (default is by ID).
+        :param value: The value to search for.
+        :return: WebElement denoted by "By".
         """
         # Get result from the original implementation of the underlying driver.
         result = self._original_methods['find_element'](by, value)
@@ -409,6 +458,10 @@ class EyesWebElement(object):
     def find_elements(self, by=By.ID, value=None):
         """
         Returns a list of web elements denoted by "By".
+
+        :param by: By which option to search for (default is by ID).
+        :param value: The value to search for.
+        :return: List of web elements denoted by "By".
         """
         # Get result from the original implementation of the underlying driver.
         results = self._original_methods['find_elements'](by, value)
@@ -421,10 +474,18 @@ class EyesWebElement(object):
         return results
 
     def click(self):
+        """
+        Clicks and element.
+        """
         self._eyes.add_mouse_trigger_by_element('click', self)
         self.element.click()
 
     def send_keys(self, *value):
+        """
+        Sends keys to a certain element.
+
+        :param value: The value to type into the element.
+        """
         text = u''
         for val in value:
             if isinstance(val, int):
@@ -436,6 +497,7 @@ class EyesWebElement(object):
     def set_overflow(self, overflow, stabilization_time=None):
         """
         Sets the overflow of the current element.
+
         :param overflow: The overflow value to set. If the given value is None, then overflow will be set to
                          undefined.
         :param stabilization_time: The time to wait for the page to stabilize after overflow is set. If the value is
@@ -461,6 +523,7 @@ class EyesWebElement(object):
     def hide_scrollbars(self):
         """
         Hides the scrollbars of the current element.
+
         :return: The previous value of the overflow property (could be None).
         """
         logger.debug('EyesWebElement.HideScrollbars()')
@@ -475,11 +538,22 @@ class _EyesSwitchTo(object):
     PARENT_FRAME = 1
 
     def __init__(self, driver, switch_to):
+        """
+        Ctor.
+
+        :param driver: EyesWebDriver instance.
+        :param switch_to: Selenium switchTo object.
+        """
         self._switch_to = switch_to
         self._driver = driver
         general_utils.create_proxy_interface(self, switch_to, self._READONLY_PROPERTIES)
 
     def frame(self, frame_reference):
+        """
+        Switch to a given frame.
+
+        :param frame_reference: The reference to the frame.
+        """
         # Find the frame's location and add it to the current driver offset
         if isinstance(frame_reference, str):
             frame_element = self._driver.find_element_by_name(frame_reference)
@@ -499,12 +573,17 @@ class _EyesSwitchTo(object):
     def frames(self, frame_chain):
         """
         Switches to the frames one after the other.
+
+        :param frame_chain: A list of frames.
         """
         for frame in frame_chain:
             self._driver.set_position(frame.parent_scroll_position)
             self.frame(frame.reference)
 
     def default_content(self):
+        """
+        Switch to default content.
+        """
         # We should only do anything if we're inside a frame.
         if self._driver.get_frame_chain():
             # This call resets the driver's current frame location
@@ -513,6 +592,9 @@ class _EyesSwitchTo(object):
             self._switch_to.default_content()
 
     def parent_frame(self):
+        """
+        Switch to parent frame.
+        """
         # IMPORTANT We implement switching to parent frame ourselves here, since it's not yet
         # implemented by the webdriver.
 
@@ -529,6 +611,12 @@ class _EyesSwitchTo(object):
 
 
     def window(self, window_name):
+        """
+        Switch to window.
+
+        :param window_name: The window name to switch to.
+        :return:The switched to window object.
+        """
         # noinspection PyProtectedMember
         self._driver._will_switch_to(None)
         return self._switch_to.window(window_name)
@@ -542,9 +630,11 @@ class EyesFrame(object):
     @staticmethod
     def is_same_frame_chain(frame_chain1, frame_chain2):
         """
-        Args:
-            frame_chain1: list of _EyesFrame instances, which represents a path to a frame.
-            frame_chain2: list of _EyesFrame instances, which represents a path to a frame.
+        Checks whether the two frame chains are the same or not.
+
+        :param frame_chain1: list of _EyesFrame instances, which represents a path to a frame.
+        :param frame_chain2: list of _EyesFrame instances, which represents a path to a frame.
+        :return: True if the frame chains ids are identical, otherwise False.
         """
         cl1, cl2 = len(frame_chain1), len(frame_chain2)
         if cl1 != cl2:
@@ -555,6 +645,15 @@ class EyesFrame(object):
         return True
 
     def __init__(self, reference, location, size, id_, parent_scroll_position):
+        """
+        Ctor.
+
+        :param reference: The reference to the frame.
+        :param location: The location of the frame.
+        :param size: The size of the frame.
+        :param id_: The id of the frame.
+        :param parent_scroll_position: The parents' scroll position.
+        """
         self.reference = reference
         self.location = location
         self.size = size
@@ -562,6 +661,11 @@ class EyesFrame(object):
         self.parent_scroll_position = parent_scroll_position
 
     def clone(self):
+        """
+        Clone the EyesFrame object.
+
+        :return: A cloned EyesFrame object.
+        """
         return EyesFrame(self.reference, self.location.copy(), self.size.copy(), self.id_,
                          self.parent_scroll_position.clone())
 
@@ -586,6 +690,13 @@ class EyesWebDriver(object):
     _MIN_SCREENSHOT_PART_HEIGHT = 10
 
     def __init__(self, driver, eyes, stitch_mode=StitchMode.Scroll):
+        """
+        Ctor.
+
+        :param driver: EyesWebDriver instance.
+        :param eyes: A Eyes sdk instance.
+        :param stitch_mode: How to stitch a page (default is with scrolling).
+        """
         self.driver = driver
         self._eyes = eyes
         self._origin_position_provider = build_position_provider_for(StitchMode.Scroll, driver)
@@ -609,7 +720,9 @@ class EyesWebDriver(object):
 
     def get_display_rotation(self):
         """
-        :return int: The rotation of the screenshot we get from the webdriver in (degrees).
+        Get the rotation of the screenshot.
+
+        :return: The rotation of the screenshot we get from the webdriver in (degrees).
         """
         if self.get_platform_name() == 'Android' and self.driver.orientation == "LANDSCAPE":
             return -90
@@ -617,7 +730,9 @@ class EyesWebDriver(object):
 
     def get_platform_name(self):
         """
-        :return str|None: The platform running the application under test.
+        Get the platform running the application.
+
+        :return: The platform running the application under test.
         """
         try:
             return self.driver.desired_capabilities['platformName']
@@ -626,7 +741,9 @@ class EyesWebDriver(object):
 
     def get_platform_version(self):
         """
-        :return str|None: The platform version.
+        Get the platform version.
+
+        :return: The platform version.
         """
         try:
             return str(self.driver.desired_capabilities['platformVersion'])
@@ -635,11 +752,19 @@ class EyesWebDriver(object):
 
     def is_mobile_device(self):
         """
-        :return boolean: True if the platform running the test is a mobile platform. False otherwise.
+        Returns whether the platform running is a mobile device or not.
+
+        :return: True if the platform running the test is a mobile platform. False otherwise.
         """
         return isinstance(self.driver, appium.webdriver.Remote)
 
     def get(self, url):
+        """
+        Navigates the driver to the given url.
+
+        :param url: The url to navigate to.
+        :return: A driver that navigated to the given url.
+        """
         # We're loading a new page, so the frame location resets
         self._frames = []
         return self.driver.get(url)
@@ -647,6 +772,10 @@ class EyesWebDriver(object):
     def find_element(self, by=By.ID, value=None):
         """
         Returns a WebElement denoted by "By".
+
+        :param by: By which option to search for (default is by ID).
+        :param value: The value to search for.
+        :return: A element denoted by "By".
         """
         # Get result from the original implementation of the underlying driver.
         result = self.driver.find_element(by, value)
@@ -658,6 +787,10 @@ class EyesWebDriver(object):
     def find_elements(self, by=By.ID, value=None):
         """
         Returns a list of web elements denoted by "By".
+
+        :param by: By which option to search for (default is by ID).
+        :param value: The value to search for.
+        :return: List of elements denoted by "By".
         """
         # Get result from the original implementation of the underlying driver.
         results = self.driver.find_elements(by, value)
@@ -670,13 +803,10 @@ class EyesWebDriver(object):
         return results
 
     def find_element_by_id(self, id_):
-        """Finds an element by id.
+        """
+        Finds an element by id.
 
-        :Args:
-         - id\_ - The id of the element to be found.
-
-        :Usage:
-            driver.find_element_by_id('foo')
+        :params id_: The id of the element to be found.
         """
         return self.find_element(by=By.ID, value=id_)
 
@@ -684,11 +814,7 @@ class EyesWebDriver(object):
         """
         Finds multiple elements by id.
 
-        :Args:
-         - id\_ - The id of the elements to be found.
-
-        :Usage:
-            driver.find_element_by_id('foo')
+        :param id_: The id of the elements to be found.
         """
         return self.find_elements(by=By.ID, value=id_)
 
@@ -696,11 +822,7 @@ class EyesWebDriver(object):
         """
         Finds an element by xpath.
 
-        :Args:
-         - xpath - The xpath locator of the element to find.
-
-        :Usage:
-            driver.find_element_by_xpath('//div/td[1]')
+        :param xpath: The xpath locator of the element to find.
         """
         return self.find_element(by=By.XPATH, value=xpath)
 
@@ -708,11 +830,7 @@ class EyesWebDriver(object):
         """
         Finds multiple elements by xpath.
 
-        :Args:
-         - xpath - The xpath locator of the elements to be found.
-
-        :Usage:
-            driver.find_elements_by_xpath("//div[contains(@class, 'foo')]")
+        :param xpath: The xpath locator of the elements to be found.
         """
         return self.find_elements(by=By.XPATH, value=xpath)
 
@@ -720,11 +838,7 @@ class EyesWebDriver(object):
         """
         Finds an element by link text.
 
-        :Args:
-         - link_text: The text of the element to be found.
-
-        :Usage:
-            driver.find_element_by_link_text('Sign In')
+        :param link_text: The text of the element to be found.
         """
         return self.find_element(by=By.LINK_TEXT, value=link_text)
 
@@ -732,11 +846,7 @@ class EyesWebDriver(object):
         """
         Finds elements by link text.
 
-        :Args:
-         - link_text: The text of the elements to be found.
-
-        :Usage:
-            driver.find_elements_by_link_text('Sign In')
+        :param text: The text of the elements to be found.
         """
         return self.find_elements(by=By.LINK_TEXT, value=text)
 
@@ -744,11 +854,7 @@ class EyesWebDriver(object):
         """
         Finds an element by a partial match of its link text.
 
-        :Args:
-         - link_text: The text of the element to partially match on.
-
-        :Usage:
-            driver.find_element_by_partial_link_text('Sign')
+        :param link_text: The text of the element to partially match on.
         """
         return self.find_element(by=By.PARTIAL_LINK_TEXT, value=link_text)
 
@@ -756,11 +862,7 @@ class EyesWebDriver(object):
         """
         Finds elements by a partial match of their link text.
 
-        :Args:
-         - link_text: The text of the element to partial match on.
-
-        :Usage:
-            driver.find_element_by_partial_link_text('Sign')
+        :param link_text: The text of the element to partial match on.
         """
         return self.find_elements(by=By.PARTIAL_LINK_TEXT, value=link_text)
 
@@ -768,11 +870,7 @@ class EyesWebDriver(object):
         """
         Finds an element by name.
 
-        :Args:
-         - name: The name of the element to find.
-
-        :Usage:
-            driver.find_element_by_name('foo')
+        :param name: The name of the element to find.
         """
         return self.find_element(by=By.NAME, value=name)
 
@@ -780,11 +878,7 @@ class EyesWebDriver(object):
         """
         Finds elements by name.
 
-        :Args:
-         - name: The name of the elements to find.
-
-        :Usage:
-            driver.find_elements_by_name('foo')
+        :param name: The name of the elements to find.
         """
         return self.find_elements(by=By.NAME, value=name)
 
@@ -792,11 +886,7 @@ class EyesWebDriver(object):
         """
         Finds an element by tag name.
 
-        :Args:
-         - name: The tag name of the element to find.
-
-        :Usage:
-            driver.find_element_by_tag_name('foo')
+        :param name: The tag name of the element to find.
         """
         return self.find_element(by=By.TAG_NAME, value=name)
 
@@ -804,11 +894,7 @@ class EyesWebDriver(object):
         """
         Finds elements by tag name.
 
-        :Args:
-         - name: The tag name the use when finding elements.
-
-        :Usage:
-            driver.find_elements_by_tag_name('foo')
+        :param name: The tag name to use when finding elements.
         """
         return self.find_elements(by=By.TAG_NAME, value=name)
 
@@ -816,11 +902,7 @@ class EyesWebDriver(object):
         """
         Finds an element by class name.
 
-        :Args:
-         - name: The class name of the element to find.
-
-        :Usage:
-            driver.find_element_by_class_name('foo')
+        :param name: The class name of the element to find.
         """
         return self.find_element(by=By.CLASS_NAME, value=name)
 
@@ -828,11 +910,7 @@ class EyesWebDriver(object):
         """
         Finds elements by class name.
 
-        :Args:
-         - name: The class name of the elements to find.
-
-        :Usage:
-            driver.find_elements_by_class_name('foo')
+        :param name: The class name of the elements to find.
         """
         return self.find_elements(by=By.CLASS_NAME, value=name)
 
@@ -840,11 +918,7 @@ class EyesWebDriver(object):
         """
         Finds an element by css selector.
 
-        :Args:
-         - css_selector: The css selector to use when finding elements.
-
-        :Usage:
-            driver.find_element_by_css_selector('#foo')
+        :param css_selector: The css selector to use when finding elements.
         """
         return self.find_element(by=By.CSS_SELECTOR, value=css_selector)
 
@@ -852,11 +926,7 @@ class EyesWebDriver(object):
         """
         Finds elements by css selector.
 
-        :Args:
-         - css_selector: The css selector to use when finding elements.
-
-        :Usage:
-            driver.find_elements_by_css_selector('.foo')
+        :param css_selector: The css selector to use when finding elements.
         """
         return self.find_elements(by=By.CSS_SELECTOR, value=css_selector)
 
@@ -864,9 +934,6 @@ class EyesWebDriver(object):
         """
         Gets the screenshot of the current window as a base64 encoded string
            which is useful in embedded images in HTML.
-
-        :Usage:
-            driver.get_screenshot_as_base64()
         """
         screenshot64 = self.driver.get_screenshot_as_base64()
         display_rotation = self.get_display_rotation()
@@ -883,6 +950,11 @@ class EyesWebDriver(object):
         return screenshot64
 
     def extract_full_page_width(self):
+        """
+        Extracts the full page width.
+
+        :return: The width of the full page.
+        """
         # noinspection PyUnresolvedReferences
         default_scroll_width = int(round(self.execute_script(
             "return document.documentElement.scrollWidth")))
@@ -891,6 +963,9 @@ class EyesWebDriver(object):
 
     def extract_full_page_height(self):
         """
+        Extracts the full page height.
+
+        :return: The height of the full page.
         IMPORTANT: Notice there's a major difference between scrollWidth and scrollHeight.
         While scrollWidth is the maximum between an element's width and its content width,
         scrollHeight might be smaller(!) than the clientHeight, which is why we take the
@@ -913,20 +988,24 @@ class EyesWebDriver(object):
     def get_current_position(self):
         """
         Extracts the current scroll position from the browser.
-        Returns:
-            (Point) The scroll position
+
+        :return: The scroll position.
         """
         return self._position_provider.get_current_position()
 
     def scroll_to(self, point):
         """
         Commands the browser to scroll to a given position.
+
+        :param point: The point to scroll to.
         """
         self._position_provider.set_position(point)
 
     def get_entire_page_size(self):
         """
         Extracts the size of the current page from the browser using Javascript.
+
+        :return: The page width and height.
         """
         return {'width': self.extract_full_page_width(),
                 'height': self.extract_full_page_height()}
@@ -934,6 +1013,7 @@ class EyesWebDriver(object):
     def set_overflow(self, overflow, stabilization_time=None):
         """
         Sets the overflow of the current context's document element.
+
         :param overflow: The overflow value to set. If the given value is None, then overflow will be set to
                          undefined.
         :param stabilization_time: The time to wait for the page to stabilize after overflow is set. If the value is
@@ -959,6 +1039,7 @@ class EyesWebDriver(object):
     def wait_for_page_load(self, timeout=3, throw_on_timeout=False):
         """
         Waits for the current document to be "loaded".
+
         :param timeout: The maximum time to wait, in seconds.
         :param throw_on_timeout: Whether to throw an exception when timeout is reached.
         """
@@ -974,6 +1055,7 @@ class EyesWebDriver(object):
     def hide_scrollbars(self):
         """
         Hides the scrollbars of the current context's document element.
+
         :return: The previous value of the overflow property (could be None).
         """
         logger.debug('HideScrollbars() called. Waiting for page load...')
@@ -983,8 +1065,9 @@ class EyesWebDriver(object):
 
     def get_frame_chain(self):
         """
-        Returns:
-            (list) A list of EyesFrame instances which represents the path to the current frame.
+        Gets the frame chain.
+
+        :return: A list of EyesFrame instances which represents the path to the current frame.
             This can later be used as an argument to _EyesSwitchTo.frames().
         """
         return [frame.clone() for frame in self._frames]
@@ -998,8 +1081,9 @@ class EyesWebDriver(object):
 
     def get_default_content_viewport_size(self):
         """
-        Returns:
-            The viewport size of the most outer frame.
+        Gets the viewport size.
+
+        :return: The viewport size of the most outer frame.
         """
         current_frames = self.get_frame_chain()
         # If we're inside a frame, then we should first switch to the most outer frame.
@@ -1009,6 +1093,11 @@ class EyesWebDriver(object):
         return viewport_size
 
     def reset_origin(self):
+        """
+        Reset the origin position to (0, 0).
+
+        :raise EyesError: Couldn't scroll to position (0, 0).
+        """
         self._origin_position_provider.push_state()
         self._origin_position_provider.set_position(Point(0, 0))
         current_scroll_position = self._origin_position_provider.get_current_position()
@@ -1017,15 +1106,29 @@ class EyesWebDriver(object):
             raise EyesError("Couldn't scroll to the top/left part of the screen!")
 
     def restore_origin(self):
+        """
+        Restore the origin position.
+        """
         self._origin_position_provider.pop_state()
 
     def save_position(self):
+        """
+        Saves the position in the _position_provider list.
+        """
         self._position_provider.push_state()
 
     def restore_position(self):
+        """
+        Restore the position.
+        """
         self._position_provider.pop_state()
 
     def get_full_page_screenshot(self):
+        """
+        Gets a full page screenshot.
+
+        :return: The full page screenshot.
+        """
         logger.info('getting full page screenshot..')
 
         # Saving the current frame reference and moving to the outermost frame.
@@ -1091,7 +1194,10 @@ class EyesWebDriver(object):
 
     def _will_switch_to(self, frame_reference, frame_element=None):
         """
-        Updates the current webdriver that a switch was made to a frame element
+        Updates the current webdriver that a switch was made to a frame element.
+
+        :param frame_reference: The reference to the frame.
+        :param frame_element: The frame element instance.
         """
         if frame_element is not None:
             frame_location = frame_element.location

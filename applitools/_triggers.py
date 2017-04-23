@@ -17,10 +17,11 @@ class MouseTrigger(object):
 
     def __init__(self, action, control, location):
         """
-        Args:
-            action (str, a key in (MOUSE_ACTION)): The mouse action represented by the trigger.
-            control (Region): The region to which the text was entered.
-            location (Point): The location which was clicked relative to the control.
+        Ctor.
+
+        :param action: The mouse action represented by the trigger.
+        :param control: The region to which the text was entered.
+        :param location: The location which was clicked relative to the control.
         """
         self.action = action
         self.control = control
@@ -45,9 +46,10 @@ class TextTrigger(object):
 
     def __init__(self, control, text):
         """
-        Args:
-            control (Region): The region to which the text was entered.
-            text (str): The trigger's text.
+        Ctor.
+
+        :param control: The region to which the text was entered.
+        :param text: The trigger's text.
         """
         self.control = control
         self.text = text

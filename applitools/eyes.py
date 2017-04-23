@@ -46,6 +46,7 @@ class ExactMatchSettings(object):
 
     def __init__(self, min_diff_intensity=0, min_diff_width=0, min_diff_height=0, match_threshold=0.0):
         """
+        Ctor.
 
         :param min_diff_intensity: Minimal non-ignorable pixel intensity difference.
         :param min_diff_width: Minimal non-ignorable diff region width.
@@ -137,13 +138,10 @@ class Eyes(object):
         """
         Creates a new (possibly disabled) Eyes instance that interacts with the Eyes server.
 
-        Args:
-            params (dictionary):
-                (Optional) server_url (str): The URL of the Eyes server
-                (Optional) disabled (boolean): Whether this Eyes instance is disabled (acts as
-                                                mock).
+        :param server_url: The URL of the Eyes server
         """
         self.is_disabled = False
+        """(Boolean) Disables Applitools Eyes and uses the webdriver directly."""
         self._user_inputs = []
         self._running_session = None
         self._agent_connector = AgentConnector(server_url)
@@ -160,28 +158,28 @@ class Eyes(object):
         self._match_timeout = Eyes._DEFAULT_MATCH_TIMEOUT
         self._stitch_mode = StitchMode.Scroll
         self.agent_id = None
-        """An optional string identifying the current library using the SDK."""
+        """(String) An optional string identifying the current library using the SDK."""
         self.failure_reports = FailureReports.ON_CLOSE
-        """Whether the current test will report mismatches immediately or when it is finished. See FailureReports."""
+        """(String) Whether the current test will report mismatches immediately or when it is finished. See FailureReports."""
         self.default_match_settings = ImageMatchSettings()
-        """The default match settings for the session. See ImageMatchSettings"""
+        """(ImageMatchSettings) The default match settings for the session. See ImageMatchSettings"""
         self.batch = None
-        """The batch to which the tests ran with this Eyes instance belong to. See BatchInfo. None means no batch."""
+        """(String) The batch to which the tests ran with this Eyes instance belong to. See BatchInfo. None means no batch."""
         self.host_os = None
-        """A string identifying the OS running the AUT. Use this if you wish to override Eyes automatic inference."""
+        """(String) A string identifying the OS running the AUT. Use this if you wish to override Eyes automatic inference."""
         self.host_app = None
-        """A string identifying the app running the AUT. Use this if you wish to override Eyes automatic inference."""
+        """(String) A string identifying the app running the AUT. Use this if you wish to override Eyes automatic inference."""
         self.baseline_name = None
-        """A string that, if specified, determines the baseline to compare with and disables automatic baseline
+        """(String) A string that, if specified, determines the baseline to compare with and disables automatic baseline
         inference."""
         self.save_new_tests = True
-        """A boolean denoting whether new tests should be automatically accepted."""
+        """(Boolean) A boolean denoting whether new tests should be automatically accepted."""
         self.save_failed_tests = False
-        """A boolean denoting whether failed tests should be automatically saved with all new output accepted."""
+        """(Boolean) A boolean denoting whether failed tests should be automatically saved with all new output accepted."""
         self.branch_name = None
-        """A string identifying the branch in which tests are run."""
+        """(String) A string identifying the branch in which tests are run."""
         self.parent_branch_name = None
-        """A string identifying the parent branch of the branch set by "branch_name"."""
+        """(String) A string identifying the parent branch of the branch set by "branch_name"."""
         self.force_full_page_screenshot = False
         """(Boolean) if true, Eyes will create a full page screenshot (by using stitching) for browsers which only
         returns the viewport screenshot."""
@@ -192,13 +190,15 @@ class Eyes(object):
 
     @property
     def match_level(self):
-        """Get the default match level for the entire session. See ImageMatchSettings."""
+        """
+        Gets the default match level for the entire session. See ImageMatchSettings.
+        """
         return self.default_match_settings.match_level
 
     @match_level.setter
     def match_level(self, match_level):
         """
-        Set the default match level for the entire session. See ImageMatchSettings.
+        Sets the default match level for the entire session. See ImageMatchSettings.
 
         :param match_level: The match level to set. Should be one of the values defined by MatchLevel
         """
@@ -206,47 +206,74 @@ class Eyes(object):
 
     @property
     def stitch_mode(self):
+        """
+        Gets the stitch mode.
+
+        :return: The stitch mode.
+        """
         return self._stitch_mode
 
     @stitch_mode.setter
     def stitch_mode(self, stitch_mode):
+        """
+        Sets the stitch property - default is by scrolling.
+
+        :param stitch_mode: The stitch mode to set - either scrolling or css.
+        """
         self._stitch_mode = stitch_mode
         if stitch_mode == StitchMode.CSS:
             self.hide_scrollbars = True
 
     @property
     def match_timeout(self):
-        """Get the default timeout for check_XXXX operations. (milliseconds)"""
+        """
+        Gets the default timeout for check_XXXX operations. (milliseconds)
+
+        :return: The match timeout (milliseconds)
+        """
         return self._match_timeout
 
     @match_timeout.setter
     def match_timeout(self, match_timeout):
-        """Set the default timeout for check_XXXX operations. (milliseconds)"""
+        """
+        Sets the default timeout for check_XXXX operations. (milliseconds)
+        """
         if 0 < match_timeout < MatchWindowTask.MINIMUM_MATCH_TIMEOUT:
             raise ValueError("Match timeout must be at least 60ms.")
         self._match_timeout = match_timeout
 
     @property
     def api_key(self):
+        """
+        Gets the Api key used for authenticating the user with Eyes.
+
+        :return: The Api key used for authenticating the user with Eyes.
+        """
         return self._agent_connector.api_key
 
     @api_key.setter
     def api_key(self, api_key):
         """
         Sets the api key used for authenticating the user with Eyes.
+
         :param api_key: The api key used for authenticating the user with Eyes.
-        :return: None
         """
         self._agent_connector.api_key = api_key
 
     @property
     def server_url(self):
+        """
+        Gets the URL of the Eyes server.
+
+        :return: The URL of the Eyes server, or None to use the default server.
+        """
         return self._agent_connector.server_url
 
     @server_url.setter
     def server_url(self, server_url):
         """
         Sets the URL of the Eyes server.
+
         :param server_url: The URL of the Eyes server, or None to use the default server.
         :return: None
         """
@@ -257,29 +284,37 @@ class Eyes(object):
 
     @property
     def _full_agent_id(self):
+        """
+        Gets the agent id, which identifies the current library using the SDK.
+
+        :return: The agent id.
+        """
         if self.agent_id is None:
             return self.BASE_AGENT_ID
         return "%s [%s]" % (self.agent_id, self.BASE_AGENT_ID)
 
     def is_open(self):
         """
-        Returns:
-            (boolean) True if a session is currently running, False otherwise.
+        Returns whether the session is currently running.
+
+        :return: True is a session is running, False otherwise.
         """
         return self._is_open
 
     def get_driver(self):
         """
-        Returns:
-            (selenium.webdriver.remote.webdriver) The web driver currently used by the Eyes
+        Returns the current web driver.
+
+        :return: (selenium.webdriver.remote.webdriver) The web driver currently used by the Eyes
                                                     instance.
         """
         return self._driver
 
     def get_viewport_size(self):
         """
-        Returns:
-            ({width, height}) The size of the viewport of the application under test (e.g,
+        Returns the size of the viewport.
+
+        :return: ({width, height}) The size of the viewport of the application under test (e.g,
                                 the browser).
         """
         return self._viewport_size
@@ -317,7 +352,7 @@ class Eyes(object):
         :param viewport_size: The client's viewport size (i.e., the visible part of the document's body) or None to
                                 allow any viewport size.
         :return: An updated web driver
-         :raise EyesError: If the session was already open.
+        :raise EyesError: If the session was already open.
         """
         logger.open_()
         if self.is_disabled:
@@ -349,7 +384,9 @@ class Eyes(object):
         return self._driver
 
     def _assign_viewport_size(self):
-        # When setting the viewport size we need to be in the default content frame
+        """
+        Assign the viewport size we need to be in the default content frame.
+        """
         original_frame_chain = self._driver.get_frame_chain()
         self._driver.switch_to.default_content()
         try:
@@ -368,6 +405,7 @@ class Eyes(object):
     def _get_environment(self):
         """
         Application environment is the environment (e.g., the host OS) which runs the application under test.
+
         :return: The current application environment.
         """
         os = self.host_os
@@ -416,8 +454,9 @@ class Eyes(object):
 
     def get_title(self):
         """
-        Returns:
-            (str) The title of the window of the AUT, or empty string if the title is not
+        Returns the title of the window.
+
+        :return: The title of the window of the AUT, or empty string if the title is not
                     available.
         """
         if self._should_get_title:
@@ -466,11 +505,10 @@ class Eyes(object):
         """
         Takes a snapshot from the browser using the web driver and matches it with the expected
         output.
-        Args:
-            :param tag: (str) Description of the visual validation checkpoint.
-            :param match_timeout: (int) Timeout for the visual validation checkpoint (milliseconds).
-        Returns:
-            None
+
+        :param tag: (str) Description of the visual validation checkpoint.
+        :param match_timeout: (int) Timeout for the visual validation checkpoint (milliseconds).
+        :return: None
         """
         if self.is_disabled:
             logger.info("check_window(%s): ignored (disabled)" % tag)
@@ -493,13 +531,12 @@ class Eyes(object):
         Takes a snapshot of the given region from the browser using the web driver and matches it
         with the expected output. If the current context is a frame, the region is offsetted
         relative to the frame.
-        Args:
-            :param region: (Region) The region which will be visually validated. The coordinates are
-                             relative to the viewport of the current frame.
-            :param tag: (str) Description of the visual validation checkpoint.
-            :param match_timeout: (int) Timeout for the visual validation checkpoint (milliseconds).
-        Returns:
-            None
+
+        :param region: (Region) The region which will be visually validated. The coordinates are
+                         relative to the viewport of the current frame.
+        :param tag: (str) Description of the visual validation checkpoint.
+        :param match_timeout: (int) Timeout for the visual validation checkpoint (milliseconds).
+        :return: None
         """
         if self.is_disabled:
             logger.info('check_region(): ignored (disabled)')
@@ -523,12 +560,11 @@ class Eyes(object):
         """
         Takes a snapshot of the region of the given element from the browser using the web driver
         and matches it with the expected output.
-        Args:
-            :param element: (WebElement)  The element which region will be visually validated.
-            :param tag: (str) Description of the visual validation checkpoint.
-            :param match_timeout: (int) Timeout for the visual validation checkpoint (milliseconds).
-        Returns:
-            None
+
+        :param element: (WebElement)  The element which region will be visually validated.
+        :param tag: (str) Description of the visual validation checkpoint.
+        :param match_timeout: (int) Timeout for the visual validation checkpoint (milliseconds).
+        :return: None
         """
         if self.is_disabled:
             logger.info('check_region_by_element(): ignored (disabled)')
@@ -551,13 +587,12 @@ class Eyes(object):
         """
         Takes a snapshot of the region of the element found by calling find_element(by, value)
         and matches it with the expected output.
-        Args:
-            :param by: (By) The way by which an element to be validated should be found (e.g., By.ID).
-            :param value: (str) The value identifying the element using the "by" type.
-            :param tag: (str) Description of the visual validation checkpoint.
-            :param match_timeout: (int) Timeout for the visual validation checkpoint (milliseconds).
-        Returns:
-            None
+
+        :param by: (By) The way by which an element to be validated should be found (e.g., By.ID).
+        :param value: (str) The value identifying the element using the "by" type.
+        :param tag: (str) Description of the visual validation checkpoint.
+        :param match_timeout: (int) Timeout for the visual validation checkpoint (milliseconds).
+        :return: None
         """
         if self.is_disabled:
             logger.info('check_region_by_selector(): ignored (disabled)')
@@ -570,14 +605,13 @@ class Eyes(object):
                                           match_timeout=-1):
         """
         Checks a region within a frame, and returns to the current frame.
-        Args:
-            :param frame_reference: (int/str/WebElement) A reference to the frame in which the region should be checked.
-            :param by: (By) The way by which an element to be validated should be found (e.g., By.ID).
-            :param value: (str) The value identifying the element using the "by" type.
-            :param tag: (str) Description of the visual validation checkpoint.
-            :param match_timeout: (int) Timeout for the visual validation checkpoint (milliseconds).
-        Returns:
-            None
+
+        :param frame_reference: (int/str/WebElement) A reference to the frame in which the region should be checked.
+        :param by: (By) The way by which an element to be validated should be found (e.g., By.ID).
+        :param value: (str) The value identifying the element using the "by" type.
+        :param tag: (str) Description of the visual validation checkpoint.
+        :param match_timeout: (int) Timeout for the visual validation checkpoint (milliseconds).
+        :return: None
         """
         if self.is_disabled:
             logger.info('check_region_in_frame_by_selector(): ignored (disabled)')
@@ -607,10 +641,9 @@ class Eyes(object):
     def close(self, raise_ex=True):
         """
         Ends the test.
-        Args:
-            (boolean) raise_ex: If true, an exception will be raised for failed/new tests.
-        Returns:
-            The test results.
+
+        :param raise_ex: If true, an exception will be raised for failed/new tests.
+        :return: The test results.
         """
         if self.is_disabled:
             logger.debug('close(): ignored (disabled)')
@@ -667,9 +700,9 @@ class Eyes(object):
     def add_mouse_trigger_by_element(self, action, element):
         """
         Adds a mouse trigger.
-        Args:
-            action: (string) Mouse action (click, double click etc.)
-            element: (WebElement) The element on which the action was performed.
+
+        :param action: Mouse action (click, double click etc.)
+        :param element: The element on which the action was performed.
         """
         if self.is_disabled:
             logger.debug("add_mouse_trigger: Ignoring %s (disabled)" % action)
@@ -695,9 +728,9 @@ class Eyes(object):
     def add_text_trigger_by_element(self, element, text):
         """
         Adds a text trigger.
-        Args:
-            element: (WebElement) The element to which the text was sent.
-            text: (str) The trigger's text.
+
+        :param element: The element to which the text was sent.
+        :param text: The trigger's text.
         """
         if self.is_disabled:
             logger.debug("add_text_trigger: Ignoring '%s' (disabled)" % text)

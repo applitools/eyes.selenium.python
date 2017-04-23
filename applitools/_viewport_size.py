@@ -30,6 +30,7 @@ def get_viewport_size(driver):
     """
     Tries to get the viewport size using Javascript. If fails, gets the entire browser window
     size!
+
     :param driver: The webdriver to use for getting the viewport size.
     """
     # noinspection PyBroadException
@@ -42,6 +43,14 @@ def get_viewport_size(driver):
 
 
 def set_viewport_size(driver, required_size):
+    """
+    Tries to set the viewport size.
+
+    :param driver: The webdriver to use for getting the viewport size.
+    :param required_size: The size that the viewport size should be set to.
+    :return: None.
+    :raise EyesError: If the viewport size or browser couldn't be set.
+    """
     _BROWSER_SIZE_CALCULATION_RETRIES = 2
     _BROWSER_SET_SIZE_RETRIES = 3
     _BROWSER_STABILIZATION_WAIT = 1  # Seconds

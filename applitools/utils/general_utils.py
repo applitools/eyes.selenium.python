@@ -13,7 +13,9 @@ if sys.version < '3':
 
 
 class _UtcTz(tzinfo):
-    """A UTC timezone class which is tzinfo compliant."""
+    """
+    A UTC timezone class which is tzinfo compliant.
+    """
     _ZERO = timedelta(0)
 
     def utcoffset(self, dt):
@@ -52,9 +54,10 @@ def public_state_to_json(obj):
 def divide_to_chunks(l, chunk_size):
     """
     Divides a list into chunks.
-    :param iterable l: The list to divide.
-    :param int chunk_size: The size of each chunk
-    :return list: A list of lists. Each internal list has a maximum size of chunk_size (last item might be shorter).
+
+    :param l: The list to divide.
+    :param chunk_size: The size of each chunk
+    :return: A list of lists. Each internal list has a maximum size of chunk_size (last item might be shorter).
     """
     result = []
     for i in range(0, len(l), chunk_size):
@@ -65,8 +68,9 @@ def divide_to_chunks(l, chunk_size):
 def join_chunks(l):
     """
     Joins a list of chunks into a single continuous list of values.
-    :param iterable l: The list of chunks to join.
-    :return list: A single composed the concatenated values of the chunks.
+
+    :param l: The list of chunks to join.
+    :return: A single composed the concatenated values of the chunks.
     """
     result = []
     for i in l:
@@ -77,6 +81,9 @@ def join_chunks(l):
 def create_proxy_property(property_name, target_name, is_settable=False):
     """
     Returns a property object which forwards "name" to target.
+
+    :param property_name: The name of the property.
+    :param target_name: The target to forward to.
     """
     # noinspection PyUnusedLocal
     def _proxy_get(self):
@@ -95,6 +102,11 @@ def create_proxy_property(property_name, target_name, is_settable=False):
 def create_forwarded_method(from_, to, func_name):
     """
     Returns a method(!) to be set on 'from_', which activates 'func_name' on 'to'.
+
+    :param from_: Source.
+    :param to: Destination.
+    :param func_name: The name of function to activate.
+    :return: Relevant method.
     """
     # noinspection PyUnusedLocal
     def forwarded_method(self_, *args, **kwargs):
@@ -106,8 +118,11 @@ def create_proxy_interface(from_, to, ignore_list=None, override_existing=False)
     """
     Copies the public interface of the destination object, excluding names in the ignore_list,
     and creates an identical interface in 'src', which forwards calls to dst.
-    If 'override_existing' is False, then attributes already existing in 'src' will not be
-    overridden.
+
+    :param from_: Source.
+    :param to: Destination.
+    :param ignore_list: List of names to ignore while copying.
+    :param override_existing: If False, attributes already existing in 'src' will not be overridden.
     """
     if not ignore_list:
         ignore_list = []

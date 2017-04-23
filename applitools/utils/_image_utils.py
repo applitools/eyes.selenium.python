@@ -22,15 +22,17 @@ def quadrant_rotate(m, num_quadrants):
     """
     Rotates a matrix 90 deg clockwise or counter clockwise (depending whether num_quadrants is positive or negative,
     respectively).
-    :param list m: The 2D matrix to rotate.
-    :param int num_quadrants: The number of rotations to perform.
-    :return list: A rotated copy of the matrix.
+
+    :param m: The 2D matrix to rotate.
+    :param num_quadrants: The number of rotations to perform.
+    :return: A rotated copy of the matrix.
     """
     def rotate_cw(m2):
         """
         Rotate m2 clockwise.
-        :param list m2: The 2D matrix to rotate.
-        :return list: The clockwise rotated matrix.
+
+        :param m2: The 2D matrix to rotate.
+        :return: The clockwise rotated matrix.
         """
         # We must use the "list" wrapper for compliance with Python 3
         return list(map(list, list(zip(*m2[::-1]))))
@@ -38,8 +40,9 @@ def quadrant_rotate(m, num_quadrants):
     def rotate_ccw(m2):
         """
         Rotate m2 counter-clockwise.
-        :param list m2: The 2D matrix to rotate.
-        :return list: The counter-clockwise rotated matrix.
+
+        :param m2: The 2D matrix to rotate.
+        :return: The counter-clockwise rotated matrix.
         """
         # We must use the "list" wrapper for compliance with Python 3
         return list(map(list, list(zip(*m2))[::-1]))
@@ -57,6 +60,9 @@ def quadrant_rotate(m, num_quadrants):
 def png_image_from_file(f):
     """
     Reads the PNG data from the given file stream and returns a new PngImage instance.
+
+    :param f: File stream.
+    :return: PngImage instance.
     """
     width, height, pixels_iterable, meta_info = png.Reader(file=f).asDirect()
     return PngImage(width, height, list(pixels_iterable), meta_info)
@@ -64,7 +70,10 @@ def png_image_from_file(f):
 
 def png_image_from_bytes(png_bytes):
     """
-    Reads the PNG data from the given file stream and returns a new PngImage instance.
+    Reads the PNG data from the given png bytes and returns a new PngImage instance.
+
+    :param png_bytes: Png bytes.
+    :return: PngImage instance.
     """
     width, height, pixels_iterable, meta_info = png.Reader(bytes=png_bytes).asDirect()
     return PngImage(width, height, list(pixels_iterable), meta_info)
@@ -78,10 +87,11 @@ class PngImage(object):
     def __init__(self, width, height, pixel_bytes, meta_info):
         """
         Initializes a PngImage object.
-        :param int width: The width of the image.
-        :param int height: The height of the image.
-        :param list pixel_bytes: The of pixel bytes of the image, as a 2D matrix (i.e, a list of rows).
-        :param dict meta_info: The image meta info as given by png.Reader .
+
+        :param width: The width of the image.
+        :param height: The height of the image.
+        :param pixel_bytes: The of pixel bytes of the image, as a 2D matrix (i.e, a list of rows).
+        :param meta_info: The image meta info as given by png.Reader .
         """
         self.width = width
         self.height = height
@@ -99,8 +109,9 @@ class PngImage(object):
     def _update_size(self, width, height):
         """
         Updates the size of the image.
-        :param int width: The updated width.
-        :param int height: The updated height.
+
+        :param width: The updated width.
+        :param height: The updated height.
         """
         self.width = int(math.ceil(width))
         self.height = int(math.ceil(height))
@@ -110,6 +121,10 @@ class PngImage(object):
         """
         Pastes the given pixels on the image. Expands width/height if needed. Pixel size must be
         the same as the current image's pixels.
+
+        :param left: The left most point.
+        :param top: The top most point.
+        :param pixel_bytes_to_paste: The pixels to paste.
         """
         x_start = left * self.pixel_size
         pixel_bytes_to_paste_len = len(pixel_bytes_to_paste[0])
@@ -130,7 +145,10 @@ class PngImage(object):
 
     def get_subimage(self, region):
         """
-        :return PngImage:
+        Gets an image of a given region.
+
+        :param region: The region to search for.
+        :return: PngImage instance.
         """
         if region.is_empty():
             raise EyesError('region is empty!')
@@ -148,8 +166,9 @@ class PngImage(object):
     def remove_columns(self, left, count):
         """
         Removes pixels columns from the image.
-        :param int left: The index of the left most column to remove.
-        :param int count: The number of columns to remove.
+
+        :param left: The index of the left most column to remove.
+        :param count: The number of columns to remove.
         """
         for row_index in range(self.height):
             self.pixel_bytes[row_index] = self.pixel_bytes[row_index][:(left * self.pixel_size)] + \
@@ -160,8 +179,9 @@ class PngImage(object):
     def remove_rows(self, top, count):
         """
         Removes pixels rows from the image.
-        :param int top: The index of the top most row to remove.
-        :param int count: The number of rows to remove.
+
+        :param top: The index of the top most row to remove.
+        :param count: The number of rows to remove.
         """
         self.pixel_bytes = self.pixel_bytes[:top] + self.pixel_bytes[(top + count):]
         self._update_size(self.width, len(self.pixel_bytes))
@@ -169,8 +189,9 @@ class PngImage(object):
     def get_channel(self, index):
         """
         Get the values for a specific color/alpha of the image's pixels.
-        :param int index: The index of the channel we would like to get.
-        :return iterable: A copy of the values for the given pixel channel.
+
+        :param index: The index of the channel we would like to get.
+        :return : A copy of the values for the given pixel channel.
         """
         if index > self.pixel_size-1:
             raise EyesError("Invalid channel: {}, (pixel size {})".format(index, self.pixel_size))
@@ -179,7 +200,8 @@ class PngImage(object):
     def quadrant_rotate(self, num_quadrants):
         """
         Rotates the image by 90 degrees clockwise or counter-clockwise.
-        :param int num_quadrants: The number of rotations to perform.
+
+        :param num_quadrants: The number of rotations to perform.
         """
         # Divide the continuous sequence of bytes in each row into pixel groups (since values within a single pixel
         # should maintain order).
@@ -198,11 +220,15 @@ class PngImage(object):
     def write(self, output):
         """
         Writes the png to the output stream.
+
+        :param output: The output stream.
         """
         png.Writer(**self.meta_info).write(output, self.pixel_bytes)
 
     def get_base64(self):
         """
+        Gets the base64 representation of the PNG bytes.
+
         :return: The base64 representation of the PNG bytes.
         """
         image_bytes_stream = io.BytesIO()
@@ -213,6 +239,8 @@ class PngImage(object):
 
     def get_bytes(self):
         """
+        Gets the image PNG bytes.
+
         :return: The image PNG bytes.
         """
         image_bytes_stream = io.BytesIO()
