@@ -21,12 +21,17 @@ def _parse_response_with_json_data(response):
 
 class AgentConnector(object):
     """
-    Provides an API for communication with the Applitools server
+    Provides an API for communication with the Applitools server.
     """
     _TIMEOUT = 60 * 5  # Seconds
     _DEFAULT_HEADERS = {'Accept': 'application/json', 'Content-Type': 'application/json'}
 
     def __init__(self, server_url):
+        """
+        Ctor.
+
+        :param server_url: The url of the Applitools server.
+        """
         # Used inside the server_url property.
         self._server_url = None
         self._endpoint_uri = None
@@ -65,12 +70,8 @@ class AgentConnector(object):
         this running session will either be linked to an existing session, or to
         a completely new session.
 
-        Args:
-            session_start_info (dictionary): The start parameters for the session.
-        Returns:
-            (dictionary): Represents the current running session.
-        Raises:
-            see :mod:'requests'
+        :param session_start_info: The start params for the session.
+        :return: Represents the current running session.
         """
         data = '{"startInfo": %s}' % (general_utils.to_json(session_start_info))
         response = requests.post(self._endpoint_uri, data=data, verify=False, params=dict(apiKey=self.api_key),
@@ -84,14 +85,10 @@ class AgentConnector(object):
         """
         Stops a running session in the Eyes server.
 
-        Args:
-            running_session (RunningSession): The session to stop.
-            is_aborted (boolean): Whether the server should mark this session as aborted.
-            save (boolean): Whether the session should be automatically saved if it is not aborted.
-        Returns:
-            TestResults: Test results of the stopped session.
-        Raises:
-            see :mod:'requests'
+        :param running_session: The session to stop.
+        :param is_aborted: Whether the server should mark this session as aborted.
+        :param save: Whether the session should be automatically saved if it is not aborted.
+        :return: Test results of the stopped session.
         """
         logger.debug('Stop session called..')
         session_uri = "%s/%s" % (self._endpoint_uri, running_session['session_id'])
@@ -111,12 +108,9 @@ class AgentConnector(object):
         a window might be matched later at the end of the test, even if it was not immediately
         matched in this call.
 
-        Args:
-            match_data (dictionary): The data used for matching app output with the expected output.
-        Returns:
-            MatchResult: Whether there was an immediate match or not.
-        Raises:
-            see :mod:'requests'
+        :param running_session: The current session that is running.
+        :param data: The data for the requests.post.
+        :return: The parsed response.
         """
         # logger.debug("Data length: %d, data: %s" % (len(data), repr(data)))
         session_uri = "%s/%s" % (self._endpoint_uri, running_session['session_id'])

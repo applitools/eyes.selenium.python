@@ -20,6 +20,7 @@ class MatchWindowTask(object):
 
     def __init__(self, eyes, agent_connector, running_session, driver, default_retry_timeout):
         """
+        Ctor.
 
         :param eyes: The Eyes instance which created this task.
         :param agent_connector: The agent connector to use for communication.
@@ -134,7 +135,14 @@ class MatchWindowTask(object):
     def match_window(self, retry_timeout, tag, force_full_page_screenshot, user_inputs,
                      run_once_after_wait=False):
         """
-        Performs a match for a given region.
+        Performs a match for the window.
+
+        :param retry_timeout: Amount of time until it retries.
+        :param tag: The name of the tag (optional).
+        :param force_full_page_screenshot: Whether or not force full page screenshot.
+        :param user_inputs: The user input.
+        :param run_once_after_wait: Whether or not to run again after waiting.
+        :return: The result of the run.
         """
         prepare_action = functools.partial(self._prepare_match_data_for_window, tag,
                                            force_full_page_screenshot, user_inputs)
@@ -144,6 +152,14 @@ class MatchWindowTask(object):
                      run_once_after_wait=False):
         """
         Performs a match for a given region.
+
+        :param region: The region to run the match with.
+        :param retry_timeout: Amount of time until it retries.
+        :param tag: The name of the tag (optional).
+        :param force_full_page_screenshot: Whether or not force full page screenshot.
+        :param user_inputs: The user input.
+        :param run_once_after_wait: Whether or not to run again after waiting.
+        :return: The result of the run.
         """
         prepare_action = functools.partial(self._prepare_match_data_for_region, region, tag,
                                            force_full_page_screenshot, user_inputs)
@@ -153,6 +169,14 @@ class MatchWindowTask(object):
                       run_once_after_wait=False):
         """
         Performs a match for a given element.
+
+        :param element: The element to run the match with.
+        :param retry_timeout: Amount of time until it retries.
+        :param tag: The name of the tag (optional).
+        :param force_full_page_screenshot: Whether or not force full page screenshot.
+        :param user_inputs: The user input.
+        :param run_once_after_wait: Whether or not to run again after waiting.
+        :return: The result of the run.
         """
         prepare_action = functools.partial(self._prepare_match_data_for_element, element,
                                            tag, force_full_page_screenshot, user_inputs)
