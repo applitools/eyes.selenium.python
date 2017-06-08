@@ -23,8 +23,8 @@ try:
     driver.get('http://www.applitools.com')
     eyes.check_window("Home")
 
-    automated_paragraph = driver.find_element_by_class_name("automated")
-    eyes.check_region_by_element(automated_paragraph, "Automated Testing Paragraph")
+    hero = driver.find_element_by_class_name("hero-container")
+    eyes.check_region_by_element(hero, "Page Hero")
 
     eyes.close()
 finally:
