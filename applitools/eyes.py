@@ -160,22 +160,22 @@ class Eyes(object):
         self.agent_id = None
         """(String) An optional string identifying the current library using the SDK."""
         self.failure_reports = FailureReports.ON_CLOSE
-        """(String) Whether the current test will report mismatches immediately or when it is finished. See FailureReports."""
+        """(String) Should the test report mismatches immediately or when it is finished. See FailureReports."""
         self.default_match_settings = ImageMatchSettings()
         """(ImageMatchSettings) The default match settings for the session. See ImageMatchSettings"""
         self.batch = None
-        """(String) The batch to which the tests ran with this Eyes instance belong to. See BatchInfo. None means no batch."""
+        """(String) The batch to which the tests belong to. See BatchInfo. None means no batch."""
         self.host_os = None
-        """(String) A string identifying the OS running the AUT. Use this if you wish to override Eyes automatic inference."""
+        """(String) A string identifying the OS running the AUT. Use this to override Eyes automatic inference."""
         self.host_app = None
-        """(String) A string identifying the app running the AUT. Use this if you wish to override Eyes automatic inference."""
+        """(String) A string identifying the app running the AUT. Use this to override Eyes automatic inference."""
         self.baseline_name = None
         """(String) A string that, if specified, determines the baseline to compare with and disables automatic baseline
         inference."""
         self.save_new_tests = True
         """(Boolean) A boolean denoting whether new tests should be automatically accepted."""
         self.save_failed_tests = False
-        """(Boolean) A boolean denoting whether failed tests should be automatically saved with all new output accepted."""
+        """(Boolean) Whether failed tests should be automatically saved with all new output accepted."""
         self.branch_name = None
         """(String) A string identifying the branch in which tests are run."""
         self.parent_branch_name = None
