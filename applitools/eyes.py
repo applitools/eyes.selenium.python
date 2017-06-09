@@ -157,6 +157,8 @@ class Eyes(object):
         self._viewport_size = None
         self._match_timeout = Eyes._DEFAULT_MATCH_TIMEOUT
         self._stitch_mode = StitchMode.Scroll
+        self._properties = []
+        """(list) key-value pairs to be associated with the test. Can be used for filtering later."""
         self.agent_id = None
         """(String) An optional string identifying the current library using the SDK."""
         self.failure_reports = FailureReports.ON_CLOSE
@@ -187,6 +189,15 @@ class Eyes(object):
         """(Boolean) if true, Eyes will remove the scrollbars from the pages before taking the screenshot."""
         self.fail_on_new_test = False
         """(Boolean) if true, Eyes will treat new tests the same as failed tests."""
+
+    def add_property(self, name, value):
+        """
+        Associates a key/value pair with the test. This can be used later for filtering.
+        :param name: (string) The property name.
+        :param value: (string) The property value
+        :return: None
+        """
+        self._properties.append({'name': name, 'value': value})
 
     @property
     def match_level(self):
@@ -440,7 +451,8 @@ class Eyes(object):
                             'scenarioIdOrName': self._test_name, 'batchInfo': self.batch,
                             'envName': self.baseline_name, 'environment': app_env,
                             'defaultMatchSettings': self.default_match_settings, 'verId': None,
-                            'branchName': self.branch_name, 'parentBranchName': self.parent_branch_name}
+                            'branchName': self.branch_name, 'parentBranchName': self.parent_branch_name,
+                            'properties': self._properties}
 
     def _start_session(self):
         logger.debug("_start_session()")
