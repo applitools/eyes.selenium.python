@@ -1123,10 +1123,17 @@ class EyesWebDriver(object):
         """
         self._position_provider.pop_state()
 
-    def get_full_page_screenshot(self):
+    @staticmethod
+    def _wait_before_screenshot(seconds):
+        logger.debug("Waiting {} ms before taking screenshot..".format(int(seconds*1000)))
+        time.sleep(seconds)
+        logger.debug("Finished waiting!")
+
+    def get_full_page_screenshot(self, wait_before_screenshots):
         """
         Gets a full page screenshot.
 
+        :param wait_before_screenshots: (float) Seconds to wait before taking each screenshot.
         :return: The full page screenshot.
         """
         logger.info('getting full page screenshot..')
@@ -1140,6 +1147,7 @@ class EyesWebDriver(object):
         entire_page_size = self.get_entire_page_size()
 
         # Starting with the screenshot at 0,0
+        EyesWebDriver._wait_before_screenshot(wait_before_screenshots)
         part64 = self.get_screenshot_as_base64()
         screenshot = _image_utils.png_image_from_bytes(base64.b64decode(part64))
 
@@ -1176,7 +1184,7 @@ class EyesWebDriver(object):
             logger.debug("Taking screenshot for {0}".format(part))
             # Scroll to the part's top/left and give it time to stabilize.
             self.scroll_to(Point(part.left, part.top))
-            time.sleep(0.1)
+            EyesWebDriver._wait_before_screenshot(wait_before_screenshots)
             # Since screen size might cause the scroll to reach only part of the way
             current_scroll_position = self.get_current_position()
             logger.debug("Scrolled To ({0},{1})".format(current_scroll_position.x,

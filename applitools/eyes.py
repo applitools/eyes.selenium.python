@@ -127,6 +127,7 @@ class Eyes(object):
     Applitools Selenium Eyes API for python.
     """
     _DEFAULT_MATCH_TIMEOUT = 2000  # Milliseconds
+    _DEFAULT_WAIT_BEFORE_SCREENSHOTS = 1000  # ms
     BASE_AGENT_ID = "eyes.selenium.python/%s" % VERSION
     DEFAULT_EYES_SERVER = 'https://eyessdk.applitools.com'
 
@@ -188,7 +189,9 @@ class Eyes(object):
         self.hide_scrollbars = False
         """(Boolean) if true, Eyes will remove the scrollbars from the pages before taking the screenshot."""
         self.fail_on_new_test = False
-        """(Boolean) if true, Eyes will treat new tests the same as failed tests."""
+        """(Boolean) If true, Eyes will treat new tests the same as failed tests."""
+        self.wait_before_screenshots = Eyes._DEFAULT_WAIT_BEFORE_SCREENSHOTS
+        """(int) The number of milliseconds to wait before each time a screenshot is taken."""
 
     def add_property(self, name, value):
         """
@@ -532,6 +535,7 @@ class Eyes(object):
         result = self._match_window_task.match_window(match_timeout, tag,
                                                       self.force_full_page_screenshot,
                                                       self._user_inputs,
+                                                      self.wait_before_screenshots,
                                                       self._should_match_once_on_timeout)
         if self.hide_scrollbars:
             # noinspection PyUnboundLocalVariable
@@ -562,6 +566,7 @@ class Eyes(object):
         result = self._match_window_task.match_region(region, match_timeout, tag,
                                                       self.force_full_page_screenshot,
                                                       self._user_inputs,
+                                                      self.wait_before_screenshots,
                                                       self._should_match_once_on_timeout)
         if self.hide_scrollbars:
             # noinspection PyUnboundLocalVariable
@@ -588,6 +593,7 @@ class Eyes(object):
         result = self._match_window_task.match_element(element, match_timeout, tag,
                                                        self.force_full_page_screenshot,
                                                        self._user_inputs,
+                                                       self.wait_before_screenshots,
                                                        self._should_match_once_on_timeout)
 
         if self.hide_scrollbars:
