@@ -42,7 +42,7 @@ class MatchWindowTask(object):
             current_screenshot = self._driver.get_full_page_screenshot(seconds_to_wait)
             return EyesScreenshot.create_from_image(current_screenshot, self._driver)
 
-        logger.debug("Waiting {} ms before taking screenshots...").format(wait_before_screenshots)
+        logger.debug("Waiting {} ms before taking screenshots...".format(wait_before_screenshots))
         time.sleep(seconds_to_wait)
         logger.debug('Finished waiting!')
 
