@@ -55,8 +55,6 @@ class MatchWindowTask(object):
         if target is None:
             target = Target()  # Use defaults
 
-        print(dir(default_match_settings))
-
         match_data = {
             "IgnoreMismatch": ignore_mismatch,
             "Options": {
