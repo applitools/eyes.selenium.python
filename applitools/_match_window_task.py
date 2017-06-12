@@ -87,11 +87,12 @@ class MatchWindowTask(object):
     @staticmethod
     def _get_dynamic_regions(target, driver, eyes_screenshot):
         ignore = []
-        for region_wrapper in target.ignore_regions:
-            ignore.append(region_wrapper.get_region(driver, eyes_screenshot))
         floating = []
-        for floating_wrapper in target.floating_regions:
-            floating.append(floating_wrapper.get_region(driver, eyes_screenshot))
+        if target is not None:
+            for region_wrapper in target.ignore_regions:
+                ignore.append(region_wrapper.get_region(driver, eyes_screenshot))
+            for floating_wrapper in target.floating_regions:
+                floating.append(floating_wrapper.get_region(driver, eyes_screenshot))
         return {"ignore": ignore, "floating": floating}
 
     def _prepare_match_data_for_window(self, tag, force_full_page_screenshot, user_inputs,
