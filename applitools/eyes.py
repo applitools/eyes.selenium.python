@@ -127,7 +127,7 @@ class Eyes(object):
     Applitools Selenium Eyes API for python.
     """
     _DEFAULT_MATCH_TIMEOUT = 2000  # Milliseconds
-    _DEFAULT_WAIT_BEFORE_SCREENSHOTS = 1000  # ms
+    _DEFAULT_WAIT_BEFORE_SCREENSHOTS = 100  # ms
     BASE_AGENT_ID = "eyes.selenium.python/%s" % VERSION
     DEFAULT_EYES_SERVER = 'https://eyessdk.applitools.com'
 
