@@ -516,13 +516,14 @@ class Eyes(object):
                                           (self._start_info['scenarioIdOrName'],
                                            self._start_info['appIdOrName']))
 
-    def check_window(self, tag=None, match_timeout=-1):
+    def check_window(self, tag=None, match_timeout=-1, target=None):
         """
         Takes a snapshot from the browser using the web driver and matches it with the expected
         output.
 
         :param tag: (str) Description of the visual validation checkpoint.
         :param match_timeout: (int) Timeout for the visual validation checkpoint (milliseconds).
+        :param target: (Target) The target for the check_window call
         :return: None
         """
         if self.is_disabled:
@@ -536,6 +537,8 @@ class Eyes(object):
                                                       self.force_full_page_screenshot,
                                                       self._user_inputs,
                                                       self.wait_before_screenshots,
+                                                      self.default_match_settings,
+                                                      target,
                                                       self._should_match_once_on_timeout)
         if self.hide_scrollbars:
             # noinspection PyUnboundLocalVariable

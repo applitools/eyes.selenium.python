@@ -2,6 +2,7 @@ import functools
 import time
 from struct import pack
 
+from applitools.target import Target
 from ._webdriver import EyesScreenshot
 
 
@@ -49,9 +50,34 @@ class MatchWindowTask(object):
         return EyesScreenshot.create_from_base64(current_screenshot64, self._driver)
 
     @staticmethod
-    def _create_match_data_bytes(app_output, user_inputs, tag, ignore_mismatch, screenshot):
-        match_data = dict(appOutput=app_output, userInputs=user_inputs, tag=tag,
-                          ignoreMismatch=ignore_mismatch)
+    def _create_match_data_bytes(app_output, user_inputs, tag, ignore_mismatch, screenshot, default_match_settings,
+                                 target=None, ignore=[], floating=[]):
+        if target is None:
+            target = Target()  # Use defaults
+
+        print(dir(default_match_settings))
+
+        match_data = {
+            "IgnoreMismatch": ignore_mismatch,
+            "Options": {
+                "Name": tag,
+                "UserInputs": user_inputs,
+                "ImageMatchSettings": {
+                    "MatchLevel": default_match_settings.match_level,
+                    "IgnoreCaret": target.get_ignore_caret(),
+                    "Exact": default_match_settings.exact_settings,
+                    "Ignore": ignore,
+                    "Floating": floating
+                  },
+                "IgnoreMismatch": ignore_mismatch,
+                "Trim": {
+                    "Enabled": False
+                }
+            },
+            "UserInputs": user_inputs,
+            "AppOutput": app_output,
+            "tag": tag
+        }
         match_data_json_bytes = general_utils.to_json(match_data).encode('utf-8')
         match_data_size_bytes = pack(">L", len(match_data_json_bytes))
         screenshot_bytes = screenshot.get_bytes()
@@ -59,12 +85,18 @@ class MatchWindowTask(object):
         return body
 
     def _prepare_match_data_for_window(self, tag, force_full_page_screenshot, user_inputs,
-                                       wait_before_screenshots, ignore_mismatch=False):
+                                       wait_before_screenshots, default_match_settings, target, ignore_mismatch=False):
         title = self._eyes.get_title()
         self._screenshot = self._get_screenshot(force_full_page_screenshot, wait_before_screenshots)
+        ignore = []
+        for region_wrapper in target.ignore_regions:
+            ignore.append(region_wrapper.get_region(self._driver, self._screenshot))
+        floating = []
+        for floating_wrapper in target.floating_regions:
+            floating.append(floating_wrapper.get_region(self._driver, self._screenshot))
         app_output = {'title': title, 'screenshot64': None}
         return self._create_match_data_bytes(app_output, user_inputs, tag, ignore_mismatch,
-                                             self._screenshot)
+                                             self._screenshot, default_match_settings, target, ignore, floating)
 
     def _prepare_match_data_for_region(self, region, tag, force_full_page_screenshot, user_inputs,
                                        wait_before_screenshots, ignore_mismatch=False):
@@ -139,7 +171,7 @@ class MatchWindowTask(object):
         return result
 
     def match_window(self, retry_timeout, tag, force_full_page_screenshot, user_inputs,
-                     wait_before_screenshots, run_once_after_wait=False):
+                     wait_before_screenshots, default_match_settings, target, run_once_after_wait=False):
         """
         Performs a match for the window.
 
@@ -148,11 +180,14 @@ class MatchWindowTask(object):
         :param force_full_page_screenshot: Whether or not force full page screenshot.
         :param user_inputs: The user input.
         :param wait_before_screenshots: Milliseconds to wait before taking each screenshot.
+        :param default_match_settings: The default ImageMatchSettings for the session.
+        :param target: (Target) The target of the check_window call.
         :param run_once_after_wait: Whether or not to run again after waiting.
         :return: The result of the run.
         """
         prepare_action = functools.partial(self._prepare_match_data_for_window, tag,
-                                           force_full_page_screenshot, user_inputs, wait_before_screenshots)
+                                           force_full_page_screenshot, user_inputs, wait_before_screenshots,
+                                           default_match_settings, target)
         return self._run(prepare_action, run_once_after_wait, retry_timeout)
 
     def match_region(self, region, retry_timeout, tag, force_full_page_screenshot, user_inputs,
