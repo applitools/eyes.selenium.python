@@ -130,7 +130,8 @@ class Target(object):
                 continue
             if isinstance(region, Region):
                 self._ignore_regions.append(_NopRegionWrapper(region))
-            self._ignore_regions.append(region)
+            else:
+                self._ignore_regions.append(region)
         return self
 
     def floating(self, *regions):
@@ -145,7 +146,7 @@ class Target(object):
         for region in regions:
             if region is None:
                 continue
-            self._ignore_regions.append(region)
+            self._floating_regions.append(region)
         return self
 
     def ignore_caret(self, ignore=True):

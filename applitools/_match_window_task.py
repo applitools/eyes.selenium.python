@@ -84,37 +84,47 @@ class MatchWindowTask(object):
         body = match_data_size_bytes + match_data_json_bytes + screenshot_bytes
         return body
 
+    @staticmethod
+    def _get_dynamic_regions(target, driver, eyes_screenshot):
+        ignore = []
+        for region_wrapper in target.ignore_regions:
+            ignore.append(region_wrapper.get_region(driver, eyes_screenshot))
+        floating = []
+        for floating_wrapper in target.floating_regions:
+            floating.append(floating_wrapper.get_region(driver, eyes_screenshot))
+        return {"ignore": ignore, "floating": floating}
+
     def _prepare_match_data_for_window(self, tag, force_full_page_screenshot, user_inputs,
                                        wait_before_screenshots, default_match_settings, target, ignore_mismatch=False):
         title = self._eyes.get_title()
         self._screenshot = self._get_screenshot(force_full_page_screenshot, wait_before_screenshots)
-        ignore = []
-        for region_wrapper in target.ignore_regions:
-            ignore.append(region_wrapper.get_region(self._driver, self._screenshot))
-        floating = []
-        for floating_wrapper in target.floating_regions:
-            floating.append(floating_wrapper.get_region(self._driver, self._screenshot))
+        dynamic_regions = MatchWindowTask._get_dynamic_regions(target, self._driver, self._screenshot)
         app_output = {'title': title, 'screenshot64': None}
         return self._create_match_data_bytes(app_output, user_inputs, tag, ignore_mismatch,
-                                             self._screenshot, default_match_settings, target, ignore, floating)
+                                             self._screenshot, default_match_settings, target,
+                                             dynamic_regions['ignore'], dynamic_regions['floating'])
 
     def _prepare_match_data_for_region(self, region, tag, force_full_page_screenshot, user_inputs,
-                                       wait_before_screenshots, ignore_mismatch=False):
+                                       wait_before_screenshots, default_match_settings, target, ignore_mismatch=False):
         title = self._eyes.get_title()
         self._screenshot = self._get_screenshot(force_full_page_screenshot, wait_before_screenshots) \
             .get_sub_screenshot_by_region(region)
+        dynamic_regions = MatchWindowTask._get_dynamic_regions(target, self._driver, self._screenshot)
         app_output = {'title': title, 'screenshot64': None}
         return self._create_match_data_bytes(app_output, user_inputs, tag, ignore_mismatch,
-                                             self._screenshot)
+                                             self._screenshot, default_match_settings, target,
+                                             dynamic_regions['ignore'], dynamic_regions['floating'])
 
     def _prepare_match_data_for_element(self, element, tag, force_full_page_screenshot, user_inputs,
-                                        wait_before_screenshots, ignore_mismatch=False):
+                                        wait_before_screenshots, default_match_settings, target, ignore_mismatch=False):
         title = self._eyes.get_title()
         self._screenshot = self._get_screenshot(force_full_page_screenshot, wait_before_screenshots)
         self._screenshot = self._screenshot.get_sub_screenshot_by_element(element)
+        dynamic_regions = MatchWindowTask._get_dynamic_regions(target, self._driver, self._screenshot)
         app_output = {'title': title, 'screenshot64': None}
         return self._create_match_data_bytes(app_output, user_inputs, tag, ignore_mismatch,
-                                             self._screenshot)
+                                             self._screenshot, default_match_settings, target,
+                                             dynamic_regions['ignore'], dynamic_regions['floating'])
 
     def _run_with_intervals(self, prepare_action, retry_timeout):
         """
@@ -180,7 +190,7 @@ class MatchWindowTask(object):
         :param force_full_page_screenshot: Whether or not force full page screenshot.
         :param user_inputs: The user input.
         :param wait_before_screenshots: Milliseconds to wait before taking each screenshot.
-        :param default_match_settings: The default ImageMatchSettings for the session.
+        :param default_match_settings: (ImageMatchSettings) The default match settings for the session.
         :param target: (Target) The target of the check_window call.
         :param run_once_after_wait: Whether or not to run again after waiting.
         :return: The result of the run.
@@ -191,7 +201,7 @@ class MatchWindowTask(object):
         return self._run(prepare_action, run_once_after_wait, retry_timeout)
 
     def match_region(self, region, retry_timeout, tag, force_full_page_screenshot, user_inputs,
-                     wait_before_screenshots, run_once_after_wait=False):
+                     wait_before_screenshots, default_match_settings, target, run_once_after_wait=False):
         """
         Performs a match for a given region.
 
@@ -201,15 +211,18 @@ class MatchWindowTask(object):
         :param force_full_page_screenshot: Whether or not force full page screenshot.
         :param user_inputs: The user input.
         :param wait_before_screenshots: Milliseconds to wait before taking each screenshot.
+        :param default_match_settings: (ImageMatchSettings) The default match settings for the session.
+        :param target: (Target) The target of the check_window call.
         :param run_once_after_wait: Whether or not to run again after waiting.
         :return: The result of the run.
         """
         prepare_action = functools.partial(self._prepare_match_data_for_region, region, tag,
-                                           force_full_page_screenshot, user_inputs, wait_before_screenshots)
+                                           force_full_page_screenshot, user_inputs, wait_before_screenshots,
+                                           default_match_settings, target)
         return self._run(prepare_action, run_once_after_wait, retry_timeout)
 
     def match_element(self, element, retry_timeout, tag, force_full_page_screenshot, user_inputs,
-                      wait_before_screenshots, run_once_after_wait=False):
+                      wait_before_screenshots, default_match_settings, target, run_once_after_wait=False):
         """
         Performs a match for a given element.
 
@@ -219,9 +232,12 @@ class MatchWindowTask(object):
         :param force_full_page_screenshot: Whether or not force full page screenshot.
         :param user_inputs: The user input.
         :param wait_before_screenshots: Milliseconds to wait before taking each screenshot.
+        :param default_match_settings: (ImageMatchSettings) The default match settings for the session.
+        :param target: (Target) The target of the check_window call.
         :param run_once_after_wait: Whether or not to run again after waiting.
         :return: The result of the run.
         """
         prepare_action = functools.partial(self._prepare_match_data_for_element, element,
-                                           tag, force_full_page_screenshot, user_inputs, wait_before_screenshots)
+                                           tag, force_full_page_screenshot, user_inputs, wait_before_screenshots,
+                                           default_match_settings, target)
         return self._run(prepare_action, run_once_after_wait, retry_timeout)

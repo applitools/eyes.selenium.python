@@ -545,7 +545,7 @@ class Eyes(object):
             self._driver.set_overflow(original_overflow)
         self._handle_match_result(result, tag)
 
-    def check_region(self, region, tag=None, match_timeout=-1):
+    def check_region(self, region, tag=None, match_timeout=-1, target=None):
         """
         Takes a snapshot of the given region from the browser using the web driver and matches it
         with the expected output. If the current context is a frame, the region is offsetted
@@ -555,6 +555,7 @@ class Eyes(object):
                          relative to the viewport of the current frame.
         :param tag: (str) Description of the visual validation checkpoint.
         :param match_timeout: (int) Timeout for the visual validation checkpoint (milliseconds).
+        :param target: (Target) The target for the check_window call
         :return: None
         """
         if self.is_disabled:
@@ -570,13 +571,15 @@ class Eyes(object):
                                                       self.force_full_page_screenshot,
                                                       self._user_inputs,
                                                       self.wait_before_screenshots,
+                                                      self.default_match_settings,
+                                                      target,
                                                       self._should_match_once_on_timeout)
         if self.hide_scrollbars:
             # noinspection PyUnboundLocalVariable
             self._driver.set_overflow(original_overflow)
         self._handle_match_result(result, tag)
 
-    def check_region_by_element(self, element, tag=None, match_timeout=-1):
+    def check_region_by_element(self, element, tag=None, match_timeout=-1, target=None):
         """
         Takes a snapshot of the region of the given element from the browser using the web driver
         and matches it with the expected output.
@@ -584,6 +587,7 @@ class Eyes(object):
         :param element: (WebElement)  The element which region will be visually validated.
         :param tag: (str) Description of the visual validation checkpoint.
         :param match_timeout: (int) Timeout for the visual validation checkpoint (milliseconds).
+        :param target: (Target) The target for the check_window call
         :return: None
         """
         if self.is_disabled:
@@ -597,6 +601,8 @@ class Eyes(object):
                                                        self.force_full_page_screenshot,
                                                        self._user_inputs,
                                                        self.wait_before_screenshots,
+                                                       self.default_match_settings,
+                                                       target,
                                                        self._should_match_once_on_timeout)
 
         if self.hide_scrollbars:
@@ -604,7 +610,7 @@ class Eyes(object):
             self._driver.set_overflow(original_overflow)
         self._handle_match_result(result, tag)
 
-    def check_region_by_selector(self, by, value, tag=None, match_timeout=-1):
+    def check_region_by_selector(self, by, value, tag=None, match_timeout=-1, target=None):
         """
         Takes a snapshot of the region of the element found by calling find_element(by, value)
         and matches it with the expected output.
@@ -613,6 +619,7 @@ class Eyes(object):
         :param value: (str) The value identifying the element using the "by" type.
         :param tag: (str) Description of the visual validation checkpoint.
         :param match_timeout: (int) Timeout for the visual validation checkpoint (milliseconds).
+        :param target: (Target) The target for the check_window call
         :return: None
         """
         if self.is_disabled:
@@ -620,10 +627,10 @@ class Eyes(object):
             return
         logger.debug("calling 'check_region_by_element'...")
         self.check_region_by_element(self._driver.find_element(by, value), tag,
-                                     match_timeout)
+                                     match_timeout, target)
 
     def check_region_in_frame_by_selector(self, frame_reference, by, value, tag=None,
-                                          match_timeout=-1):
+                                          match_timeout=-1, target=None):
         """
         Checks a region within a frame, and returns to the current frame.
 
@@ -632,6 +639,7 @@ class Eyes(object):
         :param value: (str) The value identifying the element using the "by" type.
         :param tag: (str) Description of the visual validation checkpoint.
         :param match_timeout: (int) Timeout for the visual validation checkpoint (milliseconds).
+        :param target: (Target) The target for the check_window call
         :return: None
         """
         if self.is_disabled:
@@ -647,7 +655,7 @@ class Eyes(object):
         # Switching to the relevant frame
         self._driver.switch_to.frame(frame_reference)
         logger.debug("calling 'check_region_by_selector'...")
-        self.check_region_by_selector(by, value, tag, match_timeout)
+        self.check_region_by_selector(by, value, tag, match_timeout, target)
         # Switching back to our original frame
         self._driver.switch_to.parent_frame()
         if original_hide_scrollbars_value:
