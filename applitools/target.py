@@ -11,6 +11,9 @@ class IgnoreRegionByElement(object):
     def get_region(self, driver, eyes_screenshot):
         return eyes_screenshot.get_element_region_in_frame_viewport(self.element)
 
+    def _str_(self):
+        return "{0} Element: {}".format(self.__class__.__name__,  self.element)
+
 
 class IgnoreRegionBySelector(object):
     def __init__(self, by, value):
@@ -26,6 +29,9 @@ class IgnoreRegionBySelector(object):
         element = driver.find_element(self.by, self.value)
         return eyes_screenshot.get_element_region_in_frame_viewport(element)
 
+    def _str_(self):
+        return "{0} {{by: {1}, value: {2}}}".format(self.__class__.__name__, self.by, self.value)
+
 
 class _NopRegionWrapper(object):
     def __init__(self, region):
@@ -33,6 +39,9 @@ class _NopRegionWrapper(object):
 
     def get_region(self, driver, eyes_screenshot):
         return self.region
+
+    def __str__(self):
+        return str(self.region)
 
 
 # Floating regions related classes.
@@ -73,6 +82,9 @@ class FloatingRegion(object):
     def __setstate__(self, state):
         raise EyesError('Cannot create FloatingRegion instance from dict!')
 
+    def _str_(self):
+        return "{0} {{region: {1}, bounds: {2}}}".format(self.__class__.__name__, self.region, self.bounds)
+
 
 class FloatingRegionByElement(object):
     def __init__(self, element, bounds):
@@ -86,6 +98,9 @@ class FloatingRegionByElement(object):
     def get_region(self, driver, eyes_screenshot):
         region = eyes_screenshot.get_element_region_in_frame_viewport(self.element)
         return FloatingRegion(region, self.bounds)
+
+    def _str_(self):
+        return "{0} {{element: {1}, bounds: {2}}}".format(self.__class__.__name__, self.element, self.bounds)
 
 
 class FloatingRegionBySelector(object):
@@ -104,6 +119,10 @@ class FloatingRegionBySelector(object):
         element = driver.find_element(self.by, self.value)
         region = eyes_screenshot.get_element_region_in_frame_viewport(element)
         return FloatingRegion(region, self.bounds)
+
+    def _str_(self):
+        return "{0} {{element: {{ by: {1}, value: {2}}}, bounds: {3} }}".format(self.__class__.__name__, self.by,
+                                                                                self.value, self.bounds)
 
 
 # Main class for the module

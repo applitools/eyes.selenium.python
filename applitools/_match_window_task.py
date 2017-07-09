@@ -2,6 +2,7 @@ import functools
 import time
 from struct import pack
 
+from applitools.errors import OutOfBoundsError
 from applitools.target import Target
 from ._webdriver import EyesScreenshot
 
@@ -88,9 +89,18 @@ class MatchWindowTask(object):
         floating = []
         if target is not None:
             for region_wrapper in target.ignore_regions:
-                ignore.append(region_wrapper.get_region(driver, eyes_screenshot))
+                try:
+                    current_region = region_wrapper.get_region(driver, eyes_screenshot)
+                    ignore.append(current_region)
+                except OutOfBoundsError as err:
+                    logger.info("WARNING: Region specified by {} is out of bounds! {}".format(region_wrapper, err))
             for floating_wrapper in target.floating_regions:
-                floating.append(floating_wrapper.get_region(driver, eyes_screenshot))
+                try:
+                    current_floating = floating_wrapper.get_region(driver, eyes_screenshot)
+                    floating.append(current_floating)
+                except OutOfBoundsError as err:
+                    logger.info("WARNING: Floating region specified by {} is out of bounds! {}".format(floating_wrapper,
+                                                                                                       err))
         return {"ignore": ignore, "floating": floating}
 
     def _prepare_match_data_for_window(self, tag, force_full_page_screenshot, user_inputs,
