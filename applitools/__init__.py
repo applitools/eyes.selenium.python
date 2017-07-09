@@ -8,5 +8,5 @@ except ValueError:
 
 __all__ = ['utils'] + modules
 
-VERSION = '3.10.3'
+VERSION = '3.10.4'
 
