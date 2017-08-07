@@ -1,6 +1,6 @@
 import os
 from selenium import webdriver
-from sdk.test.applitools_test import run_test
+from applitools_test import run_test
 
 def create_saucelabs_driver(platform, browsername):
     desired_cap = {
