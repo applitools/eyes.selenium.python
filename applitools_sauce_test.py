@@ -10,7 +10,9 @@ def create_saucelabs_driver(platform, browsername):
     if browsername == "chrome":
         desired_cap["version"] = "48.0"
     
-    saucelabs_url = os.environ['SAUCELABS_URL']
+    sauce_username = os.environ['SAUCE_USERNAME']
+    sauce_access_key = os.environ['SAUCE_ACCESS_KEY']
+    saucelabs_url = "https://{}:{}@ondemand.saucelabs.com:443/wd/hub".format(sauce_username, sauce_access_key)
     driver = webdriver.Remote(
         command_executor=saucelabs_url,
         desired_capabilities=desired_cap)
