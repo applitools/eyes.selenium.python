@@ -1,0 +1,47 @@
+language: 
+- python
+- generic
+matrix:
+    include:
+        - os: linux
+          sudo: required
+          python: 2.7 
+          env: TOXENV=py27 DISPLAY=':0.0' 
+          install:
+          - pip install -U selenium
+          - pip install -U pyvirtualdisplay
+          - pip install -U sauceclient
+          - pip install -r python/requirements.txt
+          script:
+          - export DISPLAY=:0.0;cd python;python applitools_sauce_test.py
+        - os: linux
+          sudo: required
+          python: 3.3
+          env: TOXENV=py33 DISPLAY=':0.0'  
+          install:
+          - pip install -U selenium
+          - pip install -U pyvirtualdisplay
+          - pip install -U sauceclient
+          - pip install -r python/requirements.txt
+          script:
+          - export DISPLAY=:0.0;cd python;python applitools_sauce_test.py
+        - os: osx
+          language: generic
+          env: TOXENV=py27 DISPLAY=':0.0'  
+          install:
+          - pip install -U selenium
+          - pip install -U pyvirtualdisplay
+          - pip install -U sauceclient
+          - pip install -r python/requirements.txt
+          script:
+          - export DISPLAY=:0.0;cd python;python applitools_sauce_test.py
+        - os: osx
+          language: generic
+          env: TOXENV=py33 DISPLAY=':0.0'  
+          install:
+          - pip install -U selenium
+          - pip install -U pyvirtualdisplay
+          - pip install -U sauceclient
+          - pip install -r python/requirements.txt
+          script:
+          - export DISPLAY=:0.0;cd python;python applitools_sauce_test.py
