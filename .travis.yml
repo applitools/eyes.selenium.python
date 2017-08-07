@@ -11,8 +11,7 @@ matrix:
           - pip install -U selenium
           - pip install -U pyvirtualdisplay
           - pip install -U sauceclient
-          - cd test
-          - pip install -r ../requirements.txt
+          - pip install -r requirements.txt
           script:
           - export DISPLAY=:0.0;python applitools_sauce_test.py
         - os: linux
@@ -25,7 +24,6 @@ matrix:
           - pip install -U sauceclient
           - pip install -r requirements.txt
           script:
-          - cd test:
           - export DISPLAY=:0.0;python applitools_sauce_test.py
         - os: osx
           language: generic
@@ -36,7 +34,6 @@ matrix:
           - pip install -U sauceclient
           - pip install -r requirements.txt
           script:
-          - cd test
           - export DISPLAY=:0.0;python applitools_sauce_test.py
         - os: osx
           language: generic
@@ -47,5 +44,4 @@ matrix:
           - pip install -U sauceclient
           - pip install -r requirements.txt
           script:
-          - cd test
           - export DISPLAY=:0.0;python applitools_sauce_test.py
