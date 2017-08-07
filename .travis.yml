@@ -24,7 +24,7 @@ matrix:
           - pip install -U pyvirtualdisplay
           - pip install -U sauceclient
           - pip install -r requirements.txt
-          script
+          script:
           - cd test:
           - export DISPLAY=:0.0;python applitools_sauce_test.py
         - os: osx
