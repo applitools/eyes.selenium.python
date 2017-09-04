@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/applitools/eyes.selenium.python.svg?branch=master)](https://travis-ci.org/applitools/eyes.selenium.python)
+
 eyes.selenium
 =============
 
