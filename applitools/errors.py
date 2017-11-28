@@ -31,3 +31,11 @@ class NewTestError(TestFailedError):
     """
     def __init__(self, message, test_results=None):
         super(NewTestError, self).__init__(message, test_results)
+
+
+class DiffsFoundError(TestFailedError):
+    """
+    Indicates that an existing test ended, and that differences where found from the baseline.
+    """
+    def __init__(self, message, test_results=None):
+        super(DiffsFoundError, self).__init__(message, test_results)

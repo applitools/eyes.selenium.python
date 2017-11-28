@@ -98,9 +98,10 @@ class AgentConnector(object):
                                                      headers=AgentConnector._DEFAULT_HEADERS,
                                                      timeout=AgentConnector._TIMEOUT)
         pr = _parse_response_with_json_data(response)
+        logger.debug("stop_session(): parsed response: {}".format(pr))
         return TestResults(pr['steps'], pr['matches'], pr['mismatches'], pr['missing'],
                            pr['exactMatches'], pr['strictMatches'], pr['contentMatches'],
-                           pr['layoutMatches'], pr['noneMatches'])
+                           pr['layoutMatches'], pr['noneMatches'], pr['status'])
 
     def match_window(self, running_session, data):
         """
