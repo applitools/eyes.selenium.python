@@ -2,3 +2,9 @@
 dist/*
 *.pyc
 MANIFEST
+.cache/
+.idea/
+applitools/__pycache__/
+applitools/utils/__pycache__/
+dist/
+test/__pycache__/
