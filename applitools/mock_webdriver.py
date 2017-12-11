@@ -2,7 +2,7 @@ class MockSwitchTo:
     def __init__(self):
         pass
 
-    def default_contennt(self):
+    def default_content(self):
         pass
 
     def frames(self, frame_chain):
