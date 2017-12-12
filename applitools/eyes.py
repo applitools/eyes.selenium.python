@@ -245,6 +245,7 @@ class Eyes(object):
 
         if driver is None:
             driver = MockWebDriver()
+            driver.viewport_size = viewport_size
 
         if isinstance(driver, EyesWebDriver):
             # If the driver is an EyesWebDriver (as might be the case when tests are ran
@@ -423,7 +424,8 @@ class Eyes(object):
         logger.info("check_image('%s')" % tag)
         # Set the viewport size according to the image size.
         png_image_obj = _image_utils.png_image_from_bytes(image)
-        self._driver.driver.viewport_size = dict(width=png_image_obj.width, height=png_image_obj.height)
+        if self._driver.driver.viewport_size is None:
+            self._driver.driver.viewport_size = dict(width=png_image_obj.width, height=png_image_obj.height)
 
         if region is not None:
             png_image_obj = png_image_obj.get_subimage(region)
