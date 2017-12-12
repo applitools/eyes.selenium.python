@@ -7,7 +7,9 @@ from selenium.webdriver.remote.webdriver import WebDriver as RemoteWebDriver
 
 from applitools import VERSION
 from applitools import logger, _viewport_size
+from applitools.errors import DiffsFoundError
 from applitools.mock_webdriver import MockWebDriver
+from applitools.test_results import TestResultsStatus
 from applitools.utils import _image_utils
 from ._agent_connector import AgentConnector
 from ._match_window_task import MatchWindowTask
@@ -555,18 +557,19 @@ class Eyes(object):
     def close(self, raise_ex=True):
         """
         Ends the test.
-        Args:
-            (boolean) raise_ex: If true, an exception will be raised for failed/new tests.
-        Returns:
-            The test results.
+
+        :param raise_ex: If true, an exception will be raised for failed/new tests.
+        :return: The test results.
         """
         if self.is_disabled:
             logger.debug('close(): ignored (disabled)')
             return
         try:
-            self._is_open = False
+            logger.debug('close({})'.format(raise_ex))
+            if not self._is_open:
+                raise ValueError("Eyes not open")
 
-            logger.debug('close()')
+            self._is_open = False
 
             self._reset_last_screenshot()
 
@@ -576,40 +579,47 @@ class Eyes(object):
                 logger.info('close(): --- Empty test ended.')
                 return TestResults()
 
-            results_url = self._running_session['session_url']
             is_new_session = self._running_session['is_new_session']
+            results_url = self._running_session['session_url']
+
+            logger.info("close(): Ending server session...")
             should_save = (is_new_session and self.save_new_tests) or \
                           ((not is_new_session) and self.save_failed_tests)
             logger.debug("close(): automatically save session? %s" % should_save)
-            logger.info('close(): Closing session...')
             results = self._agent_connector.stop_session(self._running_session, False, should_save)
             results.is_new = is_new_session
             results.url = results_url
             logger.info("close(): %s" % results)
-            self._running_session = None
 
-            if not is_new_session and (0 < results.mismatches or 0 < results.missing):
-                # Test failed
-                logger.info("--- Failed test ended. See details at " + results_url)
+            if results.status == TestResultsStatus.Unresolved:
+                if results.is_new:
+                    instructions = "Please approve the new baseline at " + results_url
+                    logger.info("--- New test ended. " + instructions)
+                    if raise_ex:
+                        message = "'%s' of '%s'. %s" % (self._start_info['scenarioIdOrName'],
+                                                        self._start_info['appIdOrName'],
+                                                        instructions)
+                        raise NewTestError(message, results)
+                else:
+                    logger.info("--- Failed test ended. See details at {}".format(results_url))
+                    if raise_ex:
+                        raise DiffsFoundError("Test '{}' of '{}' detected differences! See details at: {}".format(
+                            self._start_info['scenarioIdOrName'],
+                            self._start_info['appIdOrName'],
+                            results_url), results)
+            elif results.status == TestResultsStatus.Failed:
+                logger.info("--- Failed test ended. See details at {}".format(results_url))
                 if raise_ex:
-                    message = "'%s' of '%s'. See details at %s" % (self._start_info['scenarioIdOrName'],
-                                                                   self._start_info['appIdOrName'],
-                                                                   results_url)
-                    raise TestFailedError(message, results)
-                return results
-            if is_new_session:
-                # New test
-                instructions = "Please approve the new baseline at %s" % results_url
-                logger.info("--- New test ended. %s" % instructions)
-                if raise_ex and self.fail_on_new_test:
-                    message = "'%s' of '%s'. %s" % (self._start_info['scenarioIdOrName'],
-                                                    self._start_info['appIdOrName'], instructions)
-                    raise NewTestError(message, results)
-                return results
+                    raise TestFailedError("Test '{}' of '{}'. See details at: {}".format(
+                        self._start_info['scenarioIdOrName'],
+                        self._start_info['appIdOrName'],
+                        results_url), results)
             # Test passed
-            logger.info('--- Test passed.')
+            logger.info("--- Test passed. See details at {}".format(results_url))
+
             return results
         finally:
+            self._running_session = None
             logger.close()
 
     def add_mouse_trigger_by_element(self, action, element):
