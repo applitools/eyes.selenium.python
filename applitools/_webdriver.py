@@ -77,7 +77,7 @@ class EyesScreenshot(object):
         # For native Appium Apps we can't get the scroll position, so we use (0,0)
         try:
             self._scroll_position = driver.get_current_position()
-        except WebDriverException:
+        except (WebDriverException, EyesError):
             self._scroll_position = Point(0, 0)
         if is_viewport_screenshot is None:
             is_viewport_screenshot = self._screenshot.width <= self._viewport_size['width'] \
