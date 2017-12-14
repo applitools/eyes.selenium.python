@@ -103,7 +103,7 @@ class AgentConnector(object):
         pr = _parse_response_with_json_data(response)
         return TestResults(pr['steps'], pr['matches'], pr['mismatches'], pr['missing'],
                            pr['exactMatches'], pr['strictMatches'], pr['contentMatches'],
-                           pr['layoutMatches'], pr['noneMatches'], pr['status'])
+                           pr['layoutMatches'], pr['noneMatches'], pr.get('status', None))
 
     def match_window(self, running_session, data):
         """

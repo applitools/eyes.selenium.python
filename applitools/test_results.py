@@ -8,6 +8,9 @@ class TestResultsStatus(object):
 
     @classmethod
     def get_status(cls, status):
+        if status is None:
+            return None
+
         status_lower = status.lower()
         if status_lower == cls.Passed.lower():
             return cls.Passed

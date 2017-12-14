@@ -554,6 +554,55 @@ class Eyes(object):
         self._last_screenshot = None
         self._user_inputs = []
 
+    def _handle_close_with_status(self, results, results_url, raise_ex):
+        if results.status == TestResultsStatus.Unresolved:
+            if results.is_new:
+                instructions = "Please approve the new baseline at " + results_url
+                logger.info("--- New test ended. " + instructions)
+                if raise_ex:
+                    message = "'%s' of '%s'. %s" % (self._start_info['scenarioIdOrName'],
+                                                    self._start_info['appIdOrName'],
+                                                    instructions)
+                    raise NewTestError(message, results)
+            else:
+                logger.info("--- Failed test ended. See details at {}".format(results_url))
+                if raise_ex:
+                    raise DiffsFoundError("Test '{}' of '{}' detected differences! See details at: {}".format(
+                        self._start_info['scenarioIdOrName'],
+                        self._start_info['appIdOrName'],
+                        results_url), results)
+        elif results.status == TestResultsStatus.Failed:
+            logger.info("--- Failed test ended. See details at {}".format(results_url))
+            if raise_ex:
+                raise TestFailedError("Test '{}' of '{}'. See details at: {}".format(
+                    self._start_info['scenarioIdOrName'],
+                    self._start_info['appIdOrName'],
+                    results_url), results)
+        # Test passed
+        logger.info("--- Test passed. See details at {}".format(results_url))
+
+    def _handle_close_no_status(self, results, is_new_session, results_url, raise_ex):
+        if not is_new_session and (0 < results.mismatches or 0 < results.missing):
+            # Test failed
+            logger.info("--- Failed test ended. See details at " + results_url)
+            if raise_ex:
+                message = "'%s' of '%s'. See details at %s" % (self._start_info['scenarioIdOrName'],
+                                                               self._start_info['appIdOrName'],
+                                                               results_url)
+                raise TestFailedError(message, results)
+            return results
+        if is_new_session:
+            # New test
+            instructions = "Please approve the new baseline at %s" % results_url
+            logger.info("--- New test ended. %s" % instructions)
+            if raise_ex and self.fail_on_new_test:
+                message = "'%s' of '%s'. %s" % (self._start_info['scenarioIdOrName'],
+                                                self._start_info['appIdOrName'], instructions)
+                raise NewTestError(message, results)
+            return results
+        # Test passed
+        logger.info("--- Test passed. See details at {}".format(results_url))
+
     def close(self, raise_ex=True):
         """
         Ends the test.
@@ -591,31 +640,11 @@ class Eyes(object):
             results.url = results_url
             logger.info("close(): %s" % results)
 
-            if results.status == TestResultsStatus.Unresolved:
-                if results.is_new:
-                    instructions = "Please approve the new baseline at " + results_url
-                    logger.info("--- New test ended. " + instructions)
-                    if raise_ex:
-                        message = "'%s' of '%s'. %s" % (self._start_info['scenarioIdOrName'],
-                                                        self._start_info['appIdOrName'],
-                                                        instructions)
-                        raise NewTestError(message, results)
-                else:
-                    logger.info("--- Failed test ended. See details at {}".format(results_url))
-                    if raise_ex:
-                        raise DiffsFoundError("Test '{}' of '{}' detected differences! See details at: {}".format(
-                            self._start_info['scenarioIdOrName'],
-                            self._start_info['appIdOrName'],
-                            results_url), results)
-            elif results.status == TestResultsStatus.Failed:
-                logger.info("--- Failed test ended. See details at {}".format(results_url))
-                if raise_ex:
-                    raise TestFailedError("Test '{}' of '{}'. See details at: {}".format(
-                        self._start_info['scenarioIdOrName'],
-                        self._start_info['appIdOrName'],
-                        results_url), results)
-            # Test passed
-            logger.info("--- Test passed. See details at {}".format(results_url))
+            # For backwards compatibility
+            if results.status is None:
+                self._handle_close_no_status(results, is_new_session, results_url, raise_ex)
+            else:
+                self._handle_close_with_status(results, results_url, raise_ex)
 
             return results
         finally:
