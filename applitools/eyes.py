@@ -578,8 +578,8 @@ class Eyes(object):
                     self._start_info['scenarioIdOrName'],
                     self._start_info['appIdOrName'],
                     results_url), results)
-        # Test passed
-        logger.info("--- Test passed. See details at {}".format(results_url))
+        else:
+            logger.info("--- Test passed. See details at {}".format(results_url))
 
     def _handle_close_no_status(self, results, is_new_session, results_url, raise_ex):
         if not is_new_session and (0 < results.mismatches or 0 < results.missing):
@@ -590,8 +590,7 @@ class Eyes(object):
                                                                self._start_info['appIdOrName'],
                                                                results_url)
                 raise TestFailedError(message, results)
-            return results
-        if is_new_session:
+        elif is_new_session:
             # New test
             instructions = "Please approve the new baseline at %s" % results_url
             logger.info("--- New test ended. %s" % instructions)
@@ -599,9 +598,8 @@ class Eyes(object):
                 message = "'%s' of '%s'. %s" % (self._start_info['scenarioIdOrName'],
                                                 self._start_info['appIdOrName'], instructions)
                 raise NewTestError(message, results)
-            return results
-        # Test passed
-        logger.info("--- Test passed. See details at {}".format(results_url))
+        else:
+            logger.info("--- Test passed. See details at {}".format(results_url))
 
     def close(self, raise_ex=True):
         """

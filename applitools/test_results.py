@@ -52,7 +52,10 @@ class TestResults(object):
 
     @property
     def is_passed(self):
-        return (self.status is not None) and self.status.lower() == TestResultsStatus.Passed.lower()
+        if self.status is not None:
+            return self.status.lower() == TestResultsStatus.Passed.lower()
+        else:
+            return self.is_new or (self.mismatches == 0 and self.missing == 0)
 
     def to_dict(self):
         return dict(steps=self.steps, matches=self.matches, mismatches=self.mismatches,
