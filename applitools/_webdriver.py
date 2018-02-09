@@ -681,8 +681,8 @@ class EyesWebDriver(object):
                             'desired_capabilities', 'log_types', 'name', 'page_source', 'title',
                             'window_handles', 'switch_to', 'mobile', 'current_context', 'context',
                             'current_activity', 'network_connection', 'available_ime_engines',
-                            'active_ime_engine', 'device_time', 'w3c']
-    _SETTABLE_PROPERTIES = ['orientation']
+                            'active_ime_engine', 'device_time', 'w3c', 'contexts', 'current_package']
+    _SETTABLE_PROPERTIES = ['orientation', 'file_detector']
 
     # This should pretty much cover all scroll bars (and some fixed position footer elements :) ).
     _MAX_SCROLL_BAR_SIZE = 50
