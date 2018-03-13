@@ -131,7 +131,7 @@ class Target(object):
     Target for an eyes.check_window/region.
     """
     def __init__(self):
-        self._ignore_caret = False
+        self._ignore_caret = True
         self._ignore_regions = []
         self._floating_regions = []
 
