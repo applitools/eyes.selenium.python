@@ -8,3 +8,6 @@ applitools/__pycache__/
 applitools/utils/__pycache__/
 dist/
 test/__pycache__/
+.envrc
+.pytest_cache/
+geckodriver.log
