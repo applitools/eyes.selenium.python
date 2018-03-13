@@ -58,3 +58,11 @@ def test_summary_status_diffsfound(eyes, driver):
         eyes.close()
 
 
+def test_directly_set_viewport_size(eyes, driver):
+    required_viewport = {'width': 450, 'height': 300}
+    eyes.set_viewport_size(driver, required_viewport)
+    driver = eyes.open(driver, "Python SDK", "TestViewPort-DirectlySetViewportt")
+    assert required_viewport == eyes.get_viewport_size()
+    assert required_viewport == driver.get_viewport_size()
+
+

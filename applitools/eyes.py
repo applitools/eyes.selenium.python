@@ -334,7 +334,7 @@ class Eyes(object):
         :return: ({width, height}) The size of the viewport of the application under test (e.g,
                                 the browser).
         """
-        return self._viewport_size
+        return self._driver.get_viewport_size()
 
     def abort_if_not_closed(self):
         """
