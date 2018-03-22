@@ -1,4 +1,4 @@
-import logging
+import os
 import uuid
 from datetime import datetime
 
@@ -109,9 +109,9 @@ class BatchInfo(object):
     """
 
     def __init__(self, name=None, started_at=datetime.now(general_utils.UTC)):
-        self.name = name
+        self.name = name if name else os.environ.get('APPLITOOLS_BATCH_NAME', None)
         self.started_at = started_at
-        self.id_ = str(uuid.uuid4())
+        self.id_ = os.environ.get('APPLITOOLS_BATCH_ID', str(uuid.uuid4()))
 
     def __getstate__(self):
         return dict(name=self.name, startedAt=self.started_at.isoformat(), id=self.id_)
@@ -463,8 +463,19 @@ class Eyes(object):
     def _start_session(self):
         logger.debug("_start_session()")
         self._assign_viewport_size()
+
+        # initialization of Eyes parameters if empty from ENV variables
+        if not self.api_key:
+            self.api_key = os.environ.get('APPLITOOLS_API_KEY', None)
+        if not self.branch_name:
+            self.branch_name = os.environ.get('APPLITOOLS_BRANCH', None)
+        if not self.baseline_name:
+            self.baseline_name = os.environ.get('APPLITOOLS_BASELINE_BRANCH', None)
+        if not self.parent_branch_name:
+            self.parent_branch_name = os.environ.get('APPLITOOLS_PARENT_BRANCH', None)
         if not self.batch:
             self.batch = BatchInfo()
+
         self._create_start_info()
         # Actually start the session.
         self._running_session = self._agent_connector.start_session(self._start_info)
