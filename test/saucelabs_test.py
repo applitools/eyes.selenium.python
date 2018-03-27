@@ -10,7 +10,6 @@ class Unitest(unittest.TestCase):
 
     def setUp(self):
         self.eyes = Eyes("https://localhost.applitools.com")
-        self.eyes.api_key = os.environ['APPLITOOLS_API_KEY']
         sauce_url = "http://%s:%s@ondemand.saucelabs.com:80/wd/hub"
         caps = webdriver.DesiredCapabilities.CHROME
         caps['screen-resolution'] = "1280x1024"

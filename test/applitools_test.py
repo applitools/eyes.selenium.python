@@ -14,7 +14,6 @@ def create_driver():
 def run_test(driver):
     logger.set_logger(StdoutLogger())
     eyes = Eyes()
-    eyes.api_key = os.environ['APPLITOOLS_API_KEY']
     eyes.force_full_page_screenshot = True
     eyes.hide_scrollbars = True
 

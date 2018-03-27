@@ -377,8 +377,11 @@ class Eyes(object):
             return driver
 
         if self.api_key is None:
-            raise EyesError("API key not set! Log in to https://applitools.com to obtain your"
-                            " API Key and use 'api_key' to set it.")
+            try:
+                self.api_key = os.environ['APPLITOOLS_API_KEY']
+            except KeyError:
+                raise EyesError("API key not set! Log in to https://applitools.com to obtain your"
+                                " API Key and use 'api_key' to set it.")
 
         if isinstance(driver, EyesWebDriver):
             # If the driver is an EyesWebDriver (as might be the case when tests are ran
@@ -465,8 +468,6 @@ class Eyes(object):
         self._assign_viewport_size()
 
         # initialization of Eyes parameters if empty from ENV variables
-        if not self.api_key:
-            self.api_key = os.environ.get('APPLITOOLS_API_KEY', None)
         if not self.branch_name:
             self.branch_name = os.environ.get('APPLITOOLS_BRANCH', None)
         if not self.baseline_name:

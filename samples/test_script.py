@@ -14,7 +14,6 @@ from applitools.target import Target, IgnoreRegionBySelector, FloatingRegion, Fl
 driver = webdriver.Chrome()
 
 eyes = Eyes()
-eyes.api_key = os.environ['APPLITOOLS_API_KEY']
 
 logger.set_logger(StdoutLogger())
 

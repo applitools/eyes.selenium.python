@@ -32,7 +32,6 @@ driver = webdriver.Remote(url, desired_capabilities)
 driver.orientation = 'LANDSCAPE'
 logger.set_logger(StdoutLogger())
 eyes = Eyes()
-eyes.api_key = os.environ['APPLITOOLS_API_KEY']
 try:
     eyes.open(driver, 'Appium', 'Contact manager')
     eyes.check_window('Opening screen')

@@ -16,7 +16,6 @@ from applitools.logger import StdoutLogger
 def setup_eyes(request):
     logger.set_logger(StdoutLogger())
     eyes = Eyes()
-    eyes.api_key = os.environ['APPLITOOLS_API_KEY']
     # eyes.force_full_page_screenshot = True
     # eyes.save_new_tests = False
     eyes.hide_scrollbars = True
