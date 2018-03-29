@@ -5,6 +5,7 @@ import base64
 import copy
 import io
 import math
+import os
 import png
 
 from applitools import logger
@@ -248,3 +249,9 @@ class PngImage(object):
         image_bytes = image_bytes_stream.getvalue()
         image_bytes_stream.close()
         return image_bytes
+
+    def save_image(self, filename):
+        path = os.environ['DEBUG_SCREENSHOT_PATH']
+        filename = "{}/screenshot_{}.png".format(path.rstrip('/'), filename)
+        with open(filename, 'wb') as f:
+            self.write(f)

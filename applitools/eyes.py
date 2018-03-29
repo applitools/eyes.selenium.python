@@ -9,9 +9,10 @@ from selenium.webdriver.remote.webdriver import WebDriver as RemoteWebDriver
 from applitools import logger, _viewport_size
 from applitools.common import StitchMode
 from applitools.errors import DiffsFoundError
+from applitools.geometry import Region
 from applitools.test_results import TestResultsStatus
 from ._agent_connector import AgentConnector
-from ._webdriver import EyesWebDriver
+from ._webdriver import EyesWebDriver, build_position_provider_for, ElementPositionProvider
 from ._match_window_task import MatchWindowTask
 from ._triggers import TextTrigger, MouseTrigger
 from ._webdriver import EyesFrame
@@ -594,7 +595,7 @@ class Eyes(object):
             self._driver.set_overflow(original_overflow)
         self._handle_match_result(result, tag)
 
-    def check_region_by_element(self, element, tag=None, match_timeout=-1, target=None):
+    def check_region_by_element(self, element, tag=None, match_timeout=-1, target=None, stitch_content=False):
         """
         Takes a snapshot of the region of the given element from the browser using the web driver
         and matches it with the expected output.
@@ -618,14 +619,15 @@ class Eyes(object):
                                                        self.wait_before_screenshots,
                                                        self.default_match_settings,
                                                        target,
-                                                       self._should_match_once_on_timeout)
+                                                       self._should_match_once_on_timeout,
+                                                       stitch_content=stitch_content)
 
         if self.hide_scrollbars:
             # noinspection PyUnboundLocalVariable
             self._driver.set_overflow(original_overflow)
         self._handle_match_result(result, tag)
 
-    def check_region_by_selector(self, by, value, tag=None, match_timeout=-1, target=None):
+    def check_region_by_selector(self, by, value, tag=None, match_timeout=-1, target=None, stitch_content=False):
         """
         Takes a snapshot of the region of the element found by calling find_element(by, value)
         and matches it with the expected output.
@@ -642,10 +644,10 @@ class Eyes(object):
             return
         logger.debug("calling 'check_region_by_element'...")
         self.check_region_by_element(self._driver.find_element(by, value), tag,
-                                     match_timeout, target)
+                                     match_timeout, target, stitch_content)
 
     def check_region_in_frame_by_selector(self, frame_reference, by, value, tag=None,
-                                          match_timeout=-1, target=None):
+                                          match_timeout=-1, target=None, stitch_content=False):
         """
         Checks a region within a frame, and returns to the current frame.
 
@@ -670,7 +672,7 @@ class Eyes(object):
         # Switching to the relevant frame
         self._driver.switch_to.frame(frame_reference)
         logger.debug("calling 'check_region_by_selector'...")
-        self.check_region_by_selector(by, value, tag, match_timeout, target)
+        self.check_region_by_selector(by, value, tag, match_timeout, target, stitch_content)
         # Switching back to our original frame
         self._driver.switch_to.parent_frame()
         if original_hide_scrollbars_value:
