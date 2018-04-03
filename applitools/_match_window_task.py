@@ -4,8 +4,7 @@ from struct import pack
 
 from applitools.errors import OutOfBoundsError
 from applitools.target import Target
-from ._webdriver import EyesScreenshot
-
+from ._webdriver import EyesScreenshot, ElementPositionProvider
 
 # noinspection PyProtectedMember
 from applitools import logger
@@ -37,8 +36,13 @@ class MatchWindowTask(object):
         self._default_retry_timeout = default_retry_timeout / 1000.0  # since we want the time in seconds.
         self._screenshot = None
 
-    def _get_screenshot(self, force_full_page_screenshot, wait_before_screenshots):
+    def _get_screenshot(self, force_full_page_screenshot, wait_before_screenshots, element=None):
         seconds_to_wait = wait_before_screenshots / 1000.0
+
+        if element:
+            current_screenshot = self._driver.get_stitched_screenshot(element, seconds_to_wait)
+            return EyesScreenshot.create_from_image(current_screenshot, self._driver)
+
         if force_full_page_screenshot:
             current_screenshot = self._driver.get_full_page_screenshot(seconds_to_wait)
             return EyesScreenshot.create_from_image(current_screenshot, self._driver)
@@ -114,10 +118,10 @@ class MatchWindowTask(object):
                                              dynamic_regions['ignore'], dynamic_regions['floating'])
 
     def _prepare_match_data_for_region(self, region, tag, force_full_page_screenshot, user_inputs,
-                                       wait_before_screenshots, default_match_settings, target, ignore_mismatch=False):
+                                       wait_before_screenshots, default_match_settings, target, stitch_content, ignore_mismatch=False):
         title = self._eyes.get_title()
-        self._screenshot = self._get_screenshot(force_full_page_screenshot, wait_before_screenshots) \
-            .get_sub_screenshot_by_region(region)
+        self._screenshot = self._get_screenshot(force_full_page_screenshot, wait_before_screenshots)
+        self._screenshot = self._screenshot.get_sub_screenshot_by_region(region)
         dynamic_regions = MatchWindowTask._get_dynamic_regions(target, self._driver, self._screenshot)
         app_output = {'title': title, 'screenshot64': None}
         return self._create_match_data_bytes(app_output, user_inputs, tag, ignore_mismatch,
@@ -125,10 +129,15 @@ class MatchWindowTask(object):
                                              dynamic_regions['ignore'], dynamic_regions['floating'])
 
     def _prepare_match_data_for_element(self, element, tag, force_full_page_screenshot, user_inputs,
-                                        wait_before_screenshots, default_match_settings, target, ignore_mismatch=False):
+                                        wait_before_screenshots, default_match_settings, target, stitch_content, ignore_mismatch=False):
         title = self._eyes.get_title()
-        self._screenshot = self._get_screenshot(force_full_page_screenshot, wait_before_screenshots)
-        self._screenshot = self._screenshot.get_sub_screenshot_by_element(element)
+
+        if stitch_content:
+            self._screenshot = self._get_screenshot(force_full_page_screenshot, wait_before_screenshots, element)
+        else:
+            self._screenshot = self._get_screenshot(force_full_page_screenshot, wait_before_screenshots)
+            self._screenshot = self._screenshot.get_sub_screenshot_by_element(element)
+
         dynamic_regions = MatchWindowTask._get_dynamic_regions(target, self._driver, self._screenshot)
         app_output = {'title': title, 'screenshot64': None}
         return self._create_match_data_bytes(app_output, user_inputs, tag, ignore_mismatch,
@@ -227,11 +236,11 @@ class MatchWindowTask(object):
         """
         prepare_action = functools.partial(self._prepare_match_data_for_region, region, tag,
                                            force_full_page_screenshot, user_inputs, wait_before_screenshots,
-                                           default_match_settings, target)
+                                           default_match_settings, target, stitch_content)
         return self._run(prepare_action, run_once_after_wait, retry_timeout)
 
     def match_element(self, element, retry_timeout, tag, force_full_page_screenshot, user_inputs,
-                      wait_before_screenshots, default_match_settings, target, run_once_after_wait=False):
+                      wait_before_screenshots, default_match_settings, target, run_once_after_wait=False, stitch_content=False):
         """
         Performs a match for a given element.
 
@@ -248,5 +257,5 @@ class MatchWindowTask(object):
         """
         prepare_action = functools.partial(self._prepare_match_data_for_element, element,
                                            tag, force_full_page_screenshot, user_inputs, wait_before_screenshots,
-                                           default_match_settings, target)
+                                           default_match_settings, target, stitch_content)
         return self._run(prepare_action, run_once_after_wait, retry_timeout)

@@ -8,40 +8,20 @@ matrix:
           python: 2.7 
           env: TOXENV=py27 DISPLAY=':0.0' 
           install:
-          - pip install -U selenium
-          - pip install -U pyvirtualdisplay
-          - pip install -U sauceclient
-          - pip install -r requirements.txt
+          - pip install -r requirements-dev.txt
           script:
+          - export APPLITOOLS_BATCH_ID=`uuidgen -t`
+          - echo $APPLITOOLS_BATCH_ID
           - python applitools_sauce_test.py
+          - pytest test/server_results_text.py
         - os: linux
           sudo: required
-          python: 3.3
+          python: 3.4
           env: TOXENV=py33 DISPLAY=':0.0'  
           install:
-          - pip install -U selenium
-          - pip install -U pyvirtualdisplay
-          - pip install -U sauceclient
-          - pip install -r requirements.txt
+          - pip install -r requirements-dev.txt
           script:
+          - export APPLITOOLS_BATCH_ID=`uuidgen -t`
+          - echo $APPLITOOLS_BATCH_ID
           - python applitools_sauce_test.py
-        - os: osx
-          language: generic
-          env: TOXENV=py27 DISPLAY=':0.0'  
-          install:
-          - pip install -U selenium
-          - pip install -U pyvirtualdisplay
-          - pip install -U sauceclient
-          - pip install -r requirements.txt
-          script:
-          - python applitools_sauce_test.py
-        - os: osx
-          language: generic
-          env: TOXENV=py33 DISPLAY=':0.0'  
-          install:
-          - pip install -U selenium
-          - pip install -U pyvirtualdisplay
-          - pip install -U sauceclient
-          - pip install -r requirements.txt
-          script:
-          - python applitools_sauce_test.py
+          - pytest test/server_results_text.py

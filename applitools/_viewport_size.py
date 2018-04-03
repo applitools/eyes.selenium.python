@@ -6,24 +6,27 @@ import time
 from applitools import logger
 from applitools.errors import EyesError
 
-_JS_GET_VIEWPORT_SIZE = "var height = undefined;" \
-                        "var width = undefined;" \
-                        "  if (window.innerHeight) {height = window.innerHeight;}" \
-                        "  else if (document.documentElement " \
-                        "&& document.documentElement.clientHeight) " \
-                        "{height = document.documentElement.clientHeight;}" \
-                        "  else { var b = document.getElementsByTagName('body')[0]; " \
-                        "if (b.clientHeight) {height = b.clientHeight;}" \
-                        "};" \
-                        " if (window.innerWidth) {width = window.innerWidth;}" \
-                        " else if (document.documentElement " \
-                        "&& document.documentElement.clientWidth) " \
-                        "{width = document.documentElement.clientWidth;}" \
-                        " else { var b = document.getElementsByTagName('body')[0]; " \
-                        "if (b.clientWidth) {" \
-                        "width = b.clientWidth;}" \
-                        "};" \
-                        "return [width, height];"
+_JS_GET_VIEWPORT_SIZE = """
+    var height = undefined;
+    var width = undefined;
+    if (window.innerHeight) {
+        height = window.innerHeight;
+    } else if (document.documentElement && document.documentElement.clientHeight) {
+        height = document.documentElement.clientHeight;
+    } else {
+            var b = document.getElementsByTagName('body')[0];
+            if (b.clientHeight) {height = b.clientHeight;}
+        }
+    if (window.innerWidth) {
+        width = window.innerWidth;
+    } else if (document.documentElement && document.documentElement.clientWidth) {
+        width = document.documentElement.clientWidth;
+    } else { 
+        var b = document.getElementsByTagName('body')[0];
+    if (b.clientWidth) {
+        width = b.clientWidth;}
+    }
+    return [width, height];"""
 
 
 def get_viewport_size(driver):
