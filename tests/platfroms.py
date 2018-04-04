@@ -1,9 +1,16 @@
 from collections import namedtuple
 from itertools import chain
 
+from selenium.webdriver import FirefoxOptions
+from selenium.webdriver import ChromeOptions
+
 
 class Platform(namedtuple('Platform', 'name version browsers extra')):
     def platform_capabilities(self):
+        """
+        Get capabilities for mobile platform
+        :rtype: collections.Iterable[dict]
+        """
         if not self.is_appium_based:
             return
 
@@ -12,15 +19,43 @@ class Platform(namedtuple('Platform', 'name version browsers extra')):
             caps.update(self.extra)
         return caps
 
-    def browsers_capabilities(self):
+    def browsers_capabilities(self, headless=False):
+        """
+        Get all browsers capabilities for the platform
+        :rtype: collections.Iterable[dict]
+        """
         for browser_name, _ in self.browsers:
-            yield self.get_browser_capabilities(browser_name)
+            yield self.get_browser_capabilities(browser_name, headless)
 
-    def get_browser_capabilities(self, browser_name):
+    def get_browser_capabilities(self, browser_name, headless=False):
+        """
+        Get browser capabilities for specific browser with included options inside
+
+        :param browser_name: browser name in lowercase
+        :type browser_name: str
+        :param headless: run browser without gui
+        :type headless: bool
+        :return: capabilities for specific browser
+        :rtype: dict
+        """
         if self.is_appium_based:
             return
+
+        options = None
+        if 'firefox' == browser_name:
+            options = FirefoxOptions()
+        elif 'chrome' == browser_name:
+            options = ChromeOptions()
+            options.add_argument('disable-infobars')
+        if options and headless:
+            options.set_headless()
+
+        # huck for preventing overwriting 'platform' value in desired_capabilities by chrome options
+        browser_caps = options.to_capabilities() if options else {}
         browser_name, browser_version = [b for b in self.browsers if browser_name.lower() == b[0]][0]
-        browser_caps = {'browserName': browser_name, 'version': browser_version, 'platform': self.full_name}
+        browser_caps.update({'browserName': browser_name,
+                             'version': browser_version,
+                             'platform': self.full_name})
         if isinstance(self.extra, dict):
             browser_caps.update(self.extra)
         return browser_caps

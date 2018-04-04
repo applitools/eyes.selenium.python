@@ -7,7 +7,7 @@ from applitools.eyes import Eyes
 from applitools.target import Target
 
 
-@pytest.mark.linux
+@pytest.mark.platform('Linux')
 def test_session_summary_status_new(eyes, driver):
     driver = eyes.open(driver, "Python SDK", "TestResults-New_{}".format(str(uuid.uuid4())),
                        {'width': 800, 'height': 600})
@@ -16,7 +16,7 @@ def test_session_summary_status_new(eyes, driver):
     eyes.close()
 
 
-@pytest.mark.linux
+@pytest.mark.platform('Linux')
 def test_summary_status_diffsfound(eyes, driver):
     driver = eyes.open(driver, "Python SDK", "TestResults-DiffsFound", {'width': 800, 'height': 600})
     driver.get('http://applitools.github.io/demo/TestPages/FramesTestPage/')
@@ -25,7 +25,7 @@ def test_summary_status_diffsfound(eyes, driver):
         eyes.close()
 
 
-@pytest.mark.linux
+@pytest.mark.platform('Linux')
 @pytest.mark.skip("Depending on Fluent API. Not implemented yet")
 def test_server_connector(driver):
     eyes = Eyes('https://localhost.applitools.com')
@@ -37,7 +37,7 @@ def test_server_connector(driver):
     eyes.abort_if_not_closed()
 
 
-@pytest.mark.linux
+@pytest.mark.platform('Linux')
 def test_directly_set_viewport_size(eyes, driver):
     required_viewport = {'width': 450, 'height': 300}
     eyes.set_viewport_size(driver, required_viewport)

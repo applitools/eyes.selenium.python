@@ -2,8 +2,7 @@ import pytest
 from selenium.webdriver.common.by import By
 
 
-@pytest.mark.android
-@pytest.mark.appium
+@pytest.mark.platform('Android')
 @pytest.mark.capabilities(**{"app": "http://saucelabs.com/example_files/ContactManager.apk",
                              "clearSystemFiles": True,
                              "noReset": True,
@@ -17,8 +16,7 @@ def test_android_native(eyes, driver):
 
 
 # TODO: add stitch content to check_region in tests below
-@pytest.mark.android
-@pytest.mark.appium
+@pytest.mark.platform('Android')
 @pytest.mark.skip
 def test_final_application_android(eyes, driver):
     eyes.hide_scrollbars = False
@@ -31,8 +29,7 @@ def test_final_application_android(eyes, driver):
     eyes.close()
 
 
-@pytest.mark.iphone
-@pytest.mark.appium
+@pytest.mark.platform('iPhone')
 @pytest.mark.skip
 def test_final_application_ios(eyes, driver):
     eyes.hide_scrollbars = False
