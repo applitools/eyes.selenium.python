@@ -4,6 +4,10 @@ Logs handling.
 import functools
 import logging
 import sys
+import typing as tp
+
+if tp.TYPE_CHECKING:
+    from logging import Formatter
 
 _DEFAULT_EYES_LOGGER_NAME = 'eyes'
 _DEFAULT_EYES_FORMATTER = logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s')
@@ -16,6 +20,7 @@ class _Logger(object):
 
     def __init__(self, name=__name__, level=logging.DEBUG, handler_factory=lambda: None,
                  formatter=None):
+        # type: (tp.Text, int, tp.Callable, Formatter) -> None
         """
         Ctor.
 
@@ -34,6 +39,7 @@ class _Logger(object):
         self._level = level
 
     def open(self):
+        # type: () -> None
         """
         Open a handler.
         """
@@ -50,6 +56,7 @@ class _Logger(object):
             self._logger.addHandler(self._handler)
 
     def close(self):
+        # type: () -> None
         """
         Close a handler.
         """
@@ -62,6 +69,7 @@ class _Logger(object):
             self._handler = None
 
     def info(self, msg):
+        # type: (tp.Text) -> None
         """
         Writes info level msg to the logger.
 
@@ -71,6 +79,7 @@ class _Logger(object):
             self._logger.info(msg)
 
     def debug(self, msg):
+        # type: (tp.Text) -> None
         """
         Writes debug level msg to the logger.
 
@@ -85,6 +94,7 @@ class StdoutLogger(_Logger):
     A simple logger class for printing to STDOUT.
     """
     def __init__(self, name=_DEFAULT_EYES_LOGGER_NAME, level=logging.DEBUG):
+        # type: (tp.Text, int) -> None
         """
         Ctor.
 
@@ -136,6 +146,7 @@ _logger = None
 
 
 def set_logger(logger=None):
+    # type: (StdoutLogger) -> None
     """
     Sets the used logger to the logger.
 
@@ -146,6 +157,7 @@ def set_logger(logger=None):
 
 
 def open_():
+    # type: () -> None
     """
     Opens a new logger.
     """
@@ -156,6 +168,7 @@ def open_():
 
 
 def close():
+    # type: () -> None
     """
     Closed the logger.
     """
@@ -166,6 +179,7 @@ def close():
 
 
 def info(msg):
+    # type: (tp.Text) -> None
     """
     Writes info level msg to the logger.
 
@@ -176,6 +190,7 @@ def info(msg):
 
 
 def debug(msg):
+    # type: (tp.Text) -> None
     """
     Writes debug level msg to the logger.
 
@@ -183,4 +198,3 @@ def debug(msg):
     """
     if _logger is not None:
         _logger.debug(msg)
-

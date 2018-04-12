@@ -1,3 +1,6 @@
+import typing as tp
+
+
 class TestResultsStatus(object):
     """
     Status values for tests results.
@@ -8,6 +11,7 @@ class TestResultsStatus(object):
 
     @classmethod
     def get_status(cls, status):
+        # type: (tp.Text) -> tp.Text
         status_lower = status.lower()
         if status_lower == cls.Passed.lower():
             return cls.Passed
@@ -24,8 +28,19 @@ class TestResults(object):
     """
     Eyes test results.
     """
-    def __init__(self, steps=0, matches=0, mismatches=0, missing=0, exact_matches=0,
-                 strict_matches=0, content_matches=0, layout_matches=0, none_matches=0, status=None):
+    def __init__(self,
+                 steps=0,  # type: int
+                 matches=0,  # type: int
+                 mismatches=0,  # type: int
+                 missing=0,  # type: int
+                 exact_matches=0,  # type: int
+                 strict_matches=0,  # type: int
+                 content_matches=0,  # type: int
+                 layout_matches=0,  # type: int
+                 none_matches=0,  # type: int
+                 status=None,  # type: tp.Text
+                 ):
+        # type: (...) -> None
         self.steps = steps
         self.matches = matches
         self.mismatches = mismatches
@@ -41,6 +56,7 @@ class TestResults(object):
 
     @property
     def status(self):
+        # type: () -> tp.Text
         return TestResultsStatus.get_status(self._status)
 
     @status.setter

@@ -1,9 +1,13 @@
 """
 Contains the Trigger classes (e.g., click, text writing) used by Eyes.
 """
-from .errors import EyesError
+import typing as tp
 from collections import OrderedDict
 
+from .errors import EyesError
+
+if tp.TYPE_CHECKING:
+    from applitools.geometry import Region, Point
 
 MOUSE_ACTION = {'click': 'Click', 'right_click': 'RightClick', 'double_click': 'DoubleClick',
                 'move': 'Move', 'down': 'Down', 'up': 'Up'}
@@ -16,6 +20,7 @@ class MouseTrigger(object):
     """Encapsulates a mouse trigger."""
 
     def __init__(self, action, control, location):
+        # type: (tp.Text, Region, Point) -> None
         """
         Ctor.
 
@@ -45,6 +50,7 @@ class TextTrigger(object):
     """Encapsulates a text input by the user."""
 
     def __init__(self, control, text):
+        # type: (Region, tp.Text) -> None
         """
         Ctor.
 

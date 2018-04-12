@@ -1,5 +1,11 @@
+import typing as tp
+
 from applitools.errors import EyesError
 from applitools.geometry import Region
+
+if tp.TYPE_CHECKING:
+    from applitools._webdriver import EyesScreenshot, EyesWebDriver
+    from applitools.utils._custom_types import IgnoreRegion, FloatingRegionType
 
 
 # Ignore regions related classes.
@@ -12,20 +18,21 @@ class IgnoreRegionByElement(object):
         return eyes_screenshot.get_element_region_in_frame_viewport(self.element)
 
     def _str_(self):
-        return "{0} Element: {}".format(self.__class__.__name__,  self.element)
+        return "{0} Element: {}".format(self.__class__.__name__, self.element)
 
 
 class IgnoreRegionBySelector(object):
     def __init__(self, by, value):
         """
-        :param by: (selenium.webdriver.common.by.By) The "by" part of a selenium selector for an element which
+        :param by: The "by" part of a selenium selector for an element which
             represents the ignore region
-        :param value: (str) The "value" part of a selenium selector for an element which represents the ignore region.
+        :param value: The "value" part of a selenium selector for an element which represents the ignore region.
         """
         self.by = by
         self.value = value
 
     def get_region(self, driver, eyes_screenshot):
+        # type: (EyesWebDriver, EyesScreenshot) -> Region
         element = driver.find_element(self.by, self.value)
         return eyes_screenshot.get_element_region_in_frame_viewport(element)
 
@@ -35,9 +42,11 @@ class IgnoreRegionBySelector(object):
 
 class _NopRegionWrapper(object):
     def __init__(self, region):
+        # type: (Region) -> None
         self.region = region
 
     def get_region(self, driver, eyes_screenshot):
+        # type: (EyesWebDriver, EyesScreenshot) -> tp.Any
         return self.region
 
     def __str__(self):
@@ -45,9 +54,9 @@ class _NopRegionWrapper(object):
 
 
 # Floating regions related classes.
-
 class FloatingBounds(object):
     def __init__(self, max_left_offset=0, max_up_offset=0, max_right_offset=0, max_down_offset=0):
+        # type: (int, int, int, int) -> None
         self.max_left_offset = max_left_offset
         self.max_up_offset = max_up_offset
         self.max_right_offset = max_right_offset
@@ -56,14 +65,16 @@ class FloatingBounds(object):
 
 class FloatingRegion(object):
     def __init__(self, region, bounds):
+        # type: (Region, FloatingBounds) -> None
         """
-        :param region: (Region) The inner region (the floating part).
-        :param bounds: (FloatingBounds) The outer rectangle bounding the inner region.
+        :param region: The inner region (the floating part).
+        :param bounds: The outer rectangle bounding the inner region.
         """
         self.region = region
         self.bounds = bounds
 
     def get_region(self, driver, eyes_screenshot):
+        # type: (EyesWebDriver, EyesScreenshot) -> FloatingRegion
         """Used for compatibility when iterating over regions"""
         return self
 
@@ -96,6 +107,7 @@ class FloatingRegionByElement(object):
         self.bounds = bounds
 
     def get_region(self, driver, eyes_screenshot):
+        # type: (EyesWebDriver, EyesScreenshot) -> FloatingRegion
         region = eyes_screenshot.get_element_region_in_frame_viewport(self.element)
         return FloatingRegion(region, self.bounds)
 
@@ -116,6 +128,7 @@ class FloatingRegionBySelector(object):
         self.bounds = bounds
 
     def get_region(self, driver, eyes_screenshot):
+        # type: (EyesWebDriver, EyesScreenshot) -> FloatingRegion
         element = driver.find_element(self.by, self.value)
         region = eyes_screenshot.get_element_region_in_frame_viewport(element)
         return FloatingRegion(region, self.bounds)
@@ -130,12 +143,15 @@ class Target(object):
     """
     Target for an eyes.check_window/region.
     """
+
     def __init__(self):
+        # type: () -> None
         self._ignore_caret = True
-        self._ignore_regions = []
-        self._floating_regions = []
+        self._ignore_regions = []  # type: tp.List[IgnoreRegion]
+        self._floating_regions = []  # type: tp.List[FloatingRegionType]
 
     def ignore(self, *regions):
+        # type: (*IgnoreRegion) -> Target
         """
         Add ignore regions to this target.
         :param regions: Ignore regions to add. Can be of several types:
@@ -154,6 +170,7 @@ class Target(object):
         return self
 
     def floating(self, *regions):
+        # type: (*FloatingRegionType) -> Target
         """
         Add floating regions to this target.
         :param regions: Floating regions to add. Can be of several types:
@@ -169,10 +186,9 @@ class Target(object):
         return self
 
     def ignore_caret(self, ignore=True):
+        # type: (bool) -> Target
         """
         Whether we should ignore caret when matching screenshots.
-        :param ignore: (boolean)
-        :return: (Target) self
         """
         self._ignore_caret = ignore
         return self
@@ -182,11 +198,12 @@ class Target(object):
 
     @property
     def ignore_regions(self):
+        # type: () -> tp.List[IgnoreRegion]
         """The ignore regions defined on the current target."""
         return self._ignore_regions
 
     @property
     def floating_regions(self):
+        # type: () -> tp.List[FloatingRegionType]
         """The floating regions defined on the current target."""
         return self._floating_regions
-

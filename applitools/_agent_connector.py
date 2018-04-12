@@ -1,9 +1,17 @@
 import time
+import typing as tp
+
 import requests
 from requests.packages import urllib3
+
 from applitools import logger
-from .test_results import TestResults
+
 from .utils import general_utils
+
+if tp.TYPE_CHECKING:
+    from requests.models import Response
+    from applitools.test_results import TestResults
+    from applitools.utils._custom_types import RunningSession, SessionStartInfo
 
 ## Prints out all data sent/received through 'requests'
 # import httplib
@@ -15,6 +23,7 @@ if hasattr(urllib3, 'disable_warnings') and callable(urllib3.disable_warnings):
 
 
 def _parse_response_with_json_data(response):
+    # type: (Response) -> tp.Dict[tp.Text, tp.Any]
     response.raise_for_status()
     return response.json()
 
@@ -27,30 +36,34 @@ class AgentConnector(object):
     _DEFAULT_HEADERS = {'Accept': 'application/json', 'Content-Type': 'application/json'}
 
     def __init__(self, server_url):
+        # type: (tp.Text) -> None
         """
         Ctor.
 
         :param server_url: The url of the Applitools server.
         """
         # Used inside the server_url property.
-        self._server_url = None
-        self._endpoint_uri = None
+        self._server_url = None  # type: tp.Text
+        self._endpoint_uri = None  # type: tp.Text
 
-        self.api_key = None
+        self.api_key = None  # type: tp.Text
         self.server_url = server_url
 
     @property
     def server_url(self):
+        # type: () -> tp.Text
         return self._server_url
 
     @server_url.setter
     def server_url(self, server_url):
+        # type: (tp.Text) -> None
         self._server_url = server_url
         self._endpoint_uri = server_url.rstrip('/') + '/api/sessions/running'
 
     @staticmethod
     def _send_long_request(name, method, *args, **kwargs):
-        delay = 2  # Seconds
+        # type: (tp.Text, tp.Callable, *tp.Any, **tp.Any) -> Response
+        delay = 2.0  # Seconds
         headers = kwargs['headers'].copy()
         headers['Eyes-Expect'] = '202-accepted'
         while True:
@@ -65,6 +78,7 @@ class AgentConnector(object):
             delay = min(10, delay * 1.5)
 
     def start_session(self, session_start_info):
+        # type: (SessionStartInfo) -> RunningSession
         """
         Starts a new running session in the agent. Based on the given parameters,
         this running session will either be linked to an existing session, or to
@@ -82,6 +96,7 @@ class AgentConnector(object):
                     is_new_session=(response.status_code == requests.codes.created))
 
     def stop_session(self, running_session, is_aborted, save):
+        # type: (RunningSession, bool, bool) -> TestResults
         """
         Stops a running session in the Eyes server.
 
@@ -104,6 +119,7 @@ class AgentConnector(object):
                            pr['layoutMatches'], pr['noneMatches'], pr['status'])
 
     def match_window(self, running_session, data):
+        # type: (RunningSession, tp.Text) -> bool
         """
         Matches the current window to the immediate expected window in the Eyes server. Notice that
         a window might be matched later at the end of the test, even if it was not immediately

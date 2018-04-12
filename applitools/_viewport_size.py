@@ -2,9 +2,14 @@
 Selenium/web driver related utilities.
 """
 import time
+import typing as tp
 
 from applitools import logger
 from applitools.errors import EyesError
+
+if tp.TYPE_CHECKING:
+    from applitools._webdriver import EyesWebDriver
+    from applitools.utils._custom_types import ViewPort
 
 _JS_GET_VIEWPORT_SIZE = """
     var height = undefined;
@@ -30,6 +35,7 @@ _JS_GET_VIEWPORT_SIZE = """
 
 
 def get_viewport_size(driver):
+    # type: (EyesWebDriver) -> ViewPort
     """
     Tries to get the viewport size using Javascript. If fails, gets the entire browser window
     size!
@@ -46,6 +52,7 @@ def get_viewport_size(driver):
 
 
 def set_viewport_size(driver, required_size):
+    # type: (EyesWebDriver, ViewPort) -> None
     """
     Tries to set the viewport size.
 
@@ -75,20 +82,20 @@ def set_viewport_size(driver, required_size):
         required_browser_size = {
             'width': browser_size['width'] + (required_size['width'] - actual_viewport_size['width']),
             'height': browser_size['height'] + (required_size['height'] - actual_viewport_size['height'])
-            }
+        }
         logger.debug("Trying to set browser size to: {}".format(required_browser_size))
         for retry in range(_BROWSER_SET_SIZE_RETRIES):
             driver.set_window_size(required_browser_size['width'], required_browser_size['height'])
             time.sleep(_BROWSER_STABILIZATION_WAIT)
             browser_size = driver.get_window_size()
             if (browser_size['width'] == required_browser_size['width'] and
-                   browser_size['height'] == required_browser_size['height']):
+                    browser_size['height'] == required_browser_size['height']):
                 break
             logger.debug("Current browser size: {}".format(browser_size))
         else:
             raise EyesError('Failed to set browser size!')
 
-        actual_viewport_size = get_viewport_size(driver)
+        actual_viewport_size = get_viewport_size(driver)  # type: ViewPort
         logger.debug("Current viewport size: {}".format(actual_viewport_size))
         if actual_viewport_size == required_size:
             return

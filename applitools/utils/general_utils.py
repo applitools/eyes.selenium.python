@@ -1,16 +1,22 @@
 """
 General purpose utilities.
 """
-from datetime import tzinfo, timedelta
 import json
 import types
+import typing as tp
+from datetime import timedelta, tzinfo
 
-# Python 2 / 3 compatibility
-import sys
+from selenium.webdriver.remote.webelement import WebElement
 
-if sys.version < '3':
-    range = xrange
+from applitools.utils._compat import range
 
+if tp.TYPE_CHECKING:
+    from datetime import datetime
+    from applitools._webdriver import EyesWebDriver
+    from applitools._webdriver import EyesWebElement
+    from selenium.webdriver.firefox.webdriver import WebDriver
+    from selenium.webdriver.firefox.webelement import FirefoxWebElement
+    from applitools._webdriver import _EyesSwitchTo
 
 class _UtcTz(tzinfo):
     """
@@ -19,6 +25,7 @@ class _UtcTz(tzinfo):
     _ZERO = timedelta(0)
 
     def utcoffset(self, dt):
+        # type: (datetime) -> timedelta
         return _UtcTz._ZERO
 
     def tzname(self, dt):
@@ -32,6 +39,7 @@ UTC = _UtcTz()
 
 
 def to_json(obj):
+    # type: (tp.Dict[str, tp.Any]) -> str
     """
     Returns an object's json representation (defaults to __getstate__ for user defined types).
     """
@@ -79,6 +87,7 @@ def join_chunks(l):
 
 
 def create_proxy_property(property_name, target_name, is_settable=False):
+    # type: (str, str, bool) -> property
     """
     Returns a property object which forwards "name" to target.
 
@@ -87,6 +96,7 @@ def create_proxy_property(property_name, target_name, is_settable=False):
     """
     # noinspection PyUnusedLocal
     def _proxy_get(self):
+        # type: (tp.Any) -> tp.Dict[str, float]
         return getattr(getattr(self, target_name), property_name)
 
     # noinspection PyUnusedLocal
@@ -99,7 +109,11 @@ def create_proxy_property(property_name, target_name, is_settable=False):
         return property(_proxy_get, _proxy_set)
 
 
-def create_forwarded_method(from_, to, func_name):
+def create_forwarded_method(from_,  # type: tp.Union[EyesWebDriver, EyesWebElement, _EyesSwitchTo]
+                            to,  # type: tp.Union[WebDriver, FirefoxWebElement]
+                            func_name,  # type: str
+                            ):
+    # type: (...) -> tp.Callable
     """
     Returns a method(!) to be set on 'from_', which activates 'func_name' on 'to'.
 
@@ -110,11 +124,17 @@ def create_forwarded_method(from_, to, func_name):
     """
     # noinspection PyUnusedLocal
     def forwarded_method(self_, *args, **kwargs):
+        # type: (EyesWebDriver, *tp.Any, **tp.Any) -> tp.Any
         return getattr(to, func_name)(*args, **kwargs)
     return types.MethodType(forwarded_method, from_)
 
 
-def create_proxy_interface(from_, to, ignore_list=None, override_existing=False):
+def create_proxy_interface(from_,  # type: tp.Union[EyesWebElement, EyesWebDriver, _EyesSwitchTo]
+                           to,  # type: tp.Union[WebDriver, WebElement]
+                           ignore_list=None,  # type: tp.List[str]
+                           override_existing=False,  # type: bool
+                           ):
+    # type: (...) -> None
     """
     Copies the public interface of the destination object, excluding names in the ignore_list,
     and creates an identical interface in 'src', which forwards calls to dst.
