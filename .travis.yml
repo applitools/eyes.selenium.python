@@ -1,27 +1,14 @@
-language: 
-- python
-- generic
-matrix:
-    include:
-        - os: linux
-          sudo: required
-          python: 2.7 
-          env: TOXENV=py27 DISPLAY=':0.0' 
-          install:
-          - pip install -r requirements-dev.txt
-          script:
-          - export APPLITOOLS_BATCH_ID=`uuidgen -t`
-          - echo $APPLITOOLS_BATCH_ID
-          - python applitools_sauce_test.py
-          - pytest test/server_results_text.py
-        - os: linux
-          sudo: required
-          python: 3.4
-          env: TOXENV=py33 DISPLAY=':0.0'  
-          install:
-          - pip install -r requirements-dev.txt
-          script:
-          - export APPLITOOLS_BATCH_ID=`uuidgen -t`
-          - echo $APPLITOOLS_BATCH_ID
-          - python applitools_sauce_test.py
-          - pytest test/server_results_text.py
+language: python
+python:
+ - 2.7
+ - 3.4
+sudo: false
+env:
+  - DISPLAY=:0.0
+install:
+  - pip install -e .[test]
+script:
+  - export APPLITOOLS_BATCH_ID=`uuidgen -t`
+  - echo $APPLITOOLS_BATCH_ID
+  - python applitools_sauce_test.py
+  - pytest test/server_results_text.py

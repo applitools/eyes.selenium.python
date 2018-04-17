@@ -5,12 +5,12 @@ import requests
 from requests.packages import urllib3
 
 from applitools import logger
+from applitools.test_results import TestResults
 
 from .utils import general_utils
 
 if tp.TYPE_CHECKING:
     from requests.models import Response
-    from applitools.test_results import TestResults
     from applitools.utils._custom_types import RunningSession, SessionStartInfo
 
 ## Prints out all data sent/received through 'requests'
@@ -63,7 +63,7 @@ class AgentConnector(object):
     @staticmethod
     def _send_long_request(name, method, *args, **kwargs):
         # type: (tp.Text, tp.Callable, *tp.Any, **tp.Any) -> Response
-        delay = 2.0  # Seconds
+        delay = 2  # Seconds
         headers = kwargs['headers'].copy()
         headers['Eyes-Expect'] = '202-accepted'
         while True:
