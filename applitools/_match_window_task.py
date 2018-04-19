@@ -16,8 +16,8 @@ if tp.TYPE_CHECKING:
     from applitools.eyes import Eyes, ImageMatchSettings
     from applitools._agent_connector import AgentConnector
     from applitools._webdriver import EyesWebElement, EyesWebDriver
-    from applitools.utils._custom_types import (Num, IgnoreRegion, RunningSession, AppOutput,
-                                                UserInputs, MatchResult, FloatingRegionType)
+    from applitools.utils._custom_types import (Num, RunningSession, AppOutput,
+                                                UserInputs, MatchResult, AnyWebDriver)
 
 
 class MatchWindowTask(object):
@@ -28,14 +28,8 @@ class MatchWindowTask(object):
 
     MINIMUM_MATCH_TIMEOUT = 60  # Milliseconds
 
-    def __init__(self,
-                 eyes,  # type: Eyes
-                 agent_connector,  # type: AgentConnector
-                 running_session,  # type: RunningSession
-                 driver,  # type: EyesWebDriver
-                 default_retry_timeout,  # type: Num
-                 ):
-        # type: (...) -> None
+    def __init__(self, eyes, agent_connector, running_session, driver, default_retry_timeout):
+        # type: (Eyes, AgentConnector, RunningSession, AnyWebDriver, Num) -> None
         """
         Ctor.
 
@@ -49,7 +43,7 @@ class MatchWindowTask(object):
         self._agent_connector = agent_connector
         self._running_session = running_session
         self._driver = driver
-        self._default_retry_timeout = default_retry_timeout / 1000.0  # since we want the time in seconds.
+        self._default_retry_timeout = default_retry_timeout / 1000.0   # type: Num # since we want the time in seconds.
         self._screenshot = None  # type: EyesScreenshot
 
     def _get_screenshot(self, force_full_page_screenshot, wait_before_screenshots, element=None):
@@ -79,12 +73,16 @@ class MatchWindowTask(object):
                                  screenshot,  # type: EyesScreenshot
                                  default_match_settings,  # type: ImageMatchSettings
                                  target=None,  # type: Target
-                                 ignore=[],  # type: tp.List[IgnoreRegion]
-                                 floating=[],  # type: tp.List[FloatingRegionType]
+                                 ignore=None,  # type: tp.Optional[tp.List]
+                                 floating=None,  # type: tp.Optional[tp.List]
                                  ):
         # type: (...) -> bytes
         if target is None:
             target = Target()  # Use defaults
+        if ignore is None:
+            ignore = []
+        if floating is None:
+            floating = []
 
         match_data = {
             "IgnoreMismatch": ignore_mismatch,
@@ -134,8 +132,7 @@ class MatchWindowTask(object):
                                                                                                        err))
         return {"ignore": ignore, "floating": floating}
 
-    def _prepare_match_data_for_window(self,
-                                       tag,  # type: tp.Text
+    def _prepare_match_data_for_window(self, tag,  # type: tp.Text
                                        force_full_page_screenshot,  # type: bool
                                        user_inputs,  # type: UserInputs
                                        wait_before_screenshots,  # type: Num
@@ -249,8 +246,7 @@ class MatchWindowTask(object):
         logger.debug("_run(): Completed in {0:.1f} seconds".format(elapsed_time))
         return result
 
-    def match_window(self,
-                     retry_timeout,  # type: Num
+    def match_window(self, retry_timeout,  # type: Num
                      tag,  # type: str
                      force_full_page_screenshot,  # type: bool
                      user_inputs,  # UserInputs
@@ -268,8 +264,8 @@ class MatchWindowTask(object):
         :param force_full_page_screenshot: Whether or not force full page screenshot.
         :param user_inputs: The user input.
         :param wait_before_screenshots: Milliseconds to wait before taking each screenshot.
-        :param default_match_settings: (ImageMatchSettings) The default match settings for the session.
-        :param target: (Target) The target of the check_window call.
+        :param default_match_settings: The default match settings for the session.
+        :param target: The target of the check_window call.
         :param run_once_after_wait: Whether or not to run again after waiting.
         :return: The result of the run.
         """
@@ -278,8 +274,7 @@ class MatchWindowTask(object):
                                            default_match_settings, target)
         return self._run(prepare_action, run_once_after_wait, retry_timeout)
 
-    def match_region(self,
-                     region,  # type: Region
+    def match_region(self, region,  # type: Region
                      retry_timeout,  # type: Num
                      tag,  # type: tp.Text
                      force_full_page_screenshot,  # type: bool
@@ -298,8 +293,8 @@ class MatchWindowTask(object):
         :param force_full_page_screenshot: Whether or not force full page screenshot.
         :param user_inputs: The user input.
         :param wait_before_screenshots: Milliseconds to wait before taking each screenshot.
-        :param default_match_settings: (ImageMatchSettings) The default match settings for the session.
-        :param target: (Target) The target of the check_window call.
+        :param default_match_settings: The default match settings for the session.
+        :param target: The target of the check_window call.
         :param run_once_after_wait: Whether or not to run again after waiting.
         :return: The result of the run.
         """
@@ -329,8 +324,8 @@ class MatchWindowTask(object):
         :param force_full_page_screenshot: Whether or not force full page screenshot.
         :param user_inputs: The user input.
         :param wait_before_screenshots: Milliseconds to wait before taking each screenshot.
-        :param default_match_settings: (ImageMatchSettings) The default match settings for the session.
-        :param target: (Target) The target of the check_window call.
+        :param default_match_settings: The default match settings for the session.
+        :param target: The target of the check_window call.
         :param run_once_after_wait: Whether or not to run again after waiting.
         :return: The result of the run.
         """

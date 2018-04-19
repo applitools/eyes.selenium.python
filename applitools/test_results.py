@@ -11,13 +11,13 @@ class TestResultsStatus(object):
 
     @classmethod
     def get_status(cls, status):
-        # type: (tp.Text) -> tp.Text
-        status_lower = status.lower()
-        if status_lower == cls.Passed.lower():
+        # type: (tp.Optional[tp.Text]) -> tp.Text
+        status = status.lower() if status is not None else ''
+        if status == cls.Passed.lower():
             return cls.Passed
-        elif status_lower == cls.Unresolved.lower():
+        elif status == cls.Unresolved.lower():
             return cls.Unresolved
-        elif status_lower == cls.Failed.lower():
+        elif status == cls.Failed.lower():
             return cls.Failed
         else:
             # Unknown status
@@ -28,8 +28,7 @@ class TestResults(object):
     """
     Eyes test results.
     """
-    def __init__(self,
-                 steps=0,  # type: int
+    def __init__(self, steps=0,  # type: int
                  matches=0,  # type: int
                  mismatches=0,  # type: int
                  missing=0,  # type: int
@@ -38,7 +37,7 @@ class TestResults(object):
                  content_matches=0,  # type: int
                  layout_matches=0,  # type: int
                  none_matches=0,  # type: int
-                 status=None,  # type: tp.Text
+                 status=None,  # type: tp.Optional[tp.Text]
                  ):
         # type: (...) -> None
         self.steps = steps

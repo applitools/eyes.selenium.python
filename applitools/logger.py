@@ -146,7 +146,7 @@ _logger = None
 
 
 def set_logger(logger=None):
-    # type: (StdoutLogger) -> None
+    # type: (tp.Optional[_Logger]) -> None
     """
     Sets the used logger to the logger.
 

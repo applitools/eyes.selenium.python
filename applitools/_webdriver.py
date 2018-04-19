@@ -7,6 +7,9 @@ import typing as tp
 import appium.webdriver
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.remote.switch_to import SwitchTo
 from selenium.webdriver.support.wait import WebDriverWait
 
 from applitools import _viewport_size, logger
@@ -19,12 +22,9 @@ from .geometry import Region
 from .utils import general_utils
 
 if tp.TYPE_CHECKING:
-    from selenium.webdriver.remote.webdriver import WebDriver
-    from selenium.webdriver.remote.webelement import WebElement
-
     from applitools.eyes import Eyes
     from applitools.utils._image_utils import PngImage
-    from applitools.utils._custom_types import Num, ViewPort
+    from applitools.utils._custom_types import Num, ViewPort, FrameReference, AnyWebDriver, AnyWebElement
 
 
 class EyesScreenshot(object):
@@ -58,7 +58,7 @@ class EyesScreenshot(object):
 
         :param driver: EyesWebDriver instance which handles the session from which the screenshot
                     was retrieved.
-        :param screenshot: (PngImage) image instance. If screenshot64 is None,
+        :param screenshot: image instance. If screenshot64 is None,
                                     this variable must NOT be none.
         :param screenshot64: The base64 representation of a png image. If screenshot
                                      is None, this variable must NOT be none.
@@ -76,7 +76,7 @@ class EyesScreenshot(object):
         else:
             raise EyesError("both screenshot and screenshot64 are None!")
         self._driver = driver
-        self._viewport_size = driver.get_default_content_viewport_size()
+        self._viewport_size = driver.get_default_content_viewport_size()  # type: ViewPort
 
         self._frame_chain = driver.get_frame_chain()
         if self._frame_chain:
@@ -94,8 +94,8 @@ class EyesScreenshot(object):
         except (WebDriverException, EyesError):
             self._scroll_position = Point(0, 0)
         if is_viewport_screenshot is None:
-            is_viewport_screenshot = self._screenshot.width <= self._viewport_size['width'] \
-                and self._screenshot.height <= self._viewport_size['height']
+            is_viewport_screenshot = (self._screenshot.width <= self._viewport_size['width']
+                                      and self._screenshot.height <= self._viewport_size['height'])
         self._is_viewport_screenshot = is_viewport_screenshot
         if frame_location_in_screenshot is None:
             if self._frame_chain:
@@ -117,7 +117,7 @@ class EyesScreenshot(object):
 
     @staticmethod
     def calc_frame_location_in_screenshot(frame_chain, is_viewport_screenshot):
-        # type: (tp.List[EyesFrame], bool) -> Point
+        # type: (tp.List[EyesFrame], tp.Optional[bool]) -> Point
         """
         :param frame_chain: List of the frames.
         :param is_viewport_screenshot: Whether the viewport is a screenshot or not.
@@ -186,7 +186,7 @@ class EyesScreenshot(object):
         return result
 
     def get_element_region_in_frame_viewport(self, element):
-        # type: (EyesWebElement) -> Region
+        # type: (AnyWebElement) -> Region
         """
         Gets The element region in the frame.
 
@@ -291,12 +291,12 @@ class ScrollPositionProvider(object):
         return [x, y]"""
 
     def __init__(self, driver):
-        # type: (EyesWebDriver) -> None
+        # type: (AnyWebDriver) -> None
         self.driver = driver
         self.states = []  # type: tp.List[Point]
 
     def _execute_script(self, script):
-        # type: (tp.Text) -> tp.Optional[tp.List[int]]
+        # type: (tp.Text) -> tp.List[int]
         return self.driver.execute_script(script)
 
     def get_current_position(self):
@@ -341,10 +341,10 @@ class ScrollPositionProvider(object):
 
 
 class CSSTranslatePositionProvider(object):
-    _JS_TRANSFORM_KEYS = ["transform", "-webkit-transform" ]
+    _JS_TRANSFORM_KEYS = ["transform", "-webkit-transform"]
 
     def __init__(self, driver):
-        # type: (EyesWebDriver) -> None
+        # type: (AnyWebDriver) -> None
         self.driver = driver
         self.states = []  # type: tp.List[Point]
         self.current_position = Point(0, 0)
@@ -407,7 +407,7 @@ class ElementPositionProvider(object):
     """
 
     def __init__(self, driver, element):
-        # type: (EyesWebDriver, EyesWebElement) -> None
+        # type: (AnyWebDriver, AnyWebElement) -> None
         self.driver = driver
         # TODO: add check if EyesRemoteWebElement
         self.element = element
@@ -437,7 +437,7 @@ class ElementPositionProvider(object):
         logger.info("Done scrolling element!")
 
     def get_entire_size(self):
-        # type: () -> tp.Dict[tp.Text, Num]
+        # type: () -> ViewPort
         """
         :return: The entire size of the container which the position is relative
         """
@@ -487,9 +487,9 @@ class EyesWebElement(object):
             if (window.getComputedStyle) {
                 return window.getComputedStyle(elem, null)
                 .getPropertyValue(styleProp);
-            } else if (elem.currentStyle) { 
+            } else if (elem.currentStyle) {
                 return elem.currentStyle[styleProp];
-            } else { 
+            } else {
                 return null;
             }
     """
@@ -513,7 +513,7 @@ class EyesWebElement(object):
         """
         self.element = element
         self._eyes = eyes
-        self._driver = driver
+        self._driver = driver  # type: AnyWebDriver
         # Replacing implementation of the underlying driver with ours. We'll put the original
         # methods back before destruction.
         self._original_methods = {}  # type: tp.Dict[tp.Text, tp.Callable]
@@ -531,7 +531,7 @@ class EyesWebElement(object):
     def bounds(self):
         # type: () -> Region
         # noinspection PyUnresolvedReferences
-        location = self.location
+        location = self._driver.location
         left, top = location['x'], location['y']
         width = height = 0  # Default
 
@@ -539,7 +539,7 @@ class EyesWebElement(object):
         try:
             size = self.element.size
             width, height = size['width'], size['height']
-        except:
+        except Exception:
             # Not implemented on all platforms.
             pass
         if left < 0:
@@ -688,7 +688,7 @@ class _EyesSwitchTo(object):
     PARENT_FRAME = 1
 
     def __init__(self, driver, switch_to):
-        # type: (EyesWebDriver, tp.Any) -> None
+        # type: (EyesWebDriver, SwitchTo) -> None
         """
         Ctor.
 
@@ -696,10 +696,11 @@ class _EyesSwitchTo(object):
         :param switch_to: Selenium switchTo object.
         """
         self._switch_to = switch_to
-        self._driver = driver
+        self._driver = driver  # type: AnyWebDriver
         general_utils.create_proxy_interface(self, switch_to, self._READONLY_PROPERTIES)
 
     def frame(self, frame_reference):
+        # type: (FrameReference) -> None
         """
         Switch to a given frame.
 
@@ -722,7 +723,7 @@ class _EyesSwitchTo(object):
         self._switch_to.frame(frame_reference)
 
     def frames(self, frame_chain):
-        # type: (tp.List) -> None
+        # type: (tp.List[EyesFrame]) -> None
         """
         Switches to the frames one after the other.
 
@@ -763,6 +764,7 @@ class _EyesSwitchTo(object):
             self.frames(frames)
 
     def window(self, window_name):
+        # type: (tp.Text) -> None
         """
         Switch to window.
 
@@ -771,7 +773,7 @@ class _EyesSwitchTo(object):
         """
         # noinspection PyProtectedMember
         self._driver._will_switch_to(None)
-        return self._switch_to.window(window_name)
+        self._switch_to.window(window_name)
 
 
 class EyesFrame(object):
@@ -781,6 +783,7 @@ class EyesFrame(object):
 
     @staticmethod
     def is_same_frame_chain(frame_chain1, frame_chain2):
+        # type: (tp.List[EyesFrame], tp.List[EyesFrame]) -> bool
         """
         Checks whether the two frame chains are the same or not.
 
@@ -797,6 +800,7 @@ class EyesFrame(object):
         return True
 
     def __init__(self, reference, location, size, id_, parent_scroll_position):
+        # type: (FrameReference, tp.Dict, tp.Dict, int, Point) -> None
         """
         Ctor.
 
@@ -847,7 +851,7 @@ class EyesWebDriver(object):
         """
         Ctor.
 
-        :param driver: EyesWebDriver instance.
+        :param driver: remote WebDriver instance.
         :param eyes: A Eyes sdk instance.
         :param stitch_mode: How to stitch a page (default is with scrolling).
         """
@@ -858,7 +862,7 @@ class EyesWebDriver(object):
         # tp.List of frames the user switched to, and the current offset, so we can properly
         # calculate elements' coordinates
         self._frames = []  # type: tp.List[EyesFrame]
-        driver_takes_screenshot = driver.capabilities.get('takesScreenshot', False)
+        self.driver_takes_screenshot = driver.capabilities.get('takesScreenshot', False)
 
         # Creating the rest of the driver interface by simply forwarding it to the underlying
         # driver.
@@ -1135,9 +1139,9 @@ class EyesWebDriver(object):
         :return: The width of the full page.
         """
         # noinspection PyUnresolvedReferences
-        default_scroll_width = int(round(self.execute_script(
+        default_scroll_width = int(round(self.driver.execute_script(
             "return document.documentElement.scrollWidth")))
-        body_scroll_width = int(round(self.execute_script("return document.body.scrollWidth")))
+        body_scroll_width = int(round(self.driver.execute_script("return document.body.scrollWidth")))
         return max(default_scroll_width, body_scroll_width)
 
     def extract_full_page_height(self):
@@ -1152,15 +1156,15 @@ class EyesWebDriver(object):
         maximum between them.
         """
         # noinspection PyUnresolvedReferences
-        default_client_height = int(round(self.execute_script(
+        default_client_height = int(round(self.driver.execute_script(
             "return document.documentElement.clientHeight")))
         # noinspection PyUnresolvedReferences
-        default_scroll_height = int(round(self.execute_script(
+        default_scroll_height = int(round(self.driver.execute_script(
             "return document.documentElement.scrollHeight")))
         # noinspection PyUnresolvedReferences
-        body_client_height = int(round(self.execute_script("return document.body.clientHeight")))
+        body_client_height = int(round(self.driver.execute_script("return document.body.clientHeight")))
         # noinspection PyUnresolvedReferences
-        body_scroll_height = int(round(self.execute_script("return document.body.scrollHeight")))
+        body_scroll_height = int(round(self.driver.execute_script("return document.body.scrollHeight")))
         max_document_element_height = max(default_client_height, default_scroll_height)
         max_body_height = max(body_client_height, body_scroll_height)
         return max(max_document_element_height, max_body_height)
@@ -1214,7 +1218,7 @@ class EyesWebDriver(object):
                      "document.documentElement.style.overflow = \"{0}\"; " \
                      "return origOverflow;".format(overflow)
         # noinspection PyUnresolvedReferences
-        original_overflow = self.execute_script(script)
+        original_overflow = self.driver.execute_script(script)
         logger.debug("Original overflow: %s" % original_overflow)
         if stabilization_time is not None:
             time.sleep(stabilization_time / 1000)
@@ -1230,9 +1234,9 @@ class EyesWebDriver(object):
         """
         # noinspection PyBroadException
         try:
-            WebDriverWait(self.driver, timeout)\
+            WebDriverWait(self.driver, timeout) \
                 .until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
-        except:
+        except Exception:
             logger.debug('Page load timeout reached!')
             if throw_on_timeout:
                 raise
@@ -1259,6 +1263,7 @@ class EyesWebDriver(object):
         return [frame.clone() for frame in self._frames]
 
     def get_viewport_size(self):
+        # type: () -> ViewPort
         """
         Returns:
             The viewport size of the current frame.
@@ -1266,7 +1271,7 @@ class EyesWebDriver(object):
         return _viewport_size.get_viewport_size(self)
 
     def get_default_content_viewport_size(self):
-        # type: () -> tp.Dict[tp.Text, int]
+        # type: () -> ViewPort
         """
         Gets the viewport size.
 
@@ -1314,7 +1319,7 @@ class EyesWebDriver(object):
 
     @staticmethod
     def _wait_before_screenshot(seconds):
-        logger.debug("Waiting {} ms before taking screenshot..".format(int(seconds*1000)))
+        logger.debug("Waiting {} ms before taking screenshot..".format(int(seconds * 1000)))
         time.sleep(seconds)
         logger.debug("Finished waiting!")
 
@@ -1323,7 +1328,7 @@ class EyesWebDriver(object):
         """
         Gets a full page screenshot.
 
-        :param wait_before_screenshots: (float) Seconds to wait before taking each screenshot.
+        :param wait_before_screenshots: Seconds to wait before taking each screenshot.
         :return: The full page screenshot.
         """
         logger.info('getting full page screenshot..')
@@ -1394,7 +1399,7 @@ class EyesWebDriver(object):
         """
         Gets a stitched screenshot for specific element
 
-        :param wait_before_screenshots: (float) Seconds to wait before taking each screenshot.
+        :param wait_before_screenshots: Seconds to wait before taking each screenshot.
         :return: The full page screenshot.
         """
         logger.info('getting stitched element screenshot..')
@@ -1446,7 +1451,7 @@ class EyesWebDriver(object):
             # Starting with the screenshot we already captured at (0,0).
             stitched_image = screenshot.get_subimage(element_region)
             self.save_position()
-            for i, part in enumerate(screenshot_parts):
+            for part in screenshot_parts:
                 # Since we already took the screenshot for 0,0
                 if part.left == 0 and part.top == 0:
                     logger.debug('Skipping screenshot for 0,0 (already taken)')
@@ -1474,6 +1479,7 @@ class EyesWebDriver(object):
         return stitched_image
 
     def _will_switch_to(self, frame_reference, frame_element=None):
+        # type: (tp.Optional[FrameReference], AnyWebElement) -> None
         """
         Updates the current webdriver that a switch was made to a frame element.
 
@@ -1493,7 +1499,7 @@ class EyesWebDriver(object):
                                               .rstrip('px'))
                 frame_top_border_width = int(frame_element.value_of_css_property('border-top-width')
                                              .rstrip('px'))
-            except:
+            except Exception:
                 frame_left_border_width = 0
                 frame_top_border_width = 0
             frame_location['x'] += frame_left_border_width
@@ -1512,12 +1518,12 @@ class EyesWebDriver(object):
 
     @property
     def current_offset(self):
-        # type: () -> tp.Dict[tp.Text, int]
+        # type: () -> Point
         """
         Return the current offset of the context we're in (e.g., due to switching into frames)
         """
-        offset = {'x': 0, 'y': 0}
+        x, y = 0, 0
         for frame in self._frames:
-            offset['x'] += frame.location['x']
-            offset['y'] += frame.location['y']
-        return offset
+            x += frame.location['x']
+            y += frame.location['y']
+        return Point(x, y)

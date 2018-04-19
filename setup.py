@@ -4,8 +4,7 @@ from codecs import open
 from os import path
 
 from setuptools import setup
-from applitools import VERSION
-
+from applitools import VERSION, PY35
 
 here = path.abspath(path.dirname(__file__))
 
@@ -20,9 +19,14 @@ install_requires = [
     'Appium-Python-Client>=0.13'
 ]
 
-if sys.version_info < (3, 5):
+install_dev_requires = ['ipython', 'ipdb', 'flake8', 'flake8-import-order', 'bumpversion', 'flake8-bugbear']
+
+if not PY35:
     install_requires.append('typing >= 3.5.2')
     install_requires.append('enum34 >= 1.1.6')
+
+    install_dev_requires.append('mypy')
+    install_dev_requires.append('flake8-mypy')
 
 setup(
     name='eyes-selenium',

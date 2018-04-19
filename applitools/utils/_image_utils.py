@@ -53,9 +53,9 @@ def quadrant_rotate(m, num_quadrants):
     if num_quadrants == 0:
         return m
     rotate_func = rotate_cw if num_quadrants > 0 else rotate_ccw
-    #Perform the rotation.
+    # Perform the rotation.
     result = m
-    for i in range(abs(num_quadrants)):
+    for _ in range(abs(num_quadrants)):
         result = rotate_func(result)
     return result
 
@@ -199,7 +199,7 @@ class PngImage(object):
         :param index: The index of the channel we would like to get.
         :return : A copy of the values for the given pixel channel.
         """
-        if index > self.pixel_size-1:
+        if index > self.pixel_size - 1:
             raise EyesError("Invalid channel: {}, (pixel size {})".format(index, self.pixel_size))
         return map(lambda x: list(x[0::self.pixel_size]), self.pixel_bytes)
 

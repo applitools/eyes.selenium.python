@@ -5,7 +5,7 @@ from collections import OrderedDict
 from applitools.errors import EyesError
 
 
-class Point:
+class Point(object):
     """
     A point with the coordinates (x,y).
     """
@@ -132,7 +132,7 @@ class Point:
         return result
 
 
-class Region:
+class Region(object):
     """
     A rectangle identified by left,top, width, height.
     """
@@ -199,8 +199,8 @@ class Region:
         :return: Whether or not the rectangles have same coordinates.
         :rtype: bool
         """
-        return self.left == other.left and self.top == other.top and self.width == other.width \
-            and self.height == other.height
+        return (self.left == other.left and self.top == other.top and self.width == other.width
+                and self.height == other.height)
 
     def is_same_size(self, other):
         # type: (Region) -> bool
@@ -250,8 +250,8 @@ class Region:
         """
         Return true if a rectangle overlaps this rectangle.
         """
-        return (self.left <= other.left <= self.right or other.left <= self.left <= other.right) \
-            and (self.top <= other.top <= self.bottom or other.top <= self.top <= other.bottom)
+        return ((self.left <= other.left <= self.right or other.left <= self.left <= other.right)
+                and (self.top <= other.top <= self.bottom or other.top <= self.top <= other.bottom))
 
     def intersect(self, other):
         # If the regions don't overlap, the intersection is empty
@@ -267,7 +267,7 @@ class Region:
         self.height = intersection_bottom - intersection_top
 
     def get_sub_regions(self, max_sub_region_size):
-        # type: (dict) -> tp.List[Region]
+        # type: (tp.Dict) -> tp.List[Region]
         """
         Returns a list of Region objects which compose the current region.
         """

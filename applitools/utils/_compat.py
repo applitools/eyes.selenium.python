@@ -4,9 +4,11 @@ Compatibility layer between Python 2 and 3
 import abc
 import sys
 
-if sys.version_info >= (3, 4):
+from applitools import PY34
+
+if PY34:
     ABC = abc.ABC
-    range = range
+    range = range  # type: ignore
 else:
     ABC = abc.ABCMeta(str("ABC"), (), {})
-    range = xrange
+    range = xrange  # type: ignore

@@ -8,8 +8,7 @@ from applitools import logger
 from applitools.errors import EyesError
 
 if tp.TYPE_CHECKING:
-    from applitools._webdriver import EyesWebDriver
-    from applitools.utils._custom_types import ViewPort
+    from applitools.utils._custom_types import ViewPort, AnyWebDriver
 
 _JS_GET_VIEWPORT_SIZE = """
     var height = undefined;
@@ -26,7 +25,7 @@ _JS_GET_VIEWPORT_SIZE = """
         width = window.innerWidth;
     } else if (document.documentElement && document.documentElement.clientWidth) {
         width = document.documentElement.clientWidth;
-    } else { 
+    } else {
         var b = document.getElementsByTagName('body')[0];
     if (b.clientWidth) {
         width = b.clientWidth;}
@@ -35,7 +34,7 @@ _JS_GET_VIEWPORT_SIZE = """
 
 
 def get_viewport_size(driver):
-    # type: (EyesWebDriver) -> ViewPort
+    # type: (AnyWebDriver) -> ViewPort
     """
     Tries to get the viewport size using Javascript. If fails, gets the entire browser window
     size!
@@ -46,13 +45,13 @@ def get_viewport_size(driver):
     try:
         width, height = driver.execute_script(_JS_GET_VIEWPORT_SIZE)
         return {'width': width, 'height': height}
-    except:
+    except Exception:
         logger.info('Failed to get viewport size. Only window size is available')
         return driver.get_window_size()
 
 
 def set_viewport_size(driver, required_size):
-    # type: (EyesWebDriver, ViewPort) -> None
+    # type: (AnyWebDriver, ViewPort) -> None
     """
     Tries to set the viewport size.
 

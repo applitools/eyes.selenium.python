@@ -6,17 +6,17 @@ import types
 import typing as tp
 from datetime import timedelta, tzinfo
 
-from selenium.webdriver.remote.webelement import WebElement
-
 from applitools.utils._compat import range
 
 if tp.TYPE_CHECKING:
     from datetime import datetime
     from applitools._webdriver import EyesWebDriver
     from applitools._webdriver import EyesWebElement
-    from selenium.webdriver.firefox.webdriver import WebDriver
-    from selenium.webdriver.firefox.webelement import FirefoxWebElement
+    from selenium.webdriver.remote.webdriver import WebDriver
+    from selenium.webdriver.remote.webelement import WebElement
+    from selenium.webdriver.remote.switch_to import SwitchTo
     from applitools._webdriver import _EyesSwitchTo
+
 
 class _UtcTz(tzinfo):
     """
@@ -33,6 +33,7 @@ class _UtcTz(tzinfo):
 
     def dst(self, dt):
         return _UtcTz._ZERO
+
 
 # Constant representing UTC
 UTC = _UtcTz()
@@ -110,7 +111,7 @@ def create_proxy_property(property_name, target_name, is_settable=False):
 
 
 def create_forwarded_method(from_,  # type: tp.Union[EyesWebDriver, EyesWebElement, _EyesSwitchTo]
-                            to,  # type: tp.Union[WebDriver, FirefoxWebElement]
+                            to,  # type: tp.Union[WebDriver, WebElement, SwitchTo]
                             func_name,  # type: str
                             ):
     # type: (...) -> tp.Callable
@@ -124,13 +125,13 @@ def create_forwarded_method(from_,  # type: tp.Union[EyesWebDriver, EyesWebEleme
     """
     # noinspection PyUnusedLocal
     def forwarded_method(self_, *args, **kwargs):
-        # type: (EyesWebDriver, *tp.Any, **tp.Any) -> tp.Any
+        # type: (EyesWebDriver, *tp.Any, **tp.Any) -> tp.Callable
         return getattr(to, func_name)(*args, **kwargs)
     return types.MethodType(forwarded_method, from_)
 
 
-def create_proxy_interface(from_,  # type: tp.Union[EyesWebElement, EyesWebDriver, _EyesSwitchTo]
-                           to,  # type: tp.Union[WebDriver, WebElement]
+def create_proxy_interface(from_,  # type: tp.Union[EyesWebDriver, EyesWebElement, _EyesSwitchTo]
+                           to,  # type: tp.Union[WebDriver, WebElement, SwitchTo]
                            ignore_list=None,  # type: tp.List[str]
                            override_existing=False,  # type: bool
                            ):
@@ -147,7 +148,7 @@ def create_proxy_interface(from_,  # type: tp.Union[EyesWebElement, EyesWebDrive
     if not ignore_list:
         ignore_list = []
     for attr_name in dir(to):
-        if not attr_name.startswith('_') and not attr_name in ignore_list:
+        if not attr_name.startswith('_') and attr_name not in ignore_list:
             if callable(getattr(to, attr_name)):
                 if override_existing or not hasattr(from_, attr_name):
                     setattr(from_, attr_name, create_forwarded_method(from_, to, attr_name))

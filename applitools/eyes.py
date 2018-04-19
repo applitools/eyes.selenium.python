@@ -23,9 +23,9 @@ from .utils import general_utils
 
 if tp.TYPE_CHECKING:
     from applitools.target import Target
-    from applitools._webdriver import EyesScreenshot, EyesWebElement
-    from applitools.utils._custom_types import RunningSession, ViewPort, UserInputs, MatchResult, AppEnvironment, \
-    SessionStartInfo
+    from applitools._webdriver import EyesScreenshot
+    from applitools.utils._custom_types import (RunningSession, ViewPort, UserInputs, MatchResult, AppEnvironment,
+                                                SessionStartInfo, AnyWebDriver, FrameReference, AnyWebElement)
 
 
 class FailureReports(object):
@@ -116,8 +116,11 @@ class BatchInfo(object):
     A batch of tests.
     """
 
-    def __init__(self, name=None, started_at=datetime.now(general_utils.UTC)):
-        # type: (tp.Optional[tp.Text], datetime) -> None
+    def __init__(self, name=None, started_at=None):
+        # type: (tp.Optional[tp.Text], tp.Optional[datetime]) -> None
+        if started_at is None:
+            started_at = datetime.now(general_utils.UTC)
+
         self.name = name if name else os.environ.get('APPLITOOLS_BATCH_NAME', None)
         self.started_at = started_at
         self.id_ = os.environ.get('APPLITOOLS_BATCH_ID', str(uuid.uuid4()))
@@ -145,6 +148,7 @@ class Eyes(object):
 
     @staticmethod
     def set_viewport_size(driver, viewport_size):
+        # type: (AnyWebDriver, ViewPort) -> None
         _viewport_size.set_viewport_size(driver, viewport_size)
 
     def __init__(self, server_url=DEFAULT_EYES_SERVER):
@@ -155,18 +159,18 @@ class Eyes(object):
         :param server_url: The URL of the Eyes server
         """
         self._user_inputs = []  # type: UserInputs
-        self._running_session = None  # type: RunningSession
+        self._running_session = None  # type: tp.Optional[RunningSession]
         self._agent_connector = AgentConnector(server_url)  # type: AgentConnector
         self._should_get_title = False  # type: bool
-        self._driver = None  # type: EyesWebDriver
-        self._match_window_task = None  # type: MatchWindowTask
+        self._driver = None  # type: tp.Optional[AnyWebDriver]
+        self._match_window_task = None  # type: tp.Optional[MatchWindowTask]
         self._is_open = False  # type: bool
-        self._app_name = None  # type: tp.Text
-        self._last_screenshot = None  # type: EyesScreenshot
+        self._app_name = None  # type: tp.Optional[tp.Text]
+        self._last_screenshot = None  # type: tp.Optional[EyesScreenshot]
         self._should_match_once_on_timeout = False  # type: bool
-        self._start_info = None  # type: dict
-        self._test_name = None  # type: tp.Text
-        self._viewport_size = None  # type: ViewPort
+        self._start_info = None  # type: tp.Optional[SessionStartInfo]
+        self._test_name = None  # type: tp.Optional[tp.Text]
+        self._viewport_size = None  # type: tp.Optional[ViewPort]
         self._match_timeout = Eyes._DEFAULT_MATCH_TIMEOUT  # type: int
         self._stitch_mode = StitchMode.Scroll  # type: tp.Text
         # key-value pairs to be associated with the test. Can be used for filtering later.
@@ -176,7 +180,7 @@ class Eyes(object):
         self.is_disabled = False  # type: bool
 
         # An optional string identifying the current library using the SDK.
-        self.agent_id = None  # type: tp.Text
+        self.agent_id = None  # type: tp.Optional[tp.Text]
 
         # Should the test report mismatches immediately or when it is finished. See FailureReports.
         self.failure_reports = FailureReports.ON_CLOSE  # type: tp.Text
@@ -185,17 +189,17 @@ class Eyes(object):
         self.default_match_settings = ImageMatchSettings()  # type: ImageMatchSettings
 
         # The batch to which the tests belong to. See BatchInfo. None means no batch.
-        self.batch = None   # type: BatchInfo
+        self.batch = None  # type: tp.Optional[BatchInfo]
 
         # A string identifying the OS running the AUT. Use this to override Eyes automatic inference.
-        self.host_os = None  # type: tp.Text
+        self.host_os = None  # type: tp.Optional[tp.Text]
 
         # A string identifying the app running the AUT. Use this to override Eyes automatic inference.
-        self.host_app = None  # type: tp.Text
+        self.host_app = None  # type: tp.Optional[tp.Text]
 
         # A string that, if specified, determines the baseline to compare with and disables automatic baseline
         # inference.
-        self.baseline_name = None  # type: tp.Text
+        self.baseline_name = None  # type: tp.Optional[tp.Text]
 
         # A boolean denoting whether new tests should be automatically accepted.
         self.save_new_tests = True  # type: bool
@@ -204,10 +208,10 @@ class Eyes(object):
         self.save_failed_tests = False  # type: bool
 
         # A string identifying the branch in which tests are run.
-        self.branch_name = None  # type: tp.Text
+        self.branch_name = None  # type: tp.Optional[tp.Text]
 
         # A string identifying the parent branch of the branch set by "branch_name".
-        self.parent_branch_name = None  # type: tp.Text
+        self.parent_branch_name = None  # type: tp.Optional[tp.Text]
 
         # If true, Eyes will create a full page screenshot (by using stitching) for browsers which only
         # returns the viewport screenshot.
@@ -309,7 +313,7 @@ class Eyes(object):
 
         :param api_key: The api key used for authenticating the user with Eyes.
         """
-        self._agent_connector.api_key = api_key
+        self._agent_connector.api_key = api_key  # type: ignore
 
     @property
     def server_url(self):
@@ -393,7 +397,7 @@ class Eyes(object):
             logger.close()
 
     def open(self, driver, app_name, test_name, viewport_size=None):
-        # type: (EyesWebDriver, tp.Text, tp.Text, tp.Optional[ViewPort]) -> EyesWebDriver
+        # type: (AnyWebDriver, tp.Text, tp.Text, tp.Optional[ViewPort]) -> AnyWebDriver
         """
         Starts a test.
 
@@ -498,7 +502,7 @@ class Eyes(object):
                             'envName': self.baseline_name, 'environment': app_env,
                             'defaultMatchSettings': self.default_match_settings, 'verId': None,
                             'branchName': self.branch_name, 'parentBranchName': self.parent_branch_name,
-                            'properties': self._properties}  # type: SessionStartInfo
+                            'properties': self._properties}
 
     def _start_session(self):
         # type: () -> None
@@ -529,7 +533,7 @@ class Eyes(object):
             # noinspection PyBroadException
             try:
                 return self._driver.title
-            except:
+            except Exception:
                 self._should_get_title = False
                 # Couldn't get title, return empty string.
         return ''
@@ -563,7 +567,7 @@ class Eyes(object):
         self._user_inputs = []
         if not as_expected:
             self._should_match_once_on_timeout = True
-            if not self._running_session['is_new_session']:
+            if self._running_session and not self._running_session['is_new_session']:
                 logger.info("Window mismatch %s" % tag)
                 if self.failure_reports == FailureReports.IMMEDIATE:
                     raise TestFailedError("Mismatch found in '%s' of '%s'" %
@@ -636,7 +640,7 @@ class Eyes(object):
         self._handle_match_result(result, tag)
 
     def check_region_by_element(self, element, tag=None, match_timeout=-1, target=None, stitch_content=False):
-        # type: (EyesWebElement, tp.Optional[tp.Text], int, tp.Optional[Target], bool) -> None
+        # type: (AnyWebElement, tp.Optional[tp.Text], int, tp.Optional[Target], bool) -> None
         """
         Takes a snapshot of the region of the given element from the browser using the web driver
         and matches it with the expected output.
@@ -688,9 +692,15 @@ class Eyes(object):
         self.check_region_by_element(self._driver.find_element(by, value), tag,
                                      match_timeout, target, stitch_content)
 
-    def check_region_in_frame_by_selector(self, frame_reference, by, value, tag=None,
-                                          match_timeout=-1, target=None, stitch_content=False):
-        # type: (tp.Union[int, tp.Text, EyesWebDriver], tp.Text, tp.Text, tp.Optional[tp.Text], int, tp.Optional[Target], bool) -> None
+    def check_region_in_frame_by_selector(self, frame_reference,  # type: FrameReference
+                                          by,   # type: tp.Text
+                                          value,  # type: tp.Text
+                                          tag=None,  # type: tp.Optional[tp.Text]
+                                          match_timeout=-1,  # type: int
+                                          target=None,  # type: tp.Optional[Target]
+                                          stitch_content=False  # type: bool
+                                          ):
+        # type: (...) -> None
         """
         Checks a region within a frame, and returns to the current frame.
 
@@ -798,7 +808,7 @@ class Eyes(object):
             logger.close()
 
     def add_mouse_trigger_by_element(self, action, element):
-        # type: (tp.Text, EyesWebElement) -> None
+        # type: (tp.Text, AnyWebElement) -> None
         """
         Adds a mouse trigger.
 
@@ -827,7 +837,7 @@ class Eyes(object):
         logger.info("add_mouse_trigger: Added %s" % trigger)
 
     def add_text_trigger_by_element(self, element, text):
-        # type: (EyesWebElement, tp.Text) -> None
+        # type: (AnyWebElement, tp.Text) -> None
         """
         Adds a text trigger.
 

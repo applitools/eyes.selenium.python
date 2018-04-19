@@ -11,9 +11,9 @@ from .utils import general_utils
 
 if tp.TYPE_CHECKING:
     from requests.models import Response
-    from applitools.utils._custom_types import RunningSession, SessionStartInfo
+    from applitools.utils._custom_types import RunningSession, SessionStartInfo, Num
 
-## Prints out all data sent/received through 'requests'
+# Prints out all data sent/received through 'requests'
 # import httplib
 # httplib.HTTPConnection.debuglevel = 1
 
@@ -43,27 +43,27 @@ class AgentConnector(object):
         :param server_url: The url of the Applitools server.
         """
         # Used inside the server_url property.
-        self._server_url = None  # type: tp.Text
-        self._endpoint_uri = None  # type: tp.Text
+        self._server_url = None
+        self._endpoint_uri = None
 
-        self.api_key = None  # type: tp.Text
+        self.api_key = None  # type: ignore
         self.server_url = server_url
 
     @property
     def server_url(self):
         # type: () -> tp.Text
-        return self._server_url
+        return self._server_url  # type: ignore
 
     @server_url.setter
     def server_url(self, server_url):
         # type: (tp.Text) -> None
-        self._server_url = server_url
-        self._endpoint_uri = server_url.rstrip('/') + '/api/sessions/running'
+        self._server_url = server_url  # type: ignore
+        self._endpoint_uri = server_url.rstrip('/') + '/api/sessions/running'  # type: ignore
 
     @staticmethod
     def _send_long_request(name, method, *args, **kwargs):
         # type: (tp.Text, tp.Callable, *tp.Any, **tp.Any) -> Response
-        delay = 2  # Seconds
+        delay = 2  # type: Num  # Seconds
         headers = kwargs['headers'].copy()
         headers['Eyes-Expect'] = '202-accepted'
         while True:
