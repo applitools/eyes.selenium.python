@@ -4,7 +4,7 @@ from codecs import open
 from os import path
 
 from setuptools import setup
-from applitools import VERSION, PY35
+from applitools import VERSION
 
 here = path.abspath(path.dirname(__file__))
 
@@ -15,18 +15,21 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 install_requires = [
     'requests>=2.1.0',
     'pypng>=0.0.16',
-    'selenium>=2.43.0',
+    'selenium>=2.53.0',
     'Appium-Python-Client>=0.13'
 ]
 
-install_dev_requires = ['ipython', 'ipdb', 'flake8', 'flake8-import-order', 'bumpversion', 'flake8-bugbear']
+install_dev_requires = ['ipython', 'ipdb', 'flake8', 'flake8-import-order', 'flake8-bugbear', 'bumpversion']
 
-if not PY35:
+if sys.version_info < (3, 5):
+    # typing module was added as builtin in Python 3.5
     install_requires.append('typing >= 3.5.2')
-    install_requires.append('enum34 >= 1.1.6')
 
+if sys.version_info > (3, 4):
+    # mypy could be ran only with Python 3
     install_dev_requires.append('mypy')
     install_dev_requires.append('flake8-mypy')
+
 
 setup(
     name='eyes-selenium',
