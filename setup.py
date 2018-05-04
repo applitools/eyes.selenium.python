@@ -1,3 +1,4 @@
+import codecs
 import sys
 
 from codecs import open
@@ -8,9 +9,10 @@ from applitools import VERSION
 
 here = path.abspath(path.dirname(__file__))
 
-# Get the long description from the README file
-with open(path.join(here, 'README.md'), encoding='utf-8') as f:
-    long_description = f.read()
+
+def read(filename):
+    return codecs.open(path.join(here, filename), 'r', 'utf-8').read()
+
 
 install_requires = [
     'requests>=2.1.0',
@@ -19,7 +21,17 @@ install_requires = [
     'Appium-Python-Client>=0.13'
 ]
 
-install_dev_requires = ['ipython', 'ipdb', 'flake8', 'flake8-import-order', 'flake8-bugbear', 'bumpversion']
+install_dev_requires = [
+    'bumpversion',
+    'flake8',
+    'flake8-import-order',
+    'flake8-bugbear']
+
+install_testing_requires = [
+    'pytest >= 3.0.0',
+    'pytest-cov',
+    'pytest-xdist',
+]
 
 if sys.version_info < (3, 5):
     # typing module was added as builtin in Python 3.5
@@ -30,18 +42,16 @@ if sys.version_info > (3, 4):
     install_dev_requires.append('mypy')
     install_dev_requires.append('flake8-mypy')
 
-
 setup(
     name='eyes-selenium',
     version=VERSION,
     packages=['applitools', 'applitools.utils'],
-    data_files=[('samples', ['samples/test_script.py'])],
     url='http://www.applitools.com',
     license='Apache License, Version 2.0',
     author='Applitools Team',
     author_email='team@applitools.com',
     description='Applitools Eyes SDK For Selenium Python WebDriver',
-    long_description=long_description,
+    long_description=read('README.md'),
     long_description_content_type='text/markdown',
     classifiers=[
         "License :: OSI Approved :: Apache Software License",
@@ -49,17 +59,19 @@ setup(
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
         "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 3.3",
+        "Programming Language :: Python :: 3.4",
+        "Programming Language :: Python :: 3.5",
         "Topic :: Software Development :: Quality Assurance",
         "Topic :: Software Development :: Testing"
     ],
     keywords='applitools eyes selenium',
     install_requires=install_requires,
     extras_require={
-        'dev': ['ipython', 'ipdb', 'pylama', 'bumpversion', 'mypy'],
-        'test': ['pytest'],
+        'dev': install_dev_requires,
+        'testing': install_testing_requires,
     },
     package_data={
+        '': ['README.md', 'samples'],
         'applitools': ['py.typed'],
     },
     project_urls={
