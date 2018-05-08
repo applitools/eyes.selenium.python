@@ -1,11 +1,13 @@
+from __future__ import absolute_import
+
 import typing as tp
 
-from applitools.errors import EyesError
-from applitools.geometry import Region
+from .errors import EyesError
+from .geometry import Region
 
 if tp.TYPE_CHECKING:
-    from applitools._webdriver import EyesScreenshot
-    from applitools.utils._custom_types import AnyWebDriver, AnyWebElement
+    from ._webdriver import EyesScreenshot
+    from .utils._custom_types import AnyWebDriver, AnyWebElement
 
 
 # Ignore regions related classes.

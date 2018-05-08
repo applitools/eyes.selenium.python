@@ -1,23 +1,24 @@
+from __future__ import absolute_import
+
 import functools
 import time
 import typing as tp
 from struct import pack
 
 # noinspection PyProtectedMember
-from applitools import logger
-from applitools.errors import OutOfBoundsError
-from applitools.geometry import Region
-from applitools.target import Target
-from applitools.utils import general_utils
-
+from . import logger
 from ._webdriver import EyesScreenshot
+from .errors import OutOfBoundsError
+from .geometry import Region
+from .target import Target
+from .utils import general_utils
 
 if tp.TYPE_CHECKING:
-    from applitools.eyes import Eyes, ImageMatchSettings
-    from applitools._agent_connector import AgentConnector
-    from applitools._webdriver import EyesWebElement, EyesWebDriver
-    from applitools.utils._custom_types import (Num, RunningSession, AppOutput,
-                                                UserInputs, MatchResult, AnyWebDriver)
+    from ._agent_connector import AgentConnector
+    from ._webdriver import EyesWebElement, EyesWebDriver
+    from .eyes import Eyes, ImageMatchSettings
+    from .utils._custom_types import (Num, RunningSession, AppOutput,
+                                      UserInputs, MatchResult, AnyWebDriver)
 
 
 class MatchWindowTask(object):
@@ -43,7 +44,7 @@ class MatchWindowTask(object):
         self._agent_connector = agent_connector
         self._running_session = running_session
         self._driver = driver
-        self._default_retry_timeout = default_retry_timeout / 1000.0   # type: Num # since we want the time in seconds.
+        self._default_retry_timeout = default_retry_timeout / 1000.0  # type: Num # since we want the time in seconds.
         self._screenshot = None  # type: EyesScreenshot
 
     def _get_screenshot(self, force_full_page_screenshot, wait_before_screenshots, element=None):

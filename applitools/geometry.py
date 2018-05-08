@@ -1,8 +1,10 @@
+from __future__ import absolute_import
+
 import math
 import typing as tp
 from collections import OrderedDict
 
-from applitools.errors import EyesError
+from .errors import EyesError
 
 
 class Point(object):

@@ -1,17 +1,18 @@
+from __future__ import absolute_import
+
 import time
 import typing as tp
 
 import requests
 from requests.packages import urllib3
 
-from applitools import logger
-from applitools.test_results import TestResults
-
+from . import logger
+from .test_results import TestResults
 from .utils import general_utils
 
 if tp.TYPE_CHECKING:
     from requests.models import Response
-    from applitools.utils._custom_types import RunningSession, SessionStartInfo, Num
+    from .utils._custom_types import RunningSession, SessionStartInfo, Num
 
 # Prints out all data sent/received through 'requests'
 # import httplib

@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import os
 import typing as tp
 import uuid
@@ -7,25 +9,22 @@ from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.remote.webdriver import WebDriver as RemoteWebDriver
 
 # noinspection PyProtectedMember
-from applitools import VERSION, _viewport_size, logger
-from applitools.common import StitchMode
-from applitools.errors import DiffsFoundError
-from applitools.geometry import Region
-from applitools.test_results import TestResultsStatus
-
+from . import VERSION, _viewport_size, logger
 from ._agent_connector import AgentConnector
 from ._match_window_task import MatchWindowTask
 from ._triggers import MouseTrigger, TextTrigger
 from ._webdriver import EyesFrame, EyesWebDriver
-from .errors import EyesError, NewTestError, TestFailedError
-from .test_results import TestResults
+from .common import StitchMode
+from .errors import DiffsFoundError, EyesError, NewTestError, TestFailedError
+from .geometry import Region
+from .test_results import TestResults, TestResultsStatus
 from .utils import general_utils
 
 if tp.TYPE_CHECKING:
-    from applitools.target import Target
-    from applitools._webdriver import EyesScreenshot
-    from applitools.utils._custom_types import (RunningSession, ViewPort, UserInputs, MatchResult, AppEnvironment,
-                                                SessionStartInfo, AnyWebDriver, FrameReference, AnyWebElement)
+    from ._webdriver import EyesScreenshot
+    from .target import Target
+    from .utils._custom_types import (RunningSession, ViewPort, UserInputs, MatchResult, AppEnvironment,
+                                      SessionStartInfo, AnyWebDriver, FrameReference, AnyWebElement)
 
 
 class FailureReports(object):
@@ -456,7 +455,7 @@ class Eyes(object):
                 logger.debug("No viewport size given. Extracting the viewport size from the driver...")
                 self._viewport_size = _viewport_size.get_viewport_size(self._driver)
                 logger.debug("Viewport size {0}".format(self._viewport_size))
-        except EyesError as e:
+        except EyesError:
             # Going back to the frame we started at
             self._driver.switch_to.frames(original_frame_chain)
             raise TestFailedError('Failed to assign viewport size!')
@@ -693,7 +692,7 @@ class Eyes(object):
                                      match_timeout, target, stitch_content)
 
     def check_region_in_frame_by_selector(self, frame_reference,  # type: FrameReference
-                                          by,   # type: tp.Text
+                                          by,  # type: tp.Text
                                           value,  # type: tp.Text
                                           tag=None,  # type: tp.Optional[tp.Text]
                                           match_timeout=-1,  # type: int
@@ -748,7 +747,7 @@ class Eyes(object):
         """
         if self.is_disabled:
             logger.debug('close(): ignored (disabled)')
-            return
+            return None
         try:
             logger.debug('close({})'.format(raise_ex))
             if not self._is_open:

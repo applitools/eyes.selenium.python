@@ -1,21 +1,21 @@
 """
 General purpose utilities.
 """
+from __future__ import absolute_import
+
 import json
 import types
 import typing as tp
 from datetime import timedelta, tzinfo
 
-from applitools.utils._compat import range
+from ._compat import range
 
 if tp.TYPE_CHECKING:
-    from datetime import datetime
-    from applitools._webdriver import EyesWebDriver
-    from applitools._webdriver import EyesWebElement
     from selenium.webdriver.remote.webdriver import WebDriver
     from selenium.webdriver.remote.webelement import WebElement
     from selenium.webdriver.remote.switch_to import SwitchTo
-    from applitools._webdriver import _EyesSwitchTo
+
+    from applitools._webdriver import EyesWebDriver, EyesWebElement, _EyesSwitchTo
 
 
 class _UtcTz(tzinfo):
@@ -25,7 +25,6 @@ class _UtcTz(tzinfo):
     _ZERO = timedelta(0)
 
     def utcoffset(self, dt):
-        # type: (datetime) -> timedelta
         return _UtcTz._ZERO
 
     def tzname(self, dt):
@@ -53,6 +52,7 @@ def public_state_to_json(obj):
     DO NOT USE! This method has a problem with "datetime" objects (which have no __dict__
     attribute).
     """
+
     def get_public_state(o):
         return {key: value for key, value in o.__dict__.items()
                 if not callable(value) and not key.startswith('_')}
@@ -95,6 +95,7 @@ def create_proxy_property(property_name, target_name, is_settable=False):
     :param property_name: The name of the property.
     :param target_name: The target to forward to.
     """
+
     # noinspection PyUnusedLocal
     def _proxy_get(self):
         # type: (tp.Any) -> tp.Dict[str, float]
@@ -123,10 +124,12 @@ def create_forwarded_method(from_,  # type: tp.Union[EyesWebDriver, EyesWebEleme
     :param func_name: The name of function to activate.
     :return: Relevant method.
     """
+
     # noinspection PyUnusedLocal
     def forwarded_method(self_, *args, **kwargs):
         # type: (EyesWebDriver, *tp.Any, **tp.Any) -> tp.Callable
         return getattr(to, func_name)(*args, **kwargs)
+
     return types.MethodType(forwarded_method, from_)
 
 

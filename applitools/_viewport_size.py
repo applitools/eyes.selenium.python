@@ -1,14 +1,16 @@
 """
 Selenium/web driver related utilities.
 """
+from __future__ import absolute_import
+
 import time
 import typing as tp
 
-from applitools import logger
-from applitools.errors import EyesError
+from . import logger
+from .errors import EyesError
 
 if tp.TYPE_CHECKING:
-    from applitools.utils._custom_types import ViewPort, AnyWebDriver
+    from .utils._custom_types import ViewPort, AnyWebDriver
 
 _JS_GET_VIEWPORT_SIZE = """
     var height = undefined;
@@ -83,7 +85,7 @@ def set_viewport_size(driver, required_size):
             'height': browser_size['height'] + (required_size['height'] - actual_viewport_size['height'])
         }
         logger.debug("Trying to set browser size to: {}".format(required_browser_size))
-        for retry in range(_BROWSER_SET_SIZE_RETRIES):
+        for _retry in range(_BROWSER_SET_SIZE_RETRIES):
             driver.set_window_size(required_browser_size['width'], required_browser_size['height'])
             time.sleep(_BROWSER_STABILIZATION_WAIT)
             browser_size = driver.get_window_size()

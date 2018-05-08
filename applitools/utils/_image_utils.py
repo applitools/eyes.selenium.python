@@ -1,6 +1,8 @@
 """
 Utilities for image manipulation.
 """
+from __future__ import absolute_import
+
 import base64
 import copy
 import io
@@ -12,9 +14,8 @@ import png
 
 from applitools import logger
 from applitools.errors import EyesError
-from applitools.utils import general_utils
-# Python 2 / 3 compatibility
-from applitools.utils._compat import range
+from . import general_utils
+from ._compat import range  # Python 2 / 3 compatibility
 
 if tp.TYPE_CHECKING:
     from array import array
@@ -30,6 +31,7 @@ def quadrant_rotate(m, num_quadrants):
     :param num_quadrants: The number of rotations to perform.
     :return: A rotated copy of the matrix.
     """
+
     def rotate_cw(m2):
         """
         Rotate m2 clockwise.
@@ -139,8 +141,8 @@ class PngImage(object):
             # than it, since in this case we append to the end of the list anyway.
             if y_current < self.height:
                 original_row = self.pixel_bytes[y_current]
-                updated_row = original_row[:x_start] + pixel_bytes_to_paste[y_offset] + \
-                    original_row[(x_start + pixel_bytes_to_paste_len):]
+                updated_row = (original_row[:x_start] + pixel_bytes_to_paste[y_offset] +
+                               original_row[(x_start + pixel_bytes_to_paste_len):])
                 self.pixel_bytes[y_current] = updated_row
             else:
                 self.pixel_bytes.append(pixel_bytes_to_paste[y_offset])
@@ -177,8 +179,8 @@ class PngImage(object):
         :param count: The number of columns to remove.
         """
         for row_index in range(self.height):
-            self.pixel_bytes[row_index] = self.pixel_bytes[row_index][:(left * self.pixel_size)] + \
-                self.pixel_bytes[row_index][(left + count) * self.pixel_size:]
+            self.pixel_bytes[row_index] = (self.pixel_bytes[row_index][:(left * self.pixel_size)] +
+                                           self.pixel_bytes[row_index][(left + count) * self.pixel_size:])
             # Updating the width
             self._update_size(len(self.pixel_bytes[0]) / self.pixel_size, self.height)
 

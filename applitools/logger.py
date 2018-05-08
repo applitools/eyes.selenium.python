@@ -1,13 +1,12 @@
 """
 Logs handling.
 """
-import functools
-import logging
-import sys
-import typing as tp
+from __future__ import absolute_import
 
-if tp.TYPE_CHECKING:
-    from logging import Formatter
+import sys
+import logging
+import functools
+import typing as tp
 
 _DEFAULT_EYES_LOGGER_NAME = 'eyes'
 _DEFAULT_EYES_FORMATTER = logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s')
@@ -20,7 +19,7 @@ class _Logger(object):
 
     def __init__(self, name=__name__, level=logging.DEBUG, handler_factory=lambda: None,
                  formatter=None):
-        # type: (tp.Text, int, tp.Callable, Formatter) -> None
+        # type: (tp.Text, int, tp.Callable, logging.Formatter) -> None
         """
         Ctor.
 
@@ -93,6 +92,7 @@ class StdoutLogger(_Logger):
     """
     A simple logger class for printing to STDOUT.
     """
+
     def __init__(self, name=_DEFAULT_EYES_LOGGER_NAME, level=logging.DEBUG):
         # type: (tp.Text, int) -> None
         """
@@ -109,6 +109,7 @@ class FileLogger(_Logger):
     """
     A simple logger class for outputting log messages to a file
     """
+
     def __init__(self, filename="eyes.log", mode='a', encoding=None, delay=0,
                  name=_DEFAULT_EYES_LOGGER_NAME, level=logging.DEBUG):
         """
@@ -129,6 +130,7 @@ class NullLogger(_Logger):
     """
     A simple logger class which does nothing (log messages are ignored).
     """
+
     def __init__(self, name=_DEFAULT_EYES_LOGGER_NAME, level=logging.DEBUG):
         """
         Ctor.

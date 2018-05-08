@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import base64
 import math
 import os
@@ -7,24 +9,21 @@ import typing as tp
 import appium.webdriver
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.switch_to import SwitchTo
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
-from selenium.webdriver.remote.switch_to import SwitchTo
 from selenium.webdriver.support.wait import WebDriverWait
 
-from applitools import _viewport_size, logger
-from applitools.common import StitchMode
-from applitools.errors import EyesError, OutOfBoundsError
-from applitools.geometry import Point
-from applitools.utils import _image_utils
-
-from .geometry import Region
-from .utils import general_utils
+from . import _viewport_size, logger
+from .common import StitchMode
+from .errors import EyesError, OutOfBoundsError
+from .geometry import Point, Region
+from .utils import _image_utils, general_utils
 
 if tp.TYPE_CHECKING:
-    from applitools.eyes import Eyes
-    from applitools.utils._image_utils import PngImage
-    from applitools.utils._custom_types import Num, ViewPort, FrameReference, AnyWebDriver, AnyWebElement
+    from .eyes import Eyes
+    from .utils._image_utils import PngImage
+    from .utils._custom_types import Num, ViewPort, FrameReference, AnyWebDriver, AnyWebElement
 
 
 class EyesScreenshot(object):
