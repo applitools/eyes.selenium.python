@@ -15,7 +15,7 @@ import png
 from applitools import logger
 from applitools.errors import EyesError
 from . import general_utils
-from ._compat import range  # Python 2 / 3 compatibility
+from .compat import range  # Python 2 / 3 compatibility
 
 if tp.TYPE_CHECKING:
     from array import array

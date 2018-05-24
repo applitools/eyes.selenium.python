@@ -450,10 +450,10 @@ class Eyes(object):
         try:
             if self._viewport_size:
                 logger.debug("Assigning viewport size {0}".format(self._viewport_size))
-                _viewport_size.set_viewport_size(self._driver, self._viewport_size)
+                self.set_viewport_size(self._driver, self._viewport_size)
             else:
                 logger.debug("No viewport size given. Extracting the viewport size from the driver...")
-                self._viewport_size = _viewport_size.get_viewport_size(self._driver)
+                self._viewport_size = self.get_viewport_size()
                 logger.debug("Viewport size {0}".format(self._viewport_size))
         except EyesError:
             # Going back to the frame we started at

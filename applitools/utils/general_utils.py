@@ -8,7 +8,7 @@ import types
 import typing as tp
 from datetime import timedelta, tzinfo
 
-from ._compat import range
+from .compat import range
 
 if tp.TYPE_CHECKING:
     from selenium.webdriver.remote.webdriver import WebDriver

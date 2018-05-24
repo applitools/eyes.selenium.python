@@ -1279,7 +1279,7 @@ class EyesWebDriver(object):
         current_frames = self.get_frame_chain()
         # If we're inside a frame, then we should first switch to the most outer frame.
         self.switch_to.default_content()
-        viewport_size = _viewport_size.get_viewport_size(self)  # type: ViewPort
+        viewport_size = self.get_viewport_size()
         self.switch_to.frames(current_frames)
         return viewport_size
 
