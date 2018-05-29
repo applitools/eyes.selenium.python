@@ -11,3 +11,7 @@ test/__pycache__/
 .envrc
 .pytest_cache/
 geckodriver.log
+.mypy_cache
+.eggs
+.tox
+*.egg-info

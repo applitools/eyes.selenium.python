@@ -1,0 +1,2 @@
+include README.md
+include samples/test_script.py

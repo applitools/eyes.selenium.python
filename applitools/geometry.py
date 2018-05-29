@@ -1,14 +1,19 @@
+from __future__ import absolute_import
+
 import math
+import typing as tp
 from collections import OrderedDict
-from applitools.errors import EyesError
+
+from .errors import EyesError
 
 
-class Point:
+class Point(object):
     """
     A point with the coordinates (x,y).
     """
 
     def __init__(self, x=0, y=0):
+        # type: (float, float) -> None
         self.x = int(round(x))
         self.y = int(round(y))
 
@@ -36,12 +41,14 @@ class Point:
         return "({0}, {1})".format(self.x, self.y)
 
     def length(self):
+        # type: () -> float
         """
         Returns the distance from (0, 0).
         """
         return math.sqrt(self.x ** 2 + self.y ** 2)
 
     def distance_to(self, p):
+        # type: (Point) -> float
         """
         Calculate the distance between two points.
 
@@ -50,6 +57,7 @@ class Point:
         return (self - p).length()
 
     def as_tuple(self):
+        # type: () -> tuple
         """
         Return the point as a tuple.
 
@@ -58,6 +66,7 @@ class Point:
         return self.x, self.y
 
     def clone(self):
+        # type: () -> Point
         """
         Return a full copy of this point.
 
@@ -66,6 +75,7 @@ class Point:
         return Point(self.x, self.y)
 
     def move_to(self, x, y):
+        # type: (int, int) -> None
         """
         Moves the point to new x, y.
 
@@ -76,6 +86,7 @@ class Point:
         self.y = y
 
     def offset(self, dx, dy):
+        # type: (int, int) -> None
         """
         Move to new (x+dx,y+dy).
 
@@ -86,6 +97,7 @@ class Point:
         self.y = self.y + dy
 
     def rotate(self, rad):
+        # type: (int) -> Point
         """
         Rotate counter-clockwise around the origin by rad radians.
 
@@ -103,6 +115,7 @@ class Point:
         return Point(x, y)
 
     def rotate_about(self, p, theta):
+        # type: (Point, int) -> Point
         """
         Rotate counter-clockwise around a point, by theta degrees.
 
@@ -121,12 +134,13 @@ class Point:
         return result
 
 
-class Region:
+class Region(object):
     """
     A rectangle identified by left,top, width, height.
     """
 
     def __init__(self, left=0, top=0, width=0, height=0):
+        # type: (float, float, float, float) -> None
         self.left = int(round(left))
         self.top = int(round(top))
         self.width = int(round(width))
@@ -143,28 +157,34 @@ class Region:
 
     @property
     def right(self):
+        # type: () -> int
         return self.left + self.width
 
     @property
     def bottom(self):
+        # type: () -> int
         return self.top + self.height
 
     @property
     def location(self):
+        # type: () -> Point
         """Return the top-left corner as a Point."""
         return Point(self.left, self.top)
 
     @location.setter
     def location(self, p):
+        # type: (Point) -> None
         """Sets the top left corner of the region"""
         self.left, self.top = p.x, p.y
 
     @property
     def bottom_right(self):
+        # type: () -> Point
         """Return the bottom-right corner as a Point."""
         return Point(self.right, self.bottom)
 
     def clone(self):
+        # type: () -> Region
         """
         Clone the rectangle.
 
@@ -173,16 +193,19 @@ class Region:
         return Region(self.left, self.top, self.width, self.height)
 
     def is_same(self, other):
+        # type: (Region) -> bool
         """
         Checks whether the other rectangle has the same coordinates.
 
         :param other: The other rectangle to check with.
         :return: Whether or not the rectangles have same coordinates.
+        :rtype: bool
         """
-        return self.left == other.left and self.top == other.top and self.width == other.width \
-            and self.height == other.height
+        return (self.left == other.left and self.top == other.top and self.width == other.width
+                and self.height == other.height)
 
     def is_same_size(self, other):
+        # type: (Region) -> bool
         """
         Checks whether the other rectangle is the same size.
 
@@ -205,6 +228,7 @@ class Region:
         self.top = max(self.top, 0)
 
     def is_empty(self):
+        # type: () -> bool
         """
         Checks whether the rectangle is empty.
 
@@ -213,6 +237,7 @@ class Region:
         return self.left == self.top == self.width == self.height == 0
 
     def contains(self, pt):
+        # type: (Point) -> bool
         """
         Return true if a point is inside the rectangle.
 
@@ -223,9 +248,12 @@ class Region:
                 self.top <= y <= self.bottom)
 
     def overlaps(self, other):
-        """Return true if a rectangle overlaps this rectangle."""
-        return (self.left <= other.left <= self.right or other.left <= self.left <= other.right) \
-            and (self.top <= other.top <= self.bottom or other.top <= self.top <= other.bottom)
+        # type: (Region) -> bool
+        """
+        Return true if a rectangle overlaps this rectangle.
+        """
+        return ((self.left <= other.left <= self.right or other.left <= self.left <= other.right)
+                and (self.top <= other.top <= self.bottom or other.top <= self.top <= other.bottom))
 
     def intersect(self, other):
         # If the regions don't overlap, the intersection is empty
@@ -241,6 +269,7 @@ class Region:
         self.height = intersection_bottom - intersection_top
 
     def get_sub_regions(self, max_sub_region_size):
+        # type: (tp.Dict) -> tp.List[Region]
         """
         Returns a list of Region objects which compose the current region.
         """
@@ -272,6 +301,7 @@ class Region:
 
     @property
     def middle_offset(self):
+        # type: () -> Point
         return Point(int(round(self.width / 2)), int(round(self.height / 2)))
 
     def __str__(self):

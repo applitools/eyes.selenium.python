@@ -1,4 +1,5 @@
 import glob
+import sys
 
 modules = glob.glob('*.py')
 try:
@@ -9,4 +10,3 @@ except ValueError:
 __all__ = ['utils'] + modules
 
 VERSION = '3.12.0'
-

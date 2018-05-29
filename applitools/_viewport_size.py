@@ -1,10 +1,16 @@
 """
 Selenium/web driver related utilities.
 """
-import time
+from __future__ import absolute_import
 
-from applitools import logger
-from applitools.errors import EyesError
+import time
+import typing as tp
+
+from . import logger
+from .errors import EyesError
+
+if tp.TYPE_CHECKING:
+    from .utils._custom_types import ViewPort, AnyWebDriver
 
 _JS_GET_VIEWPORT_SIZE = """
     var height = undefined;
@@ -21,7 +27,7 @@ _JS_GET_VIEWPORT_SIZE = """
         width = window.innerWidth;
     } else if (document.documentElement && document.documentElement.clientWidth) {
         width = document.documentElement.clientWidth;
-    } else { 
+    } else {
         var b = document.getElementsByTagName('body')[0];
     if (b.clientWidth) {
         width = b.clientWidth;}
@@ -30,6 +36,7 @@ _JS_GET_VIEWPORT_SIZE = """
 
 
 def get_viewport_size(driver):
+    # type: (AnyWebDriver) -> ViewPort
     """
     Tries to get the viewport size using Javascript. If fails, gets the entire browser window
     size!
@@ -40,12 +47,13 @@ def get_viewport_size(driver):
     try:
         width, height = driver.execute_script(_JS_GET_VIEWPORT_SIZE)
         return {'width': width, 'height': height}
-    except:
+    except Exception:
         logger.info('Failed to get viewport size. Only window size is available')
         return driver.get_window_size()
 
 
 def set_viewport_size(driver, required_size):
+    # type: (AnyWebDriver, ViewPort) -> None
     """
     Tries to set the viewport size.
 
@@ -75,20 +83,20 @@ def set_viewport_size(driver, required_size):
         required_browser_size = {
             'width': browser_size['width'] + (required_size['width'] - actual_viewport_size['width']),
             'height': browser_size['height'] + (required_size['height'] - actual_viewport_size['height'])
-            }
+        }
         logger.debug("Trying to set browser size to: {}".format(required_browser_size))
-        for retry in range(_BROWSER_SET_SIZE_RETRIES):
+        for _retry in range(_BROWSER_SET_SIZE_RETRIES):
             driver.set_window_size(required_browser_size['width'], required_browser_size['height'])
             time.sleep(_BROWSER_STABILIZATION_WAIT)
             browser_size = driver.get_window_size()
             if (browser_size['width'] == required_browser_size['width'] and
-                   browser_size['height'] == required_browser_size['height']):
+                    browser_size['height'] == required_browser_size['height']):
                 break
             logger.debug("Current browser size: {}".format(browser_size))
         else:
             raise EyesError('Failed to set browser size!')
 
-        actual_viewport_size = get_viewport_size(driver)
+        actual_viewport_size = get_viewport_size(driver)  # type: ViewPort
         logger.debug("Current viewport size: {}".format(actual_viewport_size))
         if actual_viewport_size == required_size:
             return

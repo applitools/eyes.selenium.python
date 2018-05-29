@@ -1,22 +1,25 @@
 """
 Utilities for image manipulation.
 """
+from __future__ import absolute_import
+
 import base64
 import copy
 import io
 import math
 import os
+import typing as tp
+
 import png
 
 from applitools import logger
 from applitools.errors import EyesError
-from applitools.utils import general_utils
+from . import general_utils
+from .compat import range  # Python 2 / 3 compatibility
 
-# Python 2 / 3 compatibility
-import sys
-
-if sys.version < '3':
-    range = xrange
+if tp.TYPE_CHECKING:
+    from array import array
+    from _io import BytesIO
 
 
 def quadrant_rotate(m, num_quadrants):
@@ -28,6 +31,7 @@ def quadrant_rotate(m, num_quadrants):
     :param num_quadrants: The number of rotations to perform.
     :return: A rotated copy of the matrix.
     """
+
     def rotate_cw(m2):
         """
         Rotate m2 clockwise.
@@ -51,9 +55,9 @@ def quadrant_rotate(m, num_quadrants):
     if num_quadrants == 0:
         return m
     rotate_func = rotate_cw if num_quadrants > 0 else rotate_ccw
-    #Perform the rotation.
+    # Perform the rotation.
     result = m
-    for i in range(abs(num_quadrants)):
+    for _ in range(abs(num_quadrants)):
         result = rotate_func(result)
     return result
 
@@ -70,6 +74,7 @@ def png_image_from_file(f):
 
 
 def png_image_from_bytes(png_bytes):
+    # type: (bytes) -> PngImage
     """
     Reads the PNG data from the given png bytes and returns a new PngImage instance.
 
@@ -86,6 +91,7 @@ class PngImage(object):
     """
 
     def __init__(self, width, height, pixel_bytes, meta_info):
+        # type: (int, int, tp.List[array], tp.Dict[tp.Text, tp.Any]) -> None
         """
         Initializes a PngImage object.
 
@@ -135,8 +141,8 @@ class PngImage(object):
             # than it, since in this case we append to the end of the list anyway.
             if y_current < self.height:
                 original_row = self.pixel_bytes[y_current]
-                updated_row = original_row[:x_start] + pixel_bytes_to_paste[y_offset] + \
-                    original_row[(x_start + pixel_bytes_to_paste_len):]
+                updated_row = (original_row[:x_start] + pixel_bytes_to_paste[y_offset] +
+                               original_row[(x_start + pixel_bytes_to_paste_len):])
                 self.pixel_bytes[y_current] = updated_row
             else:
                 self.pixel_bytes.append(pixel_bytes_to_paste[y_offset])
@@ -145,6 +151,7 @@ class PngImage(object):
         self._update_size(max(self.width, paste_right), len(self.pixel_bytes))
 
     def get_subimage(self, region):
+        # type: (tp.Any) -> PngImage
         """
         Gets an image of a given region.
 
@@ -172,8 +179,8 @@ class PngImage(object):
         :param count: The number of columns to remove.
         """
         for row_index in range(self.height):
-            self.pixel_bytes[row_index] = self.pixel_bytes[row_index][:(left * self.pixel_size)] + \
-                self.pixel_bytes[row_index][(left + count) * self.pixel_size:]
+            self.pixel_bytes[row_index] = (self.pixel_bytes[row_index][:(left * self.pixel_size)] +
+                                           self.pixel_bytes[row_index][(left + count) * self.pixel_size:])
             # Updating the width
             self._update_size(len(self.pixel_bytes[0]) / self.pixel_size, self.height)
 
@@ -194,7 +201,7 @@ class PngImage(object):
         :param index: The index of the channel we would like to get.
         :return : A copy of the values for the given pixel channel.
         """
-        if index > self.pixel_size-1:
+        if index > self.pixel_size - 1:
             raise EyesError("Invalid channel: {}, (pixel size {})".format(index, self.pixel_size))
         return map(lambda x: list(x[0::self.pixel_size]), self.pixel_bytes)
 
@@ -219,6 +226,7 @@ class PngImage(object):
         self._update_size(len(rotated_pixel_bytes[0]) / self.pixel_size, len(rotated_pixel_bytes))
 
     def write(self, output):
+        # type: (BytesIO) -> None
         """
         Writes the png to the output stream.
 
@@ -227,6 +235,7 @@ class PngImage(object):
         png.Writer(**self.meta_info).write(output, self.pixel_bytes)
 
     def get_base64(self):
+        # type: () -> str
         """
         Gets the base64 representation of the PNG bytes.
 
@@ -239,6 +248,7 @@ class PngImage(object):
         return image64
 
     def get_bytes(self):
+        # type: () -> bytes
         """
         Gets the image PNG bytes.
 

@@ -1,14 +1,24 @@
+from __future__ import absolute_import
+
 import functools
 import time
+import typing as tp
 from struct import pack
 
-from applitools.errors import OutOfBoundsError
-from applitools.target import Target
-from ._webdriver import EyesScreenshot, ElementPositionProvider
-
 # noinspection PyProtectedMember
-from applitools import logger
-from applitools.utils import general_utils
+from . import logger
+from ._webdriver import EyesScreenshot
+from .errors import OutOfBoundsError
+from .geometry import Region
+from .target import Target
+from .utils import general_utils
+
+if tp.TYPE_CHECKING:
+    from ._agent_connector import AgentConnector
+    from ._webdriver import EyesWebElement, EyesWebDriver
+    from .eyes import Eyes, ImageMatchSettings
+    from .utils._custom_types import (Num, RunningSession, AppOutput,
+                                      UserInputs, MatchResult, AnyWebDriver)
 
 
 class MatchWindowTask(object):
@@ -20,6 +30,7 @@ class MatchWindowTask(object):
     MINIMUM_MATCH_TIMEOUT = 60  # Milliseconds
 
     def __init__(self, eyes, agent_connector, running_session, driver, default_retry_timeout):
+        # type: (Eyes, AgentConnector, RunningSession, AnyWebDriver, Num) -> None
         """
         Ctor.
 
@@ -33,10 +44,11 @@ class MatchWindowTask(object):
         self._agent_connector = agent_connector
         self._running_session = running_session
         self._driver = driver
-        self._default_retry_timeout = default_retry_timeout / 1000.0  # since we want the time in seconds.
-        self._screenshot = None
+        self._default_retry_timeout = default_retry_timeout / 1000.0  # type: Num # since we want the time in seconds.
+        self._screenshot = None  # type: EyesScreenshot
 
     def _get_screenshot(self, force_full_page_screenshot, wait_before_screenshots, element=None):
+        # type: (bool, Num, tp.Optional[EyesWebElement]) -> EyesScreenshot
         seconds_to_wait = wait_before_screenshots / 1000.0
 
         if element:
@@ -55,10 +67,23 @@ class MatchWindowTask(object):
         return EyesScreenshot.create_from_base64(current_screenshot64, self._driver)
 
     @staticmethod
-    def _create_match_data_bytes(app_output, user_inputs, tag, ignore_mismatch, screenshot, default_match_settings,
-                                 target=None, ignore=[], floating=[]):
+    def _create_match_data_bytes(app_output,  # type: AppOutput
+                                 user_inputs,  # type: UserInputs
+                                 tag,  # type: tp.Text
+                                 ignore_mismatch,  # type: bool
+                                 screenshot,  # type: EyesScreenshot
+                                 default_match_settings,  # type: ImageMatchSettings
+                                 target=None,  # type: Target
+                                 ignore=None,  # type: tp.Optional[tp.List]
+                                 floating=None,  # type: tp.Optional[tp.List]
+                                 ):
+        # type: (...) -> bytes
         if target is None:
             target = Target()  # Use defaults
+        if ignore is None:
+            ignore = []
+        if floating is None:
+            floating = []
 
         match_data = {
             "IgnoreMismatch": ignore_mismatch,
@@ -71,7 +96,7 @@ class MatchWindowTask(object):
                     "Exact": default_match_settings.exact_settings,
                     "Ignore": ignore,
                     "Floating": floating
-                  },
+                },
                 "IgnoreMismatch": ignore_mismatch,
                 "Trim": {
                     "Enabled": False
@@ -89,8 +114,9 @@ class MatchWindowTask(object):
 
     @staticmethod
     def _get_dynamic_regions(target, driver, eyes_screenshot):
-        ignore = []
-        floating = []
+        # type: (tp.Optional[Target], EyesWebDriver, EyesScreenshot) -> tp.Dict[str, tp.List[tp.Optional[Region]]]
+        ignore = []  # type: tp.List[Region]
+        floating = []  # type: tp.List[Region]
         if target is not None:
             for region_wrapper in target.ignore_regions:
                 try:
@@ -107,29 +133,50 @@ class MatchWindowTask(object):
                                                                                                        err))
         return {"ignore": ignore, "floating": floating}
 
-    def _prepare_match_data_for_window(self, tag, force_full_page_screenshot, user_inputs,
-                                       wait_before_screenshots, default_match_settings, target, ignore_mismatch=False):
+    def _prepare_match_data_for_window(self, tag,  # type: tp.Text
+                                       force_full_page_screenshot,  # type: bool
+                                       user_inputs,  # type: UserInputs
+                                       wait_before_screenshots,  # type: Num
+                                       default_match_settings,  # type: ImageMatchSettings
+                                       target,  # type: Target
+                                       ignore_mismatch=False):
+        # type: (...) -> bytes
         title = self._eyes.get_title()
         self._screenshot = self._get_screenshot(force_full_page_screenshot, wait_before_screenshots)
         dynamic_regions = MatchWindowTask._get_dynamic_regions(target, self._driver, self._screenshot)
-        app_output = {'title': title, 'screenshot64': None}
+        app_output = {'title': title, 'screenshot64': None}  # type: AppOutput
         return self._create_match_data_bytes(app_output, user_inputs, tag, ignore_mismatch,
                                              self._screenshot, default_match_settings, target,
                                              dynamic_regions['ignore'], dynamic_regions['floating'])
 
-    def _prepare_match_data_for_region(self, region, tag, force_full_page_screenshot, user_inputs,
-                                       wait_before_screenshots, default_match_settings, target, stitch_content, ignore_mismatch=False):
+    def _prepare_match_data_for_region(self, region,  # type: Region
+                                       tag,  # type: tp.Text
+                                       force_full_page_screenshot,  # type: bool
+                                       user_inputs,  # type: UserInputs
+                                       wait_before_screenshots,  # type: Num
+                                       default_match_settings,  # type: ImageMatchSettings
+                                       target,  # type: Target
+                                       ignore_mismatch=False):
+        # type: (...) -> bytes
         title = self._eyes.get_title()
         self._screenshot = self._get_screenshot(force_full_page_screenshot, wait_before_screenshots)
         self._screenshot = self._screenshot.get_sub_screenshot_by_region(region)
         dynamic_regions = MatchWindowTask._get_dynamic_regions(target, self._driver, self._screenshot)
-        app_output = {'title': title, 'screenshot64': None}
+        app_output = {'title': title, 'screenshot64': None}  # type: AppOutput
         return self._create_match_data_bytes(app_output, user_inputs, tag, ignore_mismatch,
                                              self._screenshot, default_match_settings, target,
                                              dynamic_regions['ignore'], dynamic_regions['floating'])
 
-    def _prepare_match_data_for_element(self, element, tag, force_full_page_screenshot, user_inputs,
-                                        wait_before_screenshots, default_match_settings, target, stitch_content, ignore_mismatch=False):
+    def _prepare_match_data_for_element(self, element,  # type: EyesWebElement
+                                        tag,  # type: tp.Text
+                                        force_full_page_screenshot,  # type: bool
+                                        user_inputs,  # type: UserInputs
+                                        wait_before_screenshots,  # type: Num
+                                        default_match_settings,  # type: ImageMatchSettings
+                                        target,  # type: Target
+                                        stitch_content=False,
+                                        ignore_mismatch=False):
+        # type: (...) -> bytes
         title = self._eyes.get_title()
 
         if stitch_content:
@@ -139,12 +186,13 @@ class MatchWindowTask(object):
             self._screenshot = self._screenshot.get_sub_screenshot_by_element(element)
 
         dynamic_regions = MatchWindowTask._get_dynamic_regions(target, self._driver, self._screenshot)
-        app_output = {'title': title, 'screenshot64': None}
+        app_output = {'title': title, 'screenshot64': None}  # type: AppOutput
         return self._create_match_data_bytes(app_output, user_inputs, tag, ignore_mismatch,
                                              self._screenshot, default_match_settings, target,
                                              dynamic_regions['ignore'], dynamic_regions['floating'])
 
     def _run_with_intervals(self, prepare_action, retry_timeout):
+        # type: (tp.Callable, Num) -> MatchResult
         """
         Includes retries in case the screenshot does not match.
         """
@@ -176,6 +224,7 @@ class MatchWindowTask(object):
         return {"as_expected": as_expected, "screenshot": self._screenshot}
 
     def _run(self, prepare_action, run_once_after_wait=False, retry_timeout=-1):
+        # type: (tp.Callable, bool, Num) -> MatchResult
         if 0 < retry_timeout < MatchWindowTask.MINIMUM_MATCH_TIMEOUT:
             raise ValueError("Match timeout must be at least 60ms, got {} instead.".format(retry_timeout))
         if retry_timeout < 0:
@@ -190,7 +239,7 @@ class MatchWindowTask(object):
             time.sleep(retry_timeout)
             data = prepare_action()
             as_expected = self._agent_connector.match_window(self._running_session, data)
-            result = {"as_expected": as_expected, "screenshot": self._screenshot}
+            result = {"as_expected": as_expected, "screenshot": self._screenshot}  # type: MatchResult
         else:
             result = self._run_with_intervals(prepare_action, retry_timeout)
         logger.debug("Match result: {0}".format(result["as_expected"]))
@@ -198,8 +247,16 @@ class MatchWindowTask(object):
         logger.debug("_run(): Completed in {0:.1f} seconds".format(elapsed_time))
         return result
 
-    def match_window(self, retry_timeout, tag, force_full_page_screenshot, user_inputs,
-                     wait_before_screenshots, default_match_settings, target, run_once_after_wait=False):
+    def match_window(self, retry_timeout,  # type: Num
+                     tag,  # type: str
+                     force_full_page_screenshot,  # type: bool
+                     user_inputs,  # UserInputs
+                     wait_before_screenshots,  # type: Num
+                     default_match_settings,  # type: ImageMatchSettings
+                     target,  # type: tp.Optional[Target]
+                     run_once_after_wait=False,
+                     ):
+        # type: (...) -> MatchResult
         """
         Performs a match for the window.
 
@@ -208,8 +265,8 @@ class MatchWindowTask(object):
         :param force_full_page_screenshot: Whether or not force full page screenshot.
         :param user_inputs: The user input.
         :param wait_before_screenshots: Milliseconds to wait before taking each screenshot.
-        :param default_match_settings: (ImageMatchSettings) The default match settings for the session.
-        :param target: (Target) The target of the check_window call.
+        :param default_match_settings: The default match settings for the session.
+        :param target: The target of the check_window call.
         :param run_once_after_wait: Whether or not to run again after waiting.
         :return: The result of the run.
         """
@@ -218,8 +275,16 @@ class MatchWindowTask(object):
                                            default_match_settings, target)
         return self._run(prepare_action, run_once_after_wait, retry_timeout)
 
-    def match_region(self, region, retry_timeout, tag, force_full_page_screenshot, user_inputs,
-                     wait_before_screenshots, default_match_settings, target, run_once_after_wait=False):
+    def match_region(self, region,  # type: Region
+                     retry_timeout,  # type: Num
+                     tag,  # type: tp.Text
+                     force_full_page_screenshot,  # type: bool
+                     user_inputs,  # type: UserInputs
+                     wait_before_screenshots,  # type: Num
+                     default_match_settings,  # type: ImageMatchSettings
+                     target,  # type: tp.Optional[Target]
+                     run_once_after_wait=False):
+        # type: (...) -> MatchResult
         """
         Performs a match for a given region.
 
@@ -229,18 +294,28 @@ class MatchWindowTask(object):
         :param force_full_page_screenshot: Whether or not force full page screenshot.
         :param user_inputs: The user input.
         :param wait_before_screenshots: Milliseconds to wait before taking each screenshot.
-        :param default_match_settings: (ImageMatchSettings) The default match settings for the session.
-        :param target: (Target) The target of the check_window call.
+        :param default_match_settings: The default match settings for the session.
+        :param target: The target of the check_window call.
         :param run_once_after_wait: Whether or not to run again after waiting.
         :return: The result of the run.
         """
+        stitch_content = False
         prepare_action = functools.partial(self._prepare_match_data_for_region, region, tag,
                                            force_full_page_screenshot, user_inputs, wait_before_screenshots,
                                            default_match_settings, target, stitch_content)
         return self._run(prepare_action, run_once_after_wait, retry_timeout)
 
-    def match_element(self, element, retry_timeout, tag, force_full_page_screenshot, user_inputs,
-                      wait_before_screenshots, default_match_settings, target, run_once_after_wait=False, stitch_content=False):
+    def match_element(self, element,  # type: EyesWebElement
+                      retry_timeout,  # type: Num
+                      tag,  # type: tp.Text
+                      force_full_page_screenshot,  # type: bool
+                      user_inputs,  # type: UserInputs
+                      wait_before_screenshots,  # type: Num
+                      default_match_settings,  # type: ImageMatchSettings
+                      target,  # type: tp.Optional[Target]
+                      run_once_after_wait=False,
+                      stitch_content=False):
+        # type: (...) -> MatchResult
         """
         Performs a match for a given element.
 
@@ -250,8 +325,8 @@ class MatchWindowTask(object):
         :param force_full_page_screenshot: Whether or not force full page screenshot.
         :param user_inputs: The user input.
         :param wait_before_screenshots: Milliseconds to wait before taking each screenshot.
-        :param default_match_settings: (ImageMatchSettings) The default match settings for the session.
-        :param target: (Target) The target of the check_window call.
+        :param default_match_settings: The default match settings for the session.
+        :param target: The target of the check_window call.
         :param run_once_after_wait: Whether or not to run again after waiting.
         :return: The result of the run.
         """

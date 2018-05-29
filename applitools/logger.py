@@ -1,9 +1,12 @@
 """
 Logs handling.
 """
-import functools
-import logging
+from __future__ import absolute_import
+
 import sys
+import logging
+import functools
+import typing as tp
 
 _DEFAULT_EYES_LOGGER_NAME = 'eyes'
 _DEFAULT_EYES_FORMATTER = logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s')
@@ -16,6 +19,7 @@ class _Logger(object):
 
     def __init__(self, name=__name__, level=logging.DEBUG, handler_factory=lambda: None,
                  formatter=None):
+        # type: (tp.Text, int, tp.Callable, logging.Formatter) -> None
         """
         Ctor.
 
@@ -34,6 +38,7 @@ class _Logger(object):
         self._level = level
 
     def open(self):
+        # type: () -> None
         """
         Open a handler.
         """
@@ -50,6 +55,7 @@ class _Logger(object):
             self._logger.addHandler(self._handler)
 
     def close(self):
+        # type: () -> None
         """
         Close a handler.
         """
@@ -62,6 +68,7 @@ class _Logger(object):
             self._handler = None
 
     def info(self, msg):
+        # type: (tp.Text) -> None
         """
         Writes info level msg to the logger.
 
@@ -71,6 +78,7 @@ class _Logger(object):
             self._logger.info(msg)
 
     def debug(self, msg):
+        # type: (tp.Text) -> None
         """
         Writes debug level msg to the logger.
 
@@ -84,7 +92,9 @@ class StdoutLogger(_Logger):
     """
     A simple logger class for printing to STDOUT.
     """
+
     def __init__(self, name=_DEFAULT_EYES_LOGGER_NAME, level=logging.DEBUG):
+        # type: (tp.Text, int) -> None
         """
         Ctor.
 
@@ -99,6 +109,7 @@ class FileLogger(_Logger):
     """
     A simple logger class for outputting log messages to a file
     """
+
     def __init__(self, filename="eyes.log", mode='a', encoding=None, delay=0,
                  name=_DEFAULT_EYES_LOGGER_NAME, level=logging.DEBUG):
         """
@@ -119,6 +130,7 @@ class NullLogger(_Logger):
     """
     A simple logger class which does nothing (log messages are ignored).
     """
+
     def __init__(self, name=_DEFAULT_EYES_LOGGER_NAME, level=logging.DEBUG):
         """
         Ctor.
@@ -136,6 +148,7 @@ _logger = None
 
 
 def set_logger(logger=None):
+    # type: (tp.Optional[_Logger]) -> None
     """
     Sets the used logger to the logger.
 
@@ -146,6 +159,7 @@ def set_logger(logger=None):
 
 
 def open_():
+    # type: () -> None
     """
     Opens a new logger.
     """
@@ -156,6 +170,7 @@ def open_():
 
 
 def close():
+    # type: () -> None
     """
     Closed the logger.
     """
@@ -166,6 +181,7 @@ def close():
 
 
 def info(msg):
+    # type: (tp.Text) -> None
     """
     Writes info level msg to the logger.
 
@@ -176,6 +192,7 @@ def info(msg):
 
 
 def debug(msg):
+    # type: (tp.Text) -> None
     """
     Writes debug level msg to the logger.
 
@@ -183,4 +200,3 @@ def debug(msg):
     """
     if _logger is not None:
         _logger.debug(msg)
-
