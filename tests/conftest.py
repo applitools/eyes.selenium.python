@@ -73,6 +73,7 @@ def driver(request, browser_config):
     selenium_url = os.environ.get('SELENIUM_SERVER_URL', 'http://127.0.0.1:4444/wd/hub')
     if 'ondemand.saucelabs.com' in selenium_url:
         selenium_url = "https://%s:%s@ondemand.saucelabs.com:443/wd/hub" % (username, access_key)
+    logger.debug('SELENIUM_URL={}'.format(selenium_url))
 
     desired_caps = browser_config.copy()
     desired_caps['build'] = build_tag
