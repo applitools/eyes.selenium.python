@@ -6,7 +6,6 @@ import os
 import time
 import typing as tp
 
-import appium.webdriver
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.switch_to import SwitchTo
@@ -917,7 +916,7 @@ class EyesWebDriver(object):
 
         :return: True if the platform running the test is a mobile platform. False otherwise.
         """
-        return isinstance(self.driver, appium.webdriver.Remote)
+        return self.driver.capabilities.get('platformName') in ('Android', 'iOS')
 
     def get(self, url):
         # type: (tp.Text) -> tp.Optional[tp.Any]

@@ -18,7 +18,6 @@ install_requires = [
     'requests>=2.1.0',
     'pypng>=0.0.16',
     'selenium>=2.53.0',
-    'Appium-Python-Client>=0.13'
 ]
 
 install_dev_requires = [
