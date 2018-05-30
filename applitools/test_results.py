@@ -29,6 +29,8 @@ class TestResultsStatus(object):
 class TestResults(object):
     """
     Eyes test results.
+
+    # TODO: update regarding JAVA SDK
     """
     def __init__(self, steps=0,  # type: int
                  matches=0,  # type: int

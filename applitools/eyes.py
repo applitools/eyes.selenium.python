@@ -617,6 +617,7 @@ class Eyes(object):
         :param target: (Target) The target for the check_window call
         :return: None
         """
+
         if self.is_disabled:
             logger.info('check_region(): ignored (disabled)')
             return
