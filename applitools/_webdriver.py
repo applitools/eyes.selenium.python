@@ -1410,24 +1410,17 @@ class EyesWebDriver(object):
         self._position_provider = ElementPositionProvider(self.driver, element)
         entire_size = self._position_provider.get_entire_size()
 
-        # Starting with the screenshot at 0,0
-        EyesWebDriver._wait_before_screenshot(wait_before_screenshots)
-        part64 = self.get_screenshot_as_base64()
-        screenshot = _image_utils.png_image_from_bytes(base64.b64decode(part64))
-        # IMPORTANT This is required! Since when calculating the screenshot parts for full size,
-        # we use a screenshot size which is a bit smaller (see comment below).
-        if (screenshot.width >= entire_size['width']) and \
-                (screenshot.height >= entire_size['height']):
-            self.restore_origin()
-            self.switch_to.frames(original_frame)
-            return screenshot
-
         #  We use a smaller size than the actual screenshot size in order to eliminate duplication
         #  of bottom scroll bars, as well as footer-like elements with fixed position.
         pl = element.location
         origin_overflow = element.get_overflow()
         try:
             element.set_overflow('hidden')
+
+            # Starting with the screenshot at 0,0
+            EyesWebDriver._wait_before_screenshot(wait_before_screenshots)
+            part64 = self.get_screenshot_as_base64()
+            screenshot = _image_utils.png_image_from_bytes(base64.b64decode(part64))
 
             element_width = element.get_client_width()
             element_height = element.get_client_height()
