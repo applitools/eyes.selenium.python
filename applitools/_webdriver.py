@@ -1,8 +1,8 @@
 from __future__ import absolute_import
 
+import abc
 import base64
 import math
-import os
 import time
 import typing as tp
 
@@ -18,6 +18,8 @@ from .common import StitchMode
 from .errors import EyesError, OutOfBoundsError
 from .geometry import Point, Region
 from .utils import _image_utils, general_utils
+from .utils.general_utils import cached_property
+from .utils.compat import ABC
 
 if tp.TYPE_CHECKING:
     from .eyes import Eyes
@@ -274,36 +276,98 @@ class EyesScreenshot(object):
         element_region = self.get_element_region_in_frame_viewport(element)
         return self.get_sub_screenshot_by_region(element_region)
 
-    def save_image(self, filename):
-        path = os.environ['DEBUG_SCREENSHOT_PATH']
-        filename = "{}/screenshot_{}.png".format(path.rstrip('/'), filename)
-        with open(filename, 'wb') as f:
-            self._screenshot.write(f)
+    def get_viewport_screenshot(self):
+        # type: () -> EyesScreenshot
+        """
+        Always return viewport size screenshot
+        """
+        # if screenshot if full page
+        if not self._is_viewport_screenshot and not self._driver.is_mobile_device():
+            return self.get_sub_screenshot_by_region(
+                Region(top=self._scroll_position.y, height=self._viewport_size['height'],
+                       width=self._viewport_size['width']))
+        return self
 
 
-class ScrollPositionProvider(object):
+class PositionProvider(ABC):
+    """ Encapsulates page/element positioning """
+    _JS_GET_CONTENT_ENTIRE_SIZE = """
+        var scrollWidth = document.documentElement.scrollWidth;
+        var bodyScrollWidth = document.body.scrollWidth;
+        var totalWidth = Math.max(scrollWidth, bodyScrollWidth);
+        var clientHeight = document.documentElement.clientHeight;
+        var bodyClientHeight = document.body.clientHeight;
+        var scrollHeight = document.documentElement.scrollHeight;
+        var bodyScrollHeight = document.body.scrollHeight;
+        var maxDocElementHeight = Math.max(clientHeight, scrollHeight);
+        var maxBodyHeight = Math.max(bodyClientHeight, bodyScrollHeight);
+        var totalHeight = Math.max(maxDocElementHeight, maxBodyHeight);
+        return [totalWidth, totalHeight];";
+    """
+
+    def __init__(self, driver):
+        # type: (AnyWebDriver) -> None
+        self._driver = driver
+        self._states = []  # type: tp.List[Point]
+
+    def _execute_script(self, script):
+        # type: (tp.Text) -> tp.List[int]
+        return self._driver.execute_script(script)
+
+    @abc.abstractmethod
+    def get_current_position(self):
+        # type: () -> tp.Optional[Point]
+        """
+        :return: The current position, or `None` if position is not available.
+        """
+
+    @abc.abstractmethod
+    def set_position(self, location):
+        # type: (Point) -> None
+        """
+        Go to the specified location.
+
+        :param location: The position to set
+        :return:
+        """
+
+    def get_entire_size(self):
+        # type: () -> ViewPort
+        """
+        :return: The entire size of the container which the position is relative to.
+        """
+        try:
+            width, height = self._driver.execute_script(self._JS_GET_CONTENT_ENTIRE_SIZE)
+        except WebDriverException:
+            raise EyesError('Failed to extract entire size!')
+        return dict(width=width, height=height)
+
+    def push_state(self):
+        """
+        Adds the current position to the states list.
+        """
+        self._states.append(self.get_current_position())
+
+    def pop_state(self):
+        """
+        Sets the position to be the last position added to the states list.
+        """
+        self.set_position(self._states.pop())
+
+
+class ScrollPositionProvider(PositionProvider):
     _JS_GET_CURRENT_SCROLL_POSITION = """
         var doc = document.documentElement;
         var x = window.scrollX || ((window.pageXOffset || doc.scrollLeft) - (doc.clientLeft || 0));
         var y = window.scrollY || ((window.pageYOffset || doc.scrollTop) - (doc.clientTop || 0));
         return [x, y]"""
 
-    def __init__(self, driver):
-        # type: (AnyWebDriver) -> None
-        self.driver = driver
-        self.states = []  # type: tp.List[Point]
-
-    def _execute_script(self, script):
-        # type: (tp.Text) -> tp.List[int]
-        return self.driver.execute_script(script)
+    def set_position(self, location):
+        scroll_command = "window.scrollTo({0}, {1})".format(location.x, location.y)
+        logger.debug(scroll_command)
+        self._execute_script(scroll_command)
 
     def get_current_position(self):
-        # type: () -> Point
-        """
-        Extracts the current scroll position from the browser.
-
-        :return: The scroll position
-        """
         try:
             x, y = self._execute_script(self._JS_GET_CURRENT_SCROLL_POSITION)
             if x is None or y is None:
@@ -312,52 +376,13 @@ class ScrollPositionProvider(object):
             raise EyesError("Failed to extract current scroll position!")
         return Point(x, y)
 
-    def set_position(self, point):
-        # type: (Point) -> None
-        """
-        Commands the browser to scroll to a given position using javascript.
 
-        :param point: The point to scroll to.
-        """
-        scroll_command = "window.scrollTo({0}, {1})".format(point.x, point.y)
-        logger.debug(scroll_command)
-        self._execute_script(scroll_command)
-
-    def push_state(self):
-        # type: () -> None
-        """
-        Adds the current position to the states list.
-        """
-        self.states.append(self.get_current_position())
-
-    def pop_state(self):
-        # type: () -> None
-        """
-        Sets the position to be the last position added to the states list.
-        """
-        self.set_position(self.states.pop())
-
-
-class CSSTranslatePositionProvider(object):
+class CSSTranslatePositionProvider(PositionProvider):
     _JS_TRANSFORM_KEYS = ["transform", "-webkit-transform"]
 
     def __init__(self, driver):
-        # type: (AnyWebDriver) -> None
-        self.driver = driver
-        self.states = []  # type: tp.List[Point]
-        self.current_position = Point(0, 0)
-
-    def _execute_script(self, script):
-        return self.driver.execute_script(script)
-
-    def get_current_position(self):
-        # type: () -> Point
-        """
-        Extracts the current scroll position from the browser.
-
-        :return: The scroll position.
-        """
-        return self.current_position.clone()
+        super(CSSTranslatePositionProvider, self).__init__(driver)
+        self._current_position = Point(0, 0)
 
     def _set_transform(self, transform_list):
         script = ''
@@ -372,88 +397,47 @@ class CSSTranslatePositionProvider(object):
         script += ' }'
         return self._execute_script(script)
 
-    def set_position(self, point):
-        # type: (Point) -> None
-        """
-        Commands the browser to scroll to a given position using javascript.
+    def get_current_position(self):
+        return self._current_position.clone()
 
-        :param point: The point to set the position at.
-        """
-        translate_command = "translate(-{}px, -{}px)".format(point.x, point.y)
+    def set_position(self, location):
+        translate_command = "translate(-{}px, -{}px)".format(location.x, location.y)
         logger.debug(translate_command)
         transform_list = dict((key, translate_command) for key in self._JS_TRANSFORM_KEYS)
         self._set_transform(transform_list)
-        self.current_position = point.clone()
+        self._current_position = location.clone()
 
     def push_state(self):
         """
         Adds the transform to the states list.
         """
-        self.states.append(self._get_current_transform())
-
-    def pop_state(self):
-        """
-        Sets the transform to be the last transform added to the states list.
-        """
-        self._set_transform(self.states.pop())
+        self._states.append(self._get_current_transform())
 
 
-class ElementPositionProvider(object):
-    _JS_SCROLL_TO_FORMATTED_STR = """
-            arguments[0].scrollLeft = {:d};
-            arguments[0].scrollTop = {:d};
-    """
+class ElementPositionProvider(PositionProvider):
 
     def __init__(self, driver, element):
-        # type: (AnyWebDriver, AnyWebElement) -> None
-        self.driver = driver
-        # TODO: add check if EyesRemoteWebElement
-        self.element = element
-        self.states = []  # type: tp.List[Point]
+        # type: (AnyWebDriver, tp.Optional[AnyWebElement]) -> None
+        super(ElementPositionProvider, self).__init__(driver)
+        self._element = element
 
     def get_current_position(self):
-        # type: () -> Point
-        """
-        Extracts the current scroll position from the browser.
-
-        :return: The scroll position
-        """
-        position = Point(self.element.get_scroll_left(), self.element.get_scroll_top())
+        position = Point(self._element.get_scroll_left(), self._element.get_scroll_top())
         logger.info("Current position: {}".format(position))
         return position
 
-    def set_position(self, point):
-        # type: (Point) -> None
-        """
-        Commands the browser to scroll to a given position using javascript.
-
-        :param point: The point to scroll to.
-        """
-        logger.info("Scrolling element to {}".format(point))
-        self.driver.execute_script(self._JS_SCROLL_TO_FORMATTED_STR.format(point.x, point.y), self.element.element)
-
+    def set_position(self, location):
+        logger.info("Scrolling element to {}".format(location))
+        self._element.scroll_to(location)
         logger.info("Done scrolling element!")
 
     def get_entire_size(self):
-        # type: () -> ViewPort
-        """
-        :return: The entire size of the container which the position is relative
-        """
-        size = {'width': self.element.get_scroll_width(), 'height': self.element.get_scroll_height()}
+        try:
+            size = {'width': self._element.get_scroll_width(), 'height': self._element.get_scroll_height()}
+        except WebDriverException:
+            raise EyesError('Failed to extract entire size!')
         logger.info("ElementPositionProvider - Entire size: {}".format(size))
         return size
-
-    def push_state(self):
-        """
-        Adds the current position to the states list.
-        """
-        self.states.append(self.get_current_position())
-
-    def pop_state(self):
-        """
-        Sets the position to be the last position added to the states list.
-        """
-        self.set_position(self.states.pop())
 
 
 def build_position_provider_for(stitch_mode,  # type: tp.Text
@@ -499,6 +483,10 @@ class EyesWebElement(object):
     _JS_SET_OVERFLOW_FORMATTED_STR = "arguments[0].style.overflow = '%s'"
     _JS_GET_CLIENT_WIDTH = "return arguments[0].clientWidth;"
     _JS_GET_CLIENT_HEIGHT = "return arguments[0].clientHeight;"
+    _JS_SCROLL_TO_FORMATTED_STR = """
+            arguments[0].scrollLeft = {:d};
+            arguments[0].scrollTop = {:d};
+    """
 
     def __init__(self, element, eyes, driver):
         # type: (WebElement, Eyes, EyesWebDriver) -> None
@@ -627,6 +615,7 @@ class EyesWebElement(object):
         return original_overflow
 
     def hide_scrollbars(self):
+        # type: () -> tp.Text
         """
         Hides the scrollbars of the current element.
 
@@ -676,6 +665,12 @@ class EyesWebElement(object):
 
     def get_client_height(self):
         return int(math.ceil(float(self._driver.execute_script(self._JS_GET_CLIENT_HEIGHT, self.element))))
+
+    def scroll_to(self, location):
+        # type: (Point) -> None
+        """Scrolls to the specified location inside the element."""
+        self._driver.execute_script(
+            self._JS_SCROLL_TO_FORMATTED_STR.format(location.x, location.y), self.element)
 
 
 class _EyesSwitchTo(object):
@@ -881,33 +876,44 @@ class EyesWebDriver(object):
 
         :return: The rotation of the screenshot we get from the webdriver in (degrees).
         """
-        if self.get_platform_name() == 'Android' and self.driver.orientation == "LANDSCAPE":
+        if self.platform_name == 'Android' and self.driver.orientation == "LANDSCAPE":
             return -90
         return 0
 
     def get_platform_name(self):
-        # type: () -> tp.Optional[tp.Text]
-        """
-        Get the platform running the application.
-
-        :return: The platform running the application under test.
-        """
-        try:
-            return self.driver.desired_capabilities['platformName']
-        except KeyError:
-            return None
+        return self.platform_name
 
     def get_platform_version(self):
-        # type: () -> tp.Optional[tp.Text]
-        """
-        Get the platform version.
+        return self.platform_version
 
-        :return: The platform version.
-        """
-        try:
-            return str(self.driver.desired_capabilities['platformVersion'])
-        except KeyError:
-            return None
+    @cached_property
+    def platform_name(self):
+        # type: () -> tp.Optional[tp.Text]
+        return self.driver.desired_capabilities.get('platformName', None)
+
+    @cached_property
+    def platform_version(self):
+        # type: () -> tp.Optional[tp.Text]
+        return self.driver.desired_capabilities.get('platformVersion', None)
+
+    @cached_property
+    def browser_version(self):
+        # type: () -> tp.Optional[float]
+        caps = self.driver.capabilities
+        version = caps.get('browserVersion', caps.get('version', None))
+        if version:
+            # convert version that has few dots in to float number (e.g. Edge 1.23.45)
+            if version.find('.') != -1:
+                version = float(version[:version.index('.') + 2])
+            else:
+                version = float(version)
+        return version
+
+    @cached_property
+    def browser_name(self):
+        # type: () -> tp.Optional[tp.Text]
+        caps = self.driver.capabilities
+        return caps.get('browserName', caps.get('browser', None))
 
     def is_mobile_device(self):
         # type: () -> bool
@@ -1129,6 +1135,18 @@ class EyesWebDriver(object):
             screenshot64 = screenshot.get_base64()
         return screenshot64
 
+    def get_screesnhot_as_base64_from_main_frame(self, seconds_to_wait):
+        # type: (Num) -> tp.Text
+        """
+        Make screenshot from main frame
+        """
+        original_frame = self.get_frame_chain()
+        self.switch_to.default_content()
+        self._wait_before_screenshot(seconds_to_wait)
+        screenshot64 = self.get_screenshot_as_base64()
+        self.switch_to.frames(original_frame)
+        return screenshot64
+
     def extract_full_page_width(self):
         # type: () -> int
         """
@@ -1174,7 +1192,7 @@ class EyesWebDriver(object):
 
         :return: The scroll position.
         """
-        return self._position_provider.get_current_position()
+        return self._origin_position_provider.get_current_position()
 
     def scroll_to(self, point):
         # type: (Point) -> None
@@ -1183,7 +1201,7 @@ class EyesWebDriver(object):
 
         :param point: The point to scroll to.
         """
-        self._position_provider.set_position(point)
+        self._origin_position_provider.set_position(point)
 
     def get_entire_page_size(self):
         # type: () -> tp.Dict[tp.Text, int]
@@ -1402,70 +1420,82 @@ class EyesWebDriver(object):
         """
         logger.info('getting stitched element screenshot..')
 
-        # Saving the current frame reference and moving to the outermost frame.
-        original_frame = self.get_frame_chain()
-        self.switch_to.default_content()
-        self.reset_origin()
-
         self._position_provider = ElementPositionProvider(self.driver, element)
         entire_size = self._position_provider.get_entire_size()
 
         #  We use a smaller size than the actual screenshot size in order to eliminate duplication
         #  of bottom scroll bars, as well as footer-like elements with fixed position.
         pl = element.location
+
+        # TODO: add correct values for Safari
+        # in the safari browser the returned size has absolute value but not relative as
+        # in other browsers
+
         origin_overflow = element.get_overflow()
-        try:
-            element.set_overflow('hidden')
+        element.set_overflow('hidden')
 
-            # Starting with the screenshot at 0,0
+        element_width = element.get_client_width()
+        element_height = element.get_client_height()
+
+        border_left_width = element.get_computed_style_int('border-left-width')
+        border_top_height = element.get_computed_style_int('border-top-width')
+
+        element_region = Region(pl['x'] + border_left_width,
+                                pl['y'] + border_top_height,
+                                element_width, element_height)
+
+        # Firefox 60 and above make a screenshot of the current frame when other browsers
+        # make a screenshot of the viewport. So we scroll down to frame at _will_switch_to method
+        # and add a left margin here.
+        # TODO: Refactor code. Use EyesScreenshot
+        if self._frames:
+            if ((self.browser_name == 'firefox' and self.browser_version < 60.0)
+                    or self.browser_name in ('chrome', 'MicrosoftEdge', 'internet explorer', 'safari')):
+                element_region.left += int(self._frames[-1].location['x'])
+
+        screenshot_part_size = {'width': element_region.width,
+                                'height': max(element_region.height - self._MAX_SCROLL_BAR_SIZE,
+                                              self._MIN_SCREENSHOT_PART_HEIGHT)}
+        entire_page = Region(0, 0, entire_size['width'], entire_size['height'])
+
+        screenshot_parts = entire_page.get_sub_regions(screenshot_part_size)
+        viewport = self.get_viewport_size()
+
+        # Starting with element region size part of the screenshot. Use it as a size template.
+        stitched_image = None
+        for part in screenshot_parts:
+            logger.debug("Taking screenshot for {0}".format(part))
+            # Scroll to the part's top/left and give it time to stabilize.
+            self._position_provider.set_position(Point(part.left, part.top))
             EyesWebDriver._wait_before_screenshot(wait_before_screenshots)
+            # Since screen size might cause the scroll to reach only part of the way
+            current_scroll_position = self._position_provider.get_current_position()
+            logger.debug("Scrolled To ({0},{1})".format(current_scroll_position.x,
+                                                        current_scroll_position.y))
             part64 = self.get_screenshot_as_base64()
-            screenshot = _image_utils.png_image_from_bytes(base64.b64decode(part64))
+            part_image = _image_utils.png_image_from_bytes(base64.b64decode(part64))
 
-            element_width = element.get_client_width()
-            element_height = element.get_client_height()
+            # Cut to viewport size the full page screenshot of main frame for some browsers
+            if self._frames:
+                if (self.browser_name == 'firefox' and self.browser_version < 60.0
+                        or self.browser_name in ('internet explorer', 'safari')):
+                    # TODO: Refactor this to make main screenshot only once
+                    frame_scroll_position = int(self._frames[-1].location['y'])
+                    part_image = part_image.get_subimage(Region(top=frame_scroll_position, height=viewport['height'],
+                                                                width=viewport['width']))
 
-            border_left_width = element.get_computed_style_int('border-left-width')
-            border_top_height = element.get_computed_style_int('border-top-width')
+            part_image = part_image.get_subimage(element_region)
 
-            element_region = Region(pl['x'] + border_left_width,
-                                    pl['y'] + border_top_height,
-                                    element_width, element_height)
+            # first iteration
+            if stitched_image is None:
+                stitched_image = part_image
+                continue
 
-            screenshot_part_size = {'width': element_region.width,
-                                    'height': max(element_region.height - self._MAX_SCROLL_BAR_SIZE,
-                                                  self._MIN_SCREENSHOT_PART_HEIGHT)}
-            entire_page = Region(0, 0, entire_size['width'], entire_size['height'])
+            stitched_image.paste(current_scroll_position.x, current_scroll_position.y,
+                                 part_image.pixel_bytes)
 
-            screenshot_parts = entire_page.get_sub_regions(screenshot_part_size)
-
-            # Starting with the screenshot we already captured at (0,0).
-            stitched_image = screenshot.get_subimage(element_region)
-            self.save_position()
-            for part in screenshot_parts:
-                # Since we already took the screenshot for 0,0
-                if part.left == 0 and part.top == 0:
-                    logger.debug('Skipping screenshot for 0,0 (already taken)')
-                    continue
-                logger.debug("Taking screenshot for {0}".format(part))
-                # Scroll to the part's top/left and give it time to stabilize.
-                self.scroll_to(Point(part.left, part.top))
-                EyesWebDriver._wait_before_screenshot(wait_before_screenshots)
-                # Since screen size might cause the scroll to reach only part of the way
-                current_scroll_position = self.get_current_position()
-                logger.debug("Scrolled To ({0},{1})".format(current_scroll_position.x,
-                                                            current_scroll_position.y))
-                part64 = self.get_screenshot_as_base64()
-                part_image = _image_utils.png_image_from_bytes(base64.b64decode(part64))
-                part_image = part_image.get_subimage(element_region)
-                stitched_image.paste(current_scroll_position.x, current_scroll_position.y,
-                                     part_image.pixel_bytes)
-        finally:
-            self.restore_position()
-            self.restore_origin()
-            if origin_overflow:
-                element.set_overflow(origin_overflow)
-            self.switch_to.frames(original_frame)
+        if origin_overflow:
+            element.set_overflow(origin_overflow)
 
         return stitched_image
 
@@ -1495,6 +1525,11 @@ class EyesWebDriver(object):
                 frame_top_border_width = 0
             frame_location['x'] += frame_left_border_width
             frame_location['y'] += frame_top_border_width
+
+            # We need to scroll position to top of the frame to be able to take a correct screenshot
+            # in the get_stitched_screenshot  method
+            self.scroll_to(Point(frame_location['x'], frame_location['y']))
+
             self._frames.append(EyesFrame(frame_reference, frame_location, frame_size, frame_id,
                                           parent_scroll_position))
         elif frame_reference == _EyesSwitchTo.PARENT_FRAME:

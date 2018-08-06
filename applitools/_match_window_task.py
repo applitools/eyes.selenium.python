@@ -63,8 +63,9 @@ class MatchWindowTask(object):
         time.sleep(seconds_to_wait)
         logger.debug('Finished waiting!')
 
-        current_screenshot64 = self._driver.get_screenshot_as_base64()
-        return EyesScreenshot.create_from_base64(current_screenshot64, self._driver)
+        # Return viewport size screenshot
+        current_screenshot64 = self._driver.get_screesnhot_as_base64_from_main_frame(seconds_to_wait)
+        return EyesScreenshot.create_from_base64(current_screenshot64, self._driver).get_viewport_screenshot()
 
     @staticmethod
     def _create_match_data_bytes(app_output,  # type: AppOutput

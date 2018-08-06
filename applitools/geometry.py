@@ -256,6 +256,7 @@ class Region(object):
                 and (self.top <= other.top <= self.bottom or other.top <= self.top <= other.bottom))
 
     def intersect(self, other):
+        # type: (Region) -> None
         # If the regions don't overlap, the intersection is empty
         if not self.overlaps(other):
             self.make_empty()

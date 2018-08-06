@@ -155,3 +155,22 @@ def create_proxy_interface(from_,  # type: tp.Union[EyesWebDriver, EyesWebElemen
             if callable(getattr(to, attr_name)):
                 if override_existing or not hasattr(from_, attr_name):
                     setattr(from_, attr_name, create_forwarded_method(from_, to, attr_name))
+
+
+def cached_property(f):
+    # type: (tp.Callable) -> tp.Any
+    """
+    Returns a cached property that is calculated by function f
+    """
+    def get(self):
+        try:
+            return self._property_cache[f]
+        except AttributeError:
+            self._property_cache = {}
+            x = self._property_cache[f] = f(self)
+            return x
+        except KeyError:
+            x = self._property_cache[f] = f(self)
+            return x
+
+    return property(get)

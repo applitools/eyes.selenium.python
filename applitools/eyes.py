@@ -456,9 +456,10 @@ class Eyes(object):
                 self._viewport_size = self.get_viewport_size()
                 logger.debug("Viewport size {0}".format(self._viewport_size))
         except EyesError:
+            raise TestFailedError('Failed to assign viewport size!')
+        finally:
             # Going back to the frame we started at
             self._driver.switch_to.frames(original_frame_chain)
-            raise TestFailedError('Failed to assign viewport size!')
 
     def _get_environment(self):
         # type: () -> AppEnvironment
@@ -474,9 +475,9 @@ class Eyes(object):
             # Since in Python Appium driver is the same for Android and iOS, we need to use the desired
             # capabilities to figure this out.
             if self._driver.is_mobile_device():
-                platform_name = self._driver.get_platform_name()
+                platform_name = self._driver.platform_name
                 logger.info(platform_name + ' detected')
-                platform_version = self._driver.get_platform_version()
+                platform_version = self._driver.platform_version
                 if platform_version is not None:
                     # Notice that Python's "split" function's +limit+ is the the maximum splits performed
                     # whereas in Ruby it is the maximum number of elements in the result (which is why they are set
