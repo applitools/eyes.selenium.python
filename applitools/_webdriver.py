@@ -1474,6 +1474,7 @@ class EyesWebDriver(object):
                                                         current_scroll_position.y))
             part64 = self.get_screenshot_as_base64()
             part_image = _image_utils.png_image_from_bytes(base64.b64decode(part64))
+            logger.save_screenshot(part_image, 'part_image-full')
 
             # Cut to viewport size the full page screenshot of main frame for some browsers
             if self._frames:
@@ -1483,8 +1484,10 @@ class EyesWebDriver(object):
                     frame_scroll_position = int(self._frames[-1].location['y'])
                     part_image = part_image.get_subimage(Region(top=frame_scroll_position, height=viewport['height'],
                                                                 width=viewport['width']))
+                    logger.save_screenshot(part_image, 'part_image-cutted')
 
             part_image = part_image.get_subimage(element_region)
+            logger.save_screenshot(part_image, 'part_image_subimage')
 
             # first iteration
             if stitched_image is None:
@@ -1493,6 +1496,7 @@ class EyesWebDriver(object):
 
             stitched_image.paste(current_scroll_position.x, current_scroll_position.y,
                                  part_image.pixel_bytes)
+            logger.save_screenshot(stitched_image, 'paste')
 
         if origin_overflow:
             element.set_overflow(origin_overflow)

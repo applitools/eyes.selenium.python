@@ -30,7 +30,7 @@ class TestClassicAPI(TestSetup):
 
     def test_check_region_in_frame(self):
         self.eyes.check_region_in_frame_by_selector("frame1", By.ID, "inner-frame-div", tag="Inner frame div",
-                                                    stitch_content=True)
+                                                    stitch_content=False)
 
     def test_check_region2(self):
         self.eyes.check_region_by_selector(By.ID, "overflowing-div-image", tag="minions", stitch_content=True)

@@ -52,7 +52,7 @@ class Platform(namedtuple('Platform', 'name version browsers extra')):
 
         # huck for preventing overwriting 'platform' value in desired_capabilities by chrome options
         browser_caps = options.to_capabilities() if options else {}
-        browser_name, browser_version = [b for b in self.browsers if browser_name.lower() == b[0]][0]
+        browser_name, browser_version = [b for b in self.browsers if browser_name.lower() == b[0].lower()][0]
         browser_caps.update({'browserName': browser_name,
                              'version': browser_version,
                              'platform': self.full_name})
@@ -73,11 +73,12 @@ class Platform(namedtuple('Platform', 'name version browsers extra')):
         return self.name
 
 
-COMMON_BROWSERS = [('chrome', '48.0'), ('firefox', '45.0')]
+COMMON_BROWSERS = [('chrome', 'latest'), ('firefox', 'latest')]
 SUPPORTED_PLATFORMS = [
-    Platform(name='Windows', version='10', browsers=COMMON_BROWSERS + [('internet explorer', 11)], extra=None),
+    Platform(name='Windows', version='10', browsers=COMMON_BROWSERS + [('internet explorer', 'latest'),
+                                                                       ('MicrosoftEdge', 'latest')], extra=None),
     Platform(name='Linux', version='', browsers=COMMON_BROWSERS, extra=None),
-    Platform(name='macOS', version='10.12', browsers=COMMON_BROWSERS, extra=None),
+    Platform(name='macOS', version='10.13', browsers=COMMON_BROWSERS + [('safari', 'latest')], extra=None),
 
     Platform(name='iPhone', version='10.0', browsers=[], extra={
         "appiumVersion": "1.7.2",

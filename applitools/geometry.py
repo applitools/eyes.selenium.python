@@ -6,6 +6,9 @@ from collections import OrderedDict
 
 from .errors import EyesError
 
+if tp.TYPE_CHECKING:
+    from .utils._custom_types import ViewPort
+
 
 class Point(object):
     """
@@ -183,6 +186,14 @@ class Region(object):
         """Return the bottom-right corner as a Point."""
         return Point(self.right, self.bottom)
 
+    @property
+    def size(self):
+        # type: () -> ViewPort
+        """
+        :return: The size of the region.
+        """
+        return dict(width=self.width, height=self.height)
+
     def clone(self):
         # type: () -> Region
         """
@@ -226,6 +237,13 @@ class Region(object):
         """
         self.left = max(self.left, 0)
         self.top = max(self.top, 0)
+
+    def is_size_empty(self):
+        # type: () -> bool
+        """
+        :return: true if the region's size is 0, false otherwise.
+        """
+        return self.width <= 0 or self.height <= 0
 
     def is_empty(self):
         # type: () -> bool
