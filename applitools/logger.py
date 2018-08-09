@@ -11,9 +11,9 @@ import datetime as dt
 import typing as tp
 
 if tp.TYPE_CHECKING:
+    from PIL import Image
     from ._webdriver import EyesScreenshot
     from .geometry import Region
-    from .utils._image_utils import PngImage
 
 
 def _parse_logger_level(logger_level):
@@ -246,7 +246,7 @@ def warning(msg):
 
 
 def save_screenshot(image, suffix, region=None):
-    # type: (tp.Union[PngImage, EyesScreenshot], tp.Text, tp.Optional[Region]) -> None
+    # type: (tp.Union[Image.Image, EyesScreenshot], tp.Text, tp.Optional[Region]) -> None
     """
     A debug screenshot provider for saving screenshots to file.
     """
@@ -265,4 +265,4 @@ def save_screenshot(image, suffix, region=None):
                                                               suffix=suffix)
         full_path = os.path.join(_DEBUG_SCREENSHOT_PATH, filename)
         debug('Save screenshot: {}'.format(full_path))
-        image.save_image(full_path)
+        image.save(full_path, format='PNG')

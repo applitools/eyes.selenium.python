@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import base64
 import os
 import typing as tp
 import uuid
@@ -16,16 +17,16 @@ from . import VERSION, _viewport_size, logger
 from ._agent_connector import AgentConnector
 from ._match_window_task import MatchWindowTask
 from ._triggers import MouseTrigger, TextTrigger
-from ._webdriver import EyesFrame, EyesWebDriver, EyesScreenshot, EyesWebElement
+from ._webdriver import EyesFrame, EyesWebDriver, EyesScreenshot
 from .common import StitchMode
 from .errors import DiffsFoundError, EyesError, NewTestError, TestFailedError
 from .geometry import Region
 from .test_results import TestResults, TestResultsStatus
-from .utils import general_utils
+from .utils import general_utils, _image_utils
 from .utils.compat import ABC
+from .scaling import ContextBasedScaleProvider, FixedScaleProvider
 
 if tp.TYPE_CHECKING:
-    from ._webdriver import EyesScreenshot
     from .target import Target
     from .utils._custom_types import (RunningSession, ViewPort, UserInputs, MatchResult, AppEnvironment,
                                       SessionStartInfo, AnyWebDriver, FrameReference, AnyWebElement)
@@ -54,6 +55,7 @@ class MatchLevel(object):
 
 class ScreenshotType(object):
     ENTIRE_ELEMENT_SCREENSHOT = 'EntireElementScreenshot'
+    NOT_ENTIRE_ELEMENT_SCREENSHOT = 'NotEntireElementScreenshot'
     FULLPAGE_SCREENSHOT = "FullPageScreenshot"
     VIEWPORT_SCREENSHOT = "ViewportScreenshot"
 
@@ -573,6 +575,8 @@ class Eyes(EyesBase):
     """
     Applitools Selenium Eyes API for python.
     """
+    _UNKNOWN_DEVICE_PIXEL_RATIO = 0
+    _DEFAULT_DEVICE_PIXEL_RATIO = 1
 
     @staticmethod
     def set_viewport_size(driver, viewport_size):
@@ -586,6 +590,7 @@ class Eyes(EyesBase):
         self._match_window_task = None  # type: tp.Optional[MatchWindowTask]
         self._viewport_size = None  # type: tp.Optional[ViewPort]
         self._screenshot_type = None  # type: tp.Optional[ScreenshotType]
+        self._device_pixel_ratio = self._UNKNOWN_DEVICE_PIXEL_RATIO
 
         # If true, Eyes will create a full page screenshot (by using stitching) for browsers which only
         # returns the viewport screenshot.
@@ -596,15 +601,24 @@ class Eyes(EyesBase):
 
     def _obtain_screenshot_type(self, is_element, inside_a_frame, stitch_content, force_fullpage):
         if stitch_content or force_fullpage:
+            if is_element and not stitch_content:
+                return ScreenshotType.NOT_ENTIRE_ELEMENT_SCREENSHOT
+
             if not inside_a_frame:
                 if ((force_fullpage and not stitch_content) or
                         (stitch_content and not is_element)):
                     return ScreenshotType.FULLPAGE_SCREENSHOT
+
             if inside_a_frame or stitch_content:
                 return ScreenshotType.ENTIRE_ELEMENT_SCREENSHOT
+
         else:
+            if is_element and not stitch_content:
+                return ScreenshotType.NOT_ENTIRE_ELEMENT_SCREENSHOT
+
             if not stitch_content and not force_fullpage:
                 return ScreenshotType.VIEWPORT_SCREENSHOT
+
         return ScreenshotType.VIEWPORT_SCREENSHOT
 
     def _get_environment(self):
@@ -715,16 +729,55 @@ class Eyes(EyesBase):
                                           (self._start_info['scenarioIdOrName'],
                                            self._start_info['appIdOrName']))
 
+    def _update_scaling_params(self):
+        if self._device_pixel_ratio == self._UNKNOWN_DEVICE_PIXEL_RATIO:
+            logger.info('Trying to extract device pixel ratio...')
+            try:
+                device_pixel_ratio = _image_utils.get_device_pixel_ratio(self._driver)
+            except Exception as e:
+                logger.info('Failed to extract device pixel ratio! Using default. Error %s ' % e)
+                device_pixel_ratio = self._DEFAULT_DEVICE_PIXEL_RATIO
+            logger.info('Device pixel ratio: {}'.format(device_pixel_ratio))
+
+            logger.info("Setting scale provider...")
+            try:
+                scale_provider = ContextBasedScaleProvider(
+                    top_level_context_entire_size=self._driver.get_entire_page_size(),
+                    viewport_size=self._driver.get_viewport_size(),
+                    device_pixel_ratio=device_pixel_ratio,
+                    is_mobile_device=self._driver.is_mobile_device())
+            except Exception:
+                # This can happen in Appium for example.
+                logger.info("Failed to set ContextBasedScaleProvider.")
+                logger.info("Using FixedScaleProvider instead...")
+                scale_provider = FixedScaleProvider(1 / device_pixel_ratio)
+            logger.info("Done!")
+            return scale_provider
+
     def get_screenshot(self):
         if self.hide_scrollbars:
             original_overflow = self._driver.hide_scrollbars()
 
+        scale_provider = self._update_scaling_params()
+        # algo = FullPageCaptureAlgorithm()
         if self._screenshot_type == ScreenshotType.ENTIRE_ELEMENT_SCREENSHOT:
-            self._last_screenshot = self._entire_element_screenshot()
+            self._last_screenshot = self._entire_element_screenshot(scale_provider)
+            logger.save_screenshot(self._last_screenshot, 'entire_element_screenshot')
+
         elif self._screenshot_type == ScreenshotType.FULLPAGE_SCREENSHOT:
-            self._last_screenshot = self._full_page_screenshot()
+            self._last_screenshot = self._full_page_screenshot(scale_provider)
+            logger.save_screenshot(self._last_screenshot, 'full_page_screenshot')
+
         elif self._screenshot_type == ScreenshotType.VIEWPORT_SCREENSHOT:
-            self._last_screenshot = self._viewport_screenshot()
+            self._last_screenshot = self._viewport_screenshot(scale_provider)
+            logger.save_screenshot(self._last_screenshot, 'viewport_screenshot')
+
+        elif self._screenshot_type == ScreenshotType.NOT_ENTIRE_ELEMENT_SCREENSHOT:
+            self._last_screenshot = self._not_entire_element_screenshot(scale_provider)
+            logger.save_screenshot(self._last_screenshot, 'not_entire_element_screenshot')
+
+        else:
+            raise EyesError("No proper ScreenshotType obtained")
 
         if self.hide_scrollbars:
             # noinspection PyUnboundLocalVariable
@@ -732,28 +785,38 @@ class Eyes(EyesBase):
         logger.save_screenshot(self._last_screenshot, 'screenshot')
         return self._last_screenshot
 
-    def _entire_element_screenshot(self):
+    def _entire_element_screenshot(self, scale_provider):
         logger.info('Entire element screenshot requested')
         screenshot = self._driver.get_stitched_screenshot(self._region_to_check,
-                                                          self.seconds_to_wait_screenshot)
+                                                          self.seconds_to_wait_screenshot,
+                                                          scale_provider)
         logger.save_screenshot(screenshot, 'entire')
-        screenshot = EyesScreenshot.create_from_image(screenshot, self._driver)
-        # if (isinstance(self._region_to_check, EyesWebElement) or
-        #         isinstance(self._region_to_check, WebElement)):
-        #     screenshot = screenshot.get_sub_screenshot_by_element(self._region_to_check)
-        #     logger.save_screenshot(screenshot, 'cutted-entire')
-
-        return screenshot
-
-    def _full_page_screenshot(self):
-        logger.info('Full page screenshot requested')
-        screenshot = self._driver.get_full_page_screenshot(self.seconds_to_wait_screenshot)
         return EyesScreenshot.create_from_image(screenshot, self._driver)
 
-    def _viewport_screenshot(self):
+    def _not_entire_element_screenshot(self, scale_provider):
+        logger.info('Not entire element screenshot requested')
+        screenshot = self._viewport_screenshot(scale_provider)
+        screenshot = screenshot.get_sub_screenshot_by_element(self._region_to_check)
+        return screenshot
+
+    def _full_page_screenshot(self, scale_provider):
+        logger.info('Full page screenshot requested')
+        screenshot = self._driver.get_full_page_screenshot(self.seconds_to_wait_screenshot,
+                                                           scale_provider)
+        return EyesScreenshot.create_from_image(screenshot, self._driver)
+
+    def _viewport_screenshot(self, scale_provider):
         logger.info('Viewport screenshot requested')
-        screenshot64 = self._driver.get_screesnhot_as_base64_from_main_frame(self.seconds_to_wait_screenshot)
-        return EyesScreenshot.create_from_base64(screenshot64, self._driver).get_viewport_screenshot()
+        screenshot64 = self._driver.get_screesnhot_as_base64_from_main_frame(
+            self.seconds_to_wait_screenshot)
+        screenshot = _image_utils.image_from_bytes(base64.b64decode(screenshot64))
+        logger.save_screenshot(screenshot, 'viewport')
+        scale_provider.update_scale_ratio(screenshot.width)
+        pixel_ratio = 1 / scale_provider.scale_ratio
+        if pixel_ratio != 1.0:
+            screenshot = _image_utils.scale_image(screenshot, 1.0 / pixel_ratio)
+            logger.save_screenshot(screenshot, 'scaled-viewport')
+        return EyesScreenshot.create_from_image(screenshot, self._driver)
 
     def check_window(self, tag=None, match_timeout=-1, target=None):
         # type: (tp.Optional[tp.Text], int, tp.Optional[Target]) -> None
@@ -802,7 +865,7 @@ class Eyes(EyesBase):
             logger.info('check_region(): ignored (disabled)')
             return
         logger.info("check_region([%s], '%s')" % (region, tag))
-        if region.is_empty():
+        if region.is_empty:
             raise EyesError("region cannot be empty!")
 
         self._screenshot_type = self._obtain_screenshot_type(is_element=False,
@@ -950,7 +1013,7 @@ class Eyes(EyesBase):
             return
         control = self._last_screenshot.get_intersected_region_by_element(element)
         # Making sure the trigger is within the last screenshot bounds
-        if control.is_empty():
+        if control.is_empty:
             logger.debug("add_text_trigger: Ignoring %s (out of bounds)" % text)
             return
         trigger = TextTrigger(control, text)

@@ -43,6 +43,10 @@ class Point(object):
     def __str__(self):
         return "({0}, {1})".format(self.x, self.y)
 
+    @classmethod
+    def create_top_left(cls):
+        return cls(0, 0)
+
     def length(self):
         # type: () -> float
         """
@@ -89,7 +93,7 @@ class Point(object):
         self.y = y
 
     def offset(self, dx, dy):
-        # type: (int, int) -> None
+        # type: (int, int) -> Point
         """
         Move to new (x+dx,y+dy).
 
@@ -98,6 +102,13 @@ class Point(object):
         """
         self.x = self.x + dx
         self.y = self.y + dy
+        return self
+
+    def offset_negative(self, dx, dy):
+        # type: (int, int) -> Point
+        self.x -= dx
+        self.y -= dy
+        return self
 
     def rotate(self, rad):
         # type: (int) -> Point
@@ -157,6 +168,22 @@ class Region(object):
     # noinspection PyMethodMayBeStatic
     def __setstate__(self, state):
         raise EyesError('Cannot create Region instance from dict!')
+
+    @classmethod
+    def create_empty_region(cls):
+        return cls(0, 0, 0, 0)
+
+    @classmethod
+    def from_location_size(cls, location, size):
+        return cls(location.x, location.y, size.width, size.height)
+
+    @property
+    def x(self):
+        return self.left
+
+    @property
+    def y(self):
+        return self.top
 
     @property
     def right(self):
@@ -238,6 +265,7 @@ class Region(object):
         self.left = max(self.left, 0)
         self.top = max(self.top, 0)
 
+    @property
     def is_size_empty(self):
         # type: () -> bool
         """
@@ -245,6 +273,7 @@ class Region(object):
         """
         return self.width <= 0 or self.height <= 0
 
+    @property
     def is_empty(self):
         # type: () -> bool
         """
@@ -325,6 +354,3 @@ class Region(object):
 
     def __str__(self):
         return "(%s, %s) %s x %s" % (self.left, self.top, self.width, self.height)
-
-
-EMPTY_REGION = Region()

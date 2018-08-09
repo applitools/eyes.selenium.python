@@ -20,10 +20,10 @@ from .geometry import Point, Region
 from .utils import _image_utils, general_utils
 from .utils.general_utils import cached_property
 from .utils.compat import ABC
+from PIL import Image
 
 if tp.TYPE_CHECKING:
     from .eyes import Eyes
-    from .utils._image_utils import PngImage
     from .utils._custom_types import Num, ViewPort, FrameReference, AnyWebDriver, AnyWebElement
 
 
@@ -72,7 +72,7 @@ class EyesScreenshot(object):
         if screenshot:
             self._screenshot = screenshot
         elif screenshot64:
-            self._screenshot = _image_utils.png_image_from_bytes(base64.b64decode(screenshot64))
+            self._screenshot = _image_utils.image_from_bytes(base64.b64decode(screenshot64))
         else:
             raise EyesError("both screenshot and screenshot64 are None!")
         self._driver = driver
@@ -158,7 +158,7 @@ class EyesScreenshot(object):
         :return: The base64 representation of the png.
         """
         if not self._screenshot64:
-            self._screenshot64 = self._screenshot.get_base64()
+            self._screenshot64 = _image_utils.get_base64(self._screenshot)
         return self._screenshot64
 
     def get_bytes(self):
@@ -168,7 +168,7 @@ class EyesScreenshot(object):
 
         :return: The bytes representation of the png.
         """
-        return self._screenshot.get_bytes()
+        return _image_utils.get_bytes(self._screenshot)
 
     def get_location_relative_to_frame_viewport(self, location):
         # type: (tp.Dict[tp.Text, Num]) -> tp.Dict[tp.Text, Num]
@@ -251,7 +251,7 @@ class EyesScreenshot(object):
         :return: A screenshot object representing the given region part of the image.
         """
         sub_screenshot_region = self.get_intersected_region(region)
-        if sub_screenshot_region.is_empty():
+        if sub_screenshot_region.is_empty:
             raise OutOfBoundsError("Region {0} is out of bounds!".format(region))
         # If we take a screenshot of a region inside a frame, then the frame's (0,0) is in the
         # negative offset of the region..
@@ -259,7 +259,7 @@ class EyesScreenshot(object):
 
         # FIXME Calculate relative region location? (same as the java version)
 
-        screenshot = self._screenshot.get_subimage(sub_screenshot_region)
+        screenshot = _image_utils.get_image_part(self._screenshot, sub_screenshot_region)
         return EyesScreenshot(self._driver, screenshot,
                               is_viewport_screenshot=self._is_viewport_screenshot,
                               frame_location_in_screenshot=sub_screenshot_frame_location)
@@ -915,6 +915,16 @@ class EyesWebDriver(object):
         caps = self.driver.capabilities
         return caps.get('browserName', caps.get('browser', None))
 
+    @cached_property
+    def user_agent(self):
+        try:
+            user_agent = self.driver.execute_script("return navigator.userAgent")
+            logger.info("user agent: {}".format(user_agent))
+        except Exception as e:
+            logger.info("Failed to obtain user-agent string")
+            user_agent = None
+        return user_agent
+
     def is_mobile_device(self):
         # type: () -> bool
         """
@@ -1125,14 +1135,15 @@ class EyesWebDriver(object):
         display_rotation = self.get_display_rotation()
         if display_rotation != 0:
             logger.info('Rotation required.')
-            num_quadrants = int(-(display_rotation / 90))
-            logger.debug('decoding base64...')
-            screenshot_bytes = base64.b64decode(screenshot64)
+            # num_quadrants = int(-(display_rotation / 90))
             logger.debug('Done! Creating image object...')
-            screenshot = _image_utils.png_image_from_bytes(screenshot_bytes)
+            screenshot = _image_utils.image_from_base64(screenshot64)
+
+            # rotating
+            if display_rotation == -90:
+                screenshot64 = _image_utils.get_base64(screenshot.rotate(90))
             logger.debug('Done! Rotating...')
-            screenshot.quadrant_rotate(num_quadrants)
-            screenshot64 = screenshot.get_base64()
+
         return screenshot64
 
     def get_screesnhot_as_base64_from_main_frame(self, seconds_to_wait):
@@ -1339,8 +1350,8 @@ class EyesWebDriver(object):
         time.sleep(seconds)
         logger.debug("Finished waiting!")
 
-    def get_full_page_screenshot(self, wait_before_screenshots):
-        # type: (Num) -> PngImage
+    def get_full_page_screenshot(self, wait_before_screenshots, scale_provider):
+        # type: (Num) -> Image.Image
         """
         Gets a full page screenshot.
 
@@ -1360,7 +1371,14 @@ class EyesWebDriver(object):
         # Starting with the screenshot at 0,0
         EyesWebDriver._wait_before_screenshot(wait_before_screenshots)
         part64 = self.get_screenshot_as_base64()
-        screenshot = _image_utils.png_image_from_bytes(base64.b64decode(part64))
+        screenshot = _image_utils.image_from_bytes(base64.b64decode(part64))
+
+        scale_provider.update_scale_ratio(screenshot.width)
+        pixel_ratio = 1 / scale_provider.scale_ratio
+        need_to_scale = True if pixel_ratio != 1.0 else False
+        if need_to_scale:
+            screenshot = _image_utils.scale_image(screenshot, 1.0 / pixel_ratio)
+            logger.save_screenshot(screenshot, 'scaled-full-page')
 
         # IMPORTANT This is required! Since when calculating the screenshot parts for full size,
         # we use a screenshot size which is a bit smaller (see comment below).
@@ -1368,6 +1386,7 @@ class EyesWebDriver(object):
                 (screenshot.height >= entire_page_size['height']):
             self.restore_origin()
             self.switch_to.frames(original_frame)
+
             return screenshot
 
         #  We use a smaller size than the actual screenshot size in order to eliminate duplication
@@ -1383,9 +1402,10 @@ class EyesWebDriver(object):
         screenshot_parts = entire_page.get_sub_regions(screenshot_part_size)
 
         # Starting with the screenshot we already captured at (0,0).
-        stitched_image = screenshot
-
+        stitched_image = Image.new('RGBA', (entire_page.width, entire_page.height))
+        stitched_image.paste(screenshot, box=(0, 0))
         self.save_position()
+
 
         for part in screenshot_parts:
             # Since we already took the screenshot for 0,0
@@ -1401,9 +1421,13 @@ class EyesWebDriver(object):
             logger.debug("Scrolled To ({0},{1})".format(current_scroll_position.x,
                                                         current_scroll_position.y))
             part64 = self.get_screenshot_as_base64()
-            part_image = _image_utils.png_image_from_bytes(base64.b64decode(part64))
-            stitched_image.paste(current_scroll_position.x, current_scroll_position.y,
-                                 part_image.pixel_bytes)
+            part_image = _image_utils.image_from_bytes(base64.b64decode(part64))
+
+            if need_to_scale:
+                part_image = _image_utils.scale_image(part_image, 1.0 / pixel_ratio)
+                logger.save_screenshot(part_image, 'scaled-full-page')
+
+            stitched_image.paste(part_image, box=(current_scroll_position.x, current_scroll_position.y))
 
         self.restore_position()
         self.restore_origin()
@@ -1411,7 +1435,8 @@ class EyesWebDriver(object):
 
         return stitched_image
 
-    def get_stitched_screenshot(self, element, wait_before_screenshots):
+    def get_stitched_screenshot(self, element, wait_before_screenshots, scale_provider):
+        # type: (AnyWebElement, int) -> Image.Image
         """
         Gets a stitched screenshot for specific element
 
@@ -1456,13 +1481,17 @@ class EyesWebDriver(object):
         screenshot_part_size = {'width': element_region.width,
                                 'height': max(element_region.height - self._MAX_SCROLL_BAR_SIZE,
                                               self._MIN_SCREENSHOT_PART_HEIGHT)}
-        entire_page = Region(0, 0, entire_size['width'], entire_size['height'])
+        entire_element = Region(0, 0, entire_size['width'], entire_size['height'])
 
-        screenshot_parts = entire_page.get_sub_regions(screenshot_part_size)
+        screenshot_parts = entire_element.get_sub_regions(screenshot_part_size)
         viewport = self.get_viewport_size()
+        screenshot = _image_utils.image_from_bytes(base64.b64decode(self.get_screenshot_as_base64()))
+        scale_provider.update_scale_ratio(screenshot.width)
+        pixel_ratio = 1 / scale_provider.scale_ratio
+        need_to_scale = True if pixel_ratio != 1.0 else False
 
         # Starting with element region size part of the screenshot. Use it as a size template.
-        stitched_image = None
+        stitched_image = Image.new('RGBA', (entire_element.width, entire_element.height))
         for part in screenshot_parts:
             logger.debug("Taking screenshot for {0}".format(part))
             # Scroll to the part's top/left and give it time to stabilize.
@@ -1473,33 +1502,34 @@ class EyesWebDriver(object):
             logger.debug("Scrolled To ({0},{1})".format(current_scroll_position.x,
                                                         current_scroll_position.y))
             part64 = self.get_screenshot_as_base64()
-            part_image = _image_utils.png_image_from_bytes(base64.b64decode(part64))
+            part_image = _image_utils.image_from_bytes(base64.b64decode(part64))
+            if need_to_scale:
+                part_image = _image_utils.scale_image(part_image, 1.0 / pixel_ratio)
+                logger.save_screenshot(part_image, 'scaled-part')
             logger.save_screenshot(part_image, 'part_image-full')
-
             # Cut to viewport size the full page screenshot of main frame for some browsers
             if self._frames:
                 if (self.browser_name == 'firefox' and self.browser_version < 60.0
                         or self.browser_name in ('internet explorer', 'safari')):
                     # TODO: Refactor this to make main screenshot only once
                     frame_scroll_position = int(self._frames[-1].location['y'])
-                    part_image = part_image.get_subimage(Region(top=frame_scroll_position, height=viewport['height'],
+                    part_image = _image_utils.get_image_part(part_image, Region(top=frame_scroll_position, height=viewport['height'],
                                                                 width=viewport['width']))
                     logger.save_screenshot(part_image, 'part_image-cutted')
 
-            part_image = part_image.get_subimage(element_region)
+            part_image = _image_utils.get_image_part(part_image, element_region)
             logger.save_screenshot(part_image, 'part_image_subimage')
 
             # first iteration
             if stitched_image is None:
                 stitched_image = part_image
                 continue
-
-            stitched_image.paste(current_scroll_position.x, current_scroll_position.y,
-                                 part_image.pixel_bytes)
+            stitched_image.paste(part_image, box=(current_scroll_position.x, current_scroll_position.y))
             logger.save_screenshot(stitched_image, 'paste')
 
         if origin_overflow:
             element.set_overflow(origin_overflow)
+
 
         return stitched_image
 

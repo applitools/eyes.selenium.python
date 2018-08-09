@@ -1,8 +1,18 @@
+__all__ = ('EyesError', 'EyesIllegalArgument', 'OutOfBoundsError',
+           'UnsupportedCoordinateType', 'TestFailedError', 'NewTestError',
+           'DiffsFoundError', 'EyesDriverOperationException')
+
+
 class EyesError(Exception):
     """
     Applitools Eyes Exception.
     """
-    pass
+
+
+class EyesIllegalArgument(EyesError):
+    """
+    Raise when parameter with wrong type passed to function
+    """
 
 
 class OutOfBoundsError(EyesError):
@@ -10,7 +20,17 @@ class OutOfBoundsError(EyesError):
     Indicates that an element is outside a specific boundary (e.g, region outside a frame,
     or point outside an image).
     """
-    pass
+
+
+class UnsupportedCoordinateType(EyesError):
+    """
+
+    """
+
+class EyesDriverOperationException(EyesError):
+    """
+
+    """
 
 
 class TestFailedError(Exception):
