@@ -3,7 +3,7 @@ from .utils.compat import ABC
 
 
 class ScaleProvider(ABC):
-    _UNKNOWN_SCALE_RATIO = 0
+    _UNKNOWN_SCALE_RATIO = 0.0
 
     def __init__(self, *args, **kwargs):
         self._scale_ratio = self._UNKNOWN_SCALE_RATIO
@@ -22,7 +22,7 @@ class FixedScaleProvider(ScaleProvider):
 
 
 class NullScaleProvider(FixedScaleProvider):
-    _UNKNOWN_SCALE_RATIO = 1
+    _UNKNOWN_SCALE_RATIO = 1.0
 
 
 class ContextBasedScaleProvider(ScaleProvider):
@@ -59,10 +59,10 @@ class ContextBasedScaleProvider(ScaleProvider):
                                   <= dces_width + self._ALLOWED_DCES_DEVIATION)
         if allowed_dces_deviation or allowed_vs_deviation:
             logger.info('Image is already scaled correctly.')
-            self._scale_ratio = 1
+            self._scale_ratio = 1.0
         else:
             logger.info('Calculating the scale ratio..')
-            self._scale_ratio = 1 / self.device_pixel_ratio
+            self._scale_ratio = 1.0 / self.device_pixel_ratio
             if self.is_mobile_device:
                 logger.info('Mobile device, so using 2 step calculation for scale ration...')
                 logger.info('Scale ratio based on DRP: ' + self._scale_ratio)

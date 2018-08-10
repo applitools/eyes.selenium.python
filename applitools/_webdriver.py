@@ -1374,7 +1374,7 @@ class EyesWebDriver(object):
         screenshot = _image_utils.image_from_bytes(base64.b64decode(part64))
 
         scale_provider.update_scale_ratio(screenshot.width)
-        pixel_ratio = 1 / scale_provider.scale_ratio
+        pixel_ratio = 1.0 / scale_provider.scale_ratio
         need_to_scale = True if pixel_ratio != 1.0 else False
         if need_to_scale:
             screenshot = _image_utils.scale_image(screenshot, 1.0 / pixel_ratio)
