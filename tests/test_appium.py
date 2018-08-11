@@ -25,7 +25,7 @@ def test_final_application_android(eyes, driver):
     eyes.check_window("test2")
     element = driver.find_element(By.XPATH, "html/body/div[2]/h1[5]")
     driver.execute_script("arguments[0].scrollIntoView(true);", element.element)
-    eyes.check_region(driver.findElement(By.XPATH, "html/body/div[2]/h1[5]"))
+    eyes.check_region(driver.find_element(By.XPATH, "html/body/div[2]/h1[5]"))
     eyes.close()
 
 
@@ -38,5 +38,5 @@ def test_final_application_ios(eyes, driver):
     eyes.check_window()
     element = driver.find_element(By.XPATH, "html/body/div[2]")
     driver.execute_script("arguments[0].scrollIntoView(true);", element.element)
-    eyes.checkRegion(driver.findElement(By.XPATH, "html/body/div[2]"))
+    eyes.checkRegion(driver.find_element(By.XPATH, "html/body/div[2]"))
     eyes.close()

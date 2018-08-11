@@ -6,6 +6,9 @@ from collections import OrderedDict
 
 from .errors import EyesError
 
+if tp.TYPE_CHECKING:
+    from .utils._custom_types import ViewPort
+
 
 class Point(object):
     """
@@ -28,6 +31,9 @@ class Point(object):
     def __add__(self, other):
         return Point(self.x + other.x, self.y + other.y)
 
+    def __iadd__(self, other):
+        return Point(self.x + other.x, self.y + other.y)
+
     def __sub__(self, other):
         return Point(self.x - other.x, self.y - other.y)
 
@@ -39,6 +45,13 @@ class Point(object):
 
     def __str__(self):
         return "({0}, {1})".format(self.x, self.y)
+
+    def __bool__(self):
+        return self.x and self.y
+
+    @classmethod
+    def create_top_left(cls):
+        return cls(0, 0)
 
     def length(self):
         # type: () -> float
@@ -86,7 +99,7 @@ class Point(object):
         self.y = y
 
     def offset(self, dx, dy):
-        # type: (int, int) -> None
+        # type: (int, int) -> Point
         """
         Move to new (x+dx,y+dy).
 
@@ -95,6 +108,13 @@ class Point(object):
         """
         self.x = self.x + dx
         self.y = self.y + dy
+        return self
+
+    def offset_negative(self, dx, dy):
+        # type: (int, int) -> Point
+        self.x -= dx
+        self.y -= dy
+        return self
 
     def rotate(self, rad):
         # type: (int) -> Point
@@ -133,6 +153,10 @@ class Point(object):
         result.offset(p.x, p.y)
         return result
 
+    def scale(self, scale_ratio):
+        return Point(int(math.ceil(self.x * scale_ratio)),
+                     int(math.ceil(self.y * scale_ratio)))
+
 
 class Region(object):
     """
@@ -154,6 +178,22 @@ class Region(object):
     # noinspection PyMethodMayBeStatic
     def __setstate__(self, state):
         raise EyesError('Cannot create Region instance from dict!')
+
+    @classmethod
+    def create_empty_region(cls):
+        return cls(0, 0, 0, 0)
+
+    @classmethod
+    def from_location_size(cls, location, size):
+        return cls(location.x, location.y, size.width, size.height)
+
+    @property
+    def x(self):
+        return self.left
+
+    @property
+    def y(self):
+        return self.top
 
     @property
     def right(self):
@@ -182,6 +222,14 @@ class Region(object):
         # type: () -> Point
         """Return the bottom-right corner as a Point."""
         return Point(self.right, self.bottom)
+
+    @property
+    def size(self):
+        # type: () -> ViewPort
+        """
+        :return: The size of the region.
+        """
+        return dict(width=self.width, height=self.height)
 
     def clone(self):
         # type: () -> Region
@@ -226,6 +274,13 @@ class Region(object):
         """
         self.left = max(self.left, 0)
         self.top = max(self.top, 0)
+
+    def is_size_empty(self):
+        # type: () -> bool
+        """
+        :return: true if the region's size is 0, false otherwise.
+        """
+        return self.width <= 0 or self.height <= 0
 
     def is_empty(self):
         # type: () -> bool
@@ -305,8 +360,19 @@ class Region(object):
         # type: () -> Point
         return Point(int(round(self.width / 2)), int(round(self.height / 2)))
 
+    def offset(self, dx, dy):
+        location = self.location.offset(dx, dy)
+        return Region(left=location.x, top=location.y,
+                      width=self.size['width'],
+                      height=self.size['height'])
+
+    def scale(self, scale_ratio):
+        return Region(
+            left=int(math.ceil(self.left * scale_ratio)),
+            top=int(math.ceil(self.top * scale_ratio)),
+            width=int(math.ceil(self.width * scale_ratio)),
+            height=int(math.ceil(self.height * scale_ratio))
+        )
+
     def __str__(self):
         return "(%s, %s) %s x %s" % (self.left, self.top, self.width, self.height)
-
-
-EMPTY_REGION = Region()

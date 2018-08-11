@@ -15,8 +15,8 @@ def read(filename):
 
 install_requires = [
     'requests>=2.1.0',
-    'pypng>=0.0.16',
     'selenium>=2.53.0',
+    'Pillow>=5.0.0'
 ]
 
 install_dev_requires = [

@@ -1,8 +1,10 @@
 from __future__ import absolute_import
 
+import base64
 import os
 import typing as tp
 import uuid
+import abc
 from datetime import datetime
 
 from selenium.common.exceptions import WebDriverException
@@ -13,15 +15,16 @@ from . import VERSION, _viewport_size, logger
 from ._agent_connector import AgentConnector
 from ._match_window_task import MatchWindowTask
 from ._triggers import MouseTrigger, TextTrigger
-from ._webdriver import EyesFrame, EyesWebDriver
+from ._webdriver import EyesFrame, EyesWebDriver, EyesScreenshot
 from .common import StitchMode
 from .errors import DiffsFoundError, EyesError, NewTestError, TestFailedError
 from .geometry import Region
 from .test_results import TestResults, TestResultsStatus
-from .utils import general_utils
+from .utils import general_utils, _image_utils
+from .utils.compat import ABC
+from .scaling import ContextBasedScaleProvider, FixedScaleProvider
 
 if tp.TYPE_CHECKING:
-    from ._webdriver import EyesScreenshot
     from .target import Target
     from .utils._custom_types import (RunningSession, ViewPort, UserInputs, MatchResult, AppEnvironment,
                                       SessionStartInfo, AnyWebDriver, FrameReference, AnyWebElement)
@@ -46,6 +49,13 @@ class MatchLevel(object):
     CONTENT = "Content"
     STRICT = "Strict"
     EXACT = "Exact"
+
+
+class ScreenshotType(object):
+    ENTIRE_ELEMENT_SCREENSHOT = 'EntireElementScreenshot'
+    NOT_ENTIRE_ELEMENT_SCREENSHOT = 'NotEntireElementScreenshot'
+    FULLPAGE_SCREENSHOT = "FullPageScreenshot"
+    VIEWPORT_SCREENSHOT = "ViewportScreenshot"
 
 
 class ExactMatchSettings(object):
@@ -136,19 +146,11 @@ class BatchInfo(object):
         return "%s - %s - %s" % (self.name, self.started_at, self.id_)
 
 
-class Eyes(object):
-    """
-    Applitools Selenium Eyes API for python.
-    """
+class EyesBase(ABC):
     _DEFAULT_MATCH_TIMEOUT = 2000  # Milliseconds
     _DEFAULT_WAIT_BEFORE_SCREENSHOTS = 100  # ms
     BASE_AGENT_ID = "eyes.selenium.python/%s" % VERSION
     DEFAULT_EYES_SERVER = 'https://eyessdk.applitools.com'
-
-    @staticmethod
-    def set_viewport_size(driver, viewport_size):
-        # type: (AnyWebDriver, ViewPort) -> None
-        _viewport_size.set_viewport_size(driver, viewport_size)
 
     def __init__(self, server_url=DEFAULT_EYES_SERVER):
         # type: (tp.Text) -> None
@@ -157,21 +159,20 @@ class Eyes(object):
 
         :param server_url: The URL of the Eyes server
         """
-        self._user_inputs = []  # type: UserInputs
-        self._running_session = None  # type: tp.Optional[RunningSession]
         self._agent_connector = AgentConnector(server_url)  # type: AgentConnector
         self._should_get_title = False  # type: bool
-        self._driver = None  # type: tp.Optional[AnyWebDriver]
-        self._match_window_task = None  # type: tp.Optional[MatchWindowTask]
         self._is_open = False  # type: bool
         self._app_name = None  # type: tp.Optional[tp.Text]
+        self._running_session = None  # type: tp.Optional[RunningSession]
+        self._match_timeout = EyesBase._DEFAULT_MATCH_TIMEOUT  # type: int
+        self._stitch_mode = StitchMode.Scroll  # type: tp.Text
         self._last_screenshot = None  # type: tp.Optional[EyesScreenshot]
         self._should_match_once_on_timeout = False  # type: bool
         self._start_info = None  # type: tp.Optional[SessionStartInfo]
         self._test_name = None  # type: tp.Optional[tp.Text]
-        self._viewport_size = None  # type: tp.Optional[ViewPort]
-        self._match_timeout = Eyes._DEFAULT_MATCH_TIMEOUT  # type: int
-        self._stitch_mode = StitchMode.Scroll  # type: tp.Text
+        self._user_inputs = []  # type: UserInputs
+        self._region_to_check = None
+
         # key-value pairs to be associated with the test. Can be used for filtering later.
         self._properties = []  # type: tp.List
 
@@ -212,27 +213,55 @@ class Eyes(object):
         # A string identifying the parent branch of the branch set by "branch_name".
         self.parent_branch_name = None  # type: tp.Optional[tp.Text]
 
-        # If true, Eyes will create a full page screenshot (by using stitching) for browsers which only
-        # returns the viewport screenshot.
-        self.force_full_page_screenshot = False  # type: bool
-
-        # If true, Eyes will remove the scrollbars from the pages before taking the screenshot.
-        self.hide_scrollbars = False  # type: bool
-
         # If true, Eyes will treat new tests the same as failed tests.
         self.fail_on_new_test = False  # type: bool
 
         # The number of milliseconds to wait before each time a screenshot is taken.
         self.wait_before_screenshots = Eyes._DEFAULT_WAIT_BEFORE_SCREENSHOTS  # type: int
 
-    def add_property(self, name, value):
-        # type: (tp.Text, tp.Text) -> None
+    @abc.abstractmethod
+    def get_title(self):
+        # type: () -> tp.Text
         """
-        Associates a key/value pair with the test. This can be used later for filtering.
-        :param name: (string) The property name.
-        :param value: (string) The property value
+        Returns the title of the window of the AUT, or empty string if the title is not available.
         """
-        self._properties.append({'name': name, 'value': value})
+
+    @abc.abstractmethod
+    def get_screenshot(self):
+        pass
+
+    @abc.abstractmethod
+    def get_viewport_size(self):
+        pass
+
+    @staticmethod
+    @abc.abstractmethod
+    def set_viewport_size(driver, viewport_size):
+        pass
+
+    @abc.abstractmethod
+    def _assign_viewport_size(self):
+        # type: () -> None
+        """
+        Assign the viewport size we need to be in the default content frame.
+        """
+
+    @abc.abstractmethod
+    def _get_environment(self):
+        # type: () -> AppEnvironment
+        """
+        Application environment is the environment (e.g., the host OS) which runs the application under test.
+
+        :return: The current application environment.
+        """
+
+    @abc.abstractmethod
+    def _get_inferred_environment(self):
+        pass
+
+    @property
+    def seconds_to_wait_screenshot(self):
+        return self.wait_before_screenshots / 1000.0
 
     @property
     def match_level(self):
@@ -350,6 +379,15 @@ class Eyes(object):
             return self.BASE_AGENT_ID
         return "%s [%s]" % (self.agent_id, self.BASE_AGENT_ID)
 
+    def add_property(self, name, value):
+        # type: (tp.Text, tp.Text) -> None
+        """
+        Associates a key/value pair with the test. This can be used later for filtering.
+        :param name: (string) The property name.
+        :param value: (string) The property value
+        """
+        self._properties.append({'name': name, 'value': value})
+
     def is_open(self):
         # type: () -> bool
         """
@@ -357,19 +395,74 @@ class Eyes(object):
         """
         return self._is_open
 
-    def get_driver(self):
-        # type: () -> EyesWebDriver
+    def close(self, raise_ex=True):
+        # type: (bool) -> tp.Optional[TestResults]
         """
-        Returns the current web driver.
-        """
-        return self._driver
+        Ends the test.
 
-    def get_viewport_size(self):
-        # type: () -> tp.Dict[tp.Text, int]
+        :param raise_ex: If true, an exception will be raised for failed/new tests.
+        :return: The test results.
         """
-        Returns the size of the viewport of the application under test (e.g, the browser).
-        """
-        return self._driver.get_viewport_size()
+        if self.is_disabled:
+            logger.debug('close(): ignored (disabled)')
+            return None
+        try:
+            logger.debug('close({})'.format(raise_ex))
+            if not self._is_open:
+                raise ValueError("Eyes not open")
+
+            self._is_open = False
+
+            self._reset_last_screenshot()
+
+            # If there's no running session, we simply return the default test results.
+            if not self._running_session:
+                logger.debug('close(): Server session was not started')
+                logger.info('close(): --- Empty test ended.')
+                return TestResults()
+
+            is_new_session = self._running_session['is_new_session']
+            results_url = self._running_session['session_url']
+
+            logger.info("close(): Ending server session...")
+            should_save = (is_new_session and self.save_new_tests) or \
+                          ((not is_new_session) and self.save_failed_tests)
+            logger.debug("close(): automatically save session? %s" % should_save)
+            results = self._agent_connector.stop_session(self._running_session, False, should_save)
+            results.is_new = is_new_session
+            results.url = results_url
+            logger.info("close(): %s" % results)
+
+            if results.status == TestResultsStatus.Unresolved:
+                if results.is_new:
+                    instructions = "Please approve the new baseline at " + results_url
+                    logger.info("--- New test ended. " + instructions)
+                    if raise_ex:
+                        message = "'%s' of '%s'. %s" % (self._start_info['scenarioIdOrName'],
+                                                        self._start_info['appIdOrName'],
+                                                        instructions)
+                        raise NewTestError(message, results)
+                else:
+                    logger.info("--- Failed test ended. See details at {}".format(results_url))
+                    if raise_ex:
+                        raise DiffsFoundError("Test '{}' of '{}' detected differences! See details at: {}".format(
+                            self._start_info['scenarioIdOrName'],
+                            self._start_info['appIdOrName'],
+                            results_url), results)
+            elif results.status == TestResultsStatus.Failed:
+                logger.info("--- Failed test ended. See details at {}".format(results_url))
+                if raise_ex:
+                    raise TestFailedError("Test '{}' of '{}'. See details at: {}".format(
+                        self._start_info['scenarioIdOrName'],
+                        self._start_info['appIdOrName'],
+                        results_url), results)
+            # Test passed
+            logger.info("--- Test passed. See details at {}".format(results_url))
+
+            return results
+        finally:
+            self._running_session = None
+            logger.close()
 
     def abort_if_not_closed(self):
         # type: () -> None
@@ -440,60 +533,6 @@ class Eyes(object):
         self._is_open = True
         return self._driver
 
-    def _assign_viewport_size(self):
-        # type: () -> None
-        """
-        Assign the viewport size we need to be in the default content frame.
-        """
-        original_frame_chain = self._driver.get_frame_chain()
-        self._driver.switch_to.default_content()
-        try:
-            if self._viewport_size:
-                logger.debug("Assigning viewport size {0}".format(self._viewport_size))
-                self.set_viewport_size(self._driver, self._viewport_size)
-            else:
-                logger.debug("No viewport size given. Extracting the viewport size from the driver...")
-                self._viewport_size = self.get_viewport_size()
-                logger.debug("Viewport size {0}".format(self._viewport_size))
-        except EyesError:
-            raise TestFailedError('Failed to assign viewport size!')
-        finally:
-            # Going back to the frame we started at
-            self._driver.switch_to.frames(original_frame_chain)
-
-    def _get_environment(self):
-        # type: () -> AppEnvironment
-        """
-        Application environment is the environment (e.g., the host OS) which runs the application under test.
-
-        :return: The current application environment.
-        """
-        os = self.host_os
-        # If no host OS was set, check for mobile OS.
-        if os is None:
-            logger.info('No OS set, checking for mobile OS...')
-            # Since in Python Appium driver is the same for Android and iOS, we need to use the desired
-            # capabilities to figure this out.
-            if self._driver.is_mobile_device():
-                platform_name = self._driver.platform_name
-                logger.info(platform_name + ' detected')
-                platform_version = self._driver.platform_version
-                if platform_version is not None:
-                    # Notice that Python's "split" function's +limit+ is the the maximum splits performed
-                    # whereas in Ruby it is the maximum number of elements in the result (which is why they are set
-                    # differently).
-                    major_version = platform_version.split('.', 1)[0]
-                    os = platform_name + ' ' + major_version
-                else:
-                    os = platform_name
-                logger.info("Setting OS: " + os)
-            else:
-                logger.info('No mobile OS detected.')
-        app_env = {'os': os, 'hostingApp': self.host_app,
-                   'displaySize': self._viewport_size,
-                   'inferred': self._get_inferred_environment()}
-        return app_env
-
     def _create_start_info(self):
         # type: () -> None
         app_env = self._get_environment()
@@ -524,11 +563,125 @@ class Eyes(object):
         self._running_session = self._agent_connector.start_session(self._start_info)
         self._should_match_once_on_timeout = self._running_session['is_new_session']
 
+    def _reset_last_screenshot(self):
+        # type: () -> None
+        self._last_screenshot = None
+        self._user_inputs = []  # type: UserInputs
+
+
+class Eyes(EyesBase):
+    """
+    Applitools Selenium Eyes API for python.
+    """
+    _UNKNOWN_DEVICE_PIXEL_RATIO = 0
+    _DEFAULT_DEVICE_PIXEL_RATIO = 1
+
+    @staticmethod
+    def set_viewport_size(driver, viewport_size):
+        # type: (AnyWebDriver, ViewPort) -> None
+        _viewport_size.set_viewport_size(driver, viewport_size)
+
+    def __init__(self, server_url=EyesBase.DEFAULT_EYES_SERVER):
+        super(Eyes, self).__init__(server_url)
+
+        self._driver = None  # type: tp.Optional[AnyWebDriver]
+        self._match_window_task = None  # type: tp.Optional[MatchWindowTask]
+        self._viewport_size = None  # type: tp.Optional[ViewPort]
+        self._screenshot_type = None  # type: tp.Optional[ScreenshotType]
+        self._device_pixel_ratio = self._UNKNOWN_DEVICE_PIXEL_RATIO
+
+        # If true, Eyes will create a full page screenshot (by using stitching) for browsers which only
+        # returns the viewport screenshot.
+        self.force_full_page_screenshot = False  # type: bool
+
+        # If true, Eyes will remove the scrollbars from the pages before taking the screenshot.
+        self.hide_scrollbars = False  # type: bool
+
+    def _obtain_screenshot_type(self, is_element, inside_a_frame, stitch_content, force_fullpage):
+        if stitch_content or force_fullpage:
+            if is_element and not stitch_content:
+                return ScreenshotType.NOT_ENTIRE_ELEMENT_SCREENSHOT
+
+            if not inside_a_frame:
+                if ((force_fullpage and not stitch_content) or
+                        (stitch_content and not is_element)):
+                    return ScreenshotType.FULLPAGE_SCREENSHOT
+
+            if inside_a_frame or stitch_content:
+                return ScreenshotType.ENTIRE_ELEMENT_SCREENSHOT
+
+        else:
+            if is_element and not stitch_content:
+                return ScreenshotType.NOT_ENTIRE_ELEMENT_SCREENSHOT
+
+            if not stitch_content and not force_fullpage:
+                return ScreenshotType.VIEWPORT_SCREENSHOT
+
+        return ScreenshotType.VIEWPORT_SCREENSHOT
+
+    def _get_environment(self):
+        os = self.host_os
+        # If no host OS was set, check for mobile OS.
+        if os is None:
+            logger.info('No OS set, checking for mobile OS...')
+            # Since in Python Appium driver is the same for Android and iOS, we need to use the desired
+            # capabilities to figure this out.
+            if self._driver.is_mobile_device():
+                platform_name = self._driver.platform_name
+                logger.info(platform_name + ' detected')
+                platform_version = self._driver.platform_version
+                if platform_version is not None:
+                    # Notice that Python's "split" function's +limit+ is the the maximum splits performed
+                    # whereas in Ruby it is the maximum number of elements in the result (which is why they are set
+                    # differently).
+                    major_version = platform_version.split('.', 1)[0]
+                    os = platform_name + ' ' + major_version
+                else:
+                    os = platform_name
+                logger.info("Setting OS: " + os)
+            else:
+                logger.info('No mobile OS detected.')
+        app_env = {'os': os, 'hostingApp': self.host_app,
+                   'displaySize': self._viewport_size,
+                   'inferred': self._get_inferred_environment()}
+        return app_env
+
+    def get_driver(self):
+        # type: () -> EyesWebDriver
+        """
+        Returns the current web driver.
+        """
+        return self._driver
+
+    def get_viewport_size(self):
+        # type: () -> tp.Dict[tp.Text, int]
+        """
+        Returns the size of the viewport of the application under test (e.g, the browser).
+        """
+        return self._driver.get_viewport_size()
+
+    def _assign_viewport_size(self):
+        # type: () -> None
+        """
+        Assign the viewport size we need to be in the default content frame.
+        """
+        original_frame_chain = self._driver.get_frame_chain()
+        self._driver.switch_to.default_content()
+        try:
+            if self._viewport_size:
+                logger.debug("Assigning viewport size {0}".format(self._viewport_size))
+                self.set_viewport_size(self._driver, self._viewport_size)
+            else:
+                logger.debug("No viewport size given. Extracting the viewport size from the driver...")
+                self._viewport_size = self.get_viewport_size()
+                logger.debug("Viewport size {0}".format(self._viewport_size))
+        except EyesError:
+            raise TestFailedError('Failed to assign viewport size!')
+        finally:
+            # Going back to the frame we started at
+            self._driver.switch_to.frames(original_frame_chain)
+
     def get_title(self):
-        # type: () -> tp.Text
-        """
-        Returns the title of the window of the AUT, or empty string if the title is not available.
-        """
         if self._should_get_title:
             # noinspection PyBroadException
             try:
@@ -574,6 +727,87 @@ class Eyes(object):
                                           (self._start_info['scenarioIdOrName'],
                                            self._start_info['appIdOrName']))
 
+    def _update_scaling_params(self):
+        if self._device_pixel_ratio == self._UNKNOWN_DEVICE_PIXEL_RATIO:
+            logger.info('Trying to extract device pixel ratio...')
+            try:
+                device_pixel_ratio = _image_utils.get_device_pixel_ratio(self._driver)
+            except Exception as e:
+                logger.info('Failed to extract device pixel ratio! Using default. Error %s ' % e)
+                device_pixel_ratio = self._DEFAULT_DEVICE_PIXEL_RATIO
+            logger.info('Device pixel ratio: {}'.format(device_pixel_ratio))
+
+            logger.info("Setting scale provider...")
+            try:
+                scale_provider = ContextBasedScaleProvider(
+                    top_level_context_entire_size=self._driver.get_entire_page_size(),
+                    viewport_size=self._driver.get_viewport_size(),
+                    device_pixel_ratio=device_pixel_ratio,
+                    is_mobile_device=self._driver.is_mobile_device())
+            except Exception:
+                # This can happen in Appium for example.
+                logger.info("Failed to set ContextBasedScaleProvider.")
+                logger.info("Using FixedScaleProvider instead...")
+                scale_provider = FixedScaleProvider(1 / device_pixel_ratio)
+            logger.info("Done!")
+            return scale_provider
+
+    def get_screenshot(self):
+        if self.hide_scrollbars:
+            original_overflow = self._driver.hide_scrollbars()
+
+        scale_provider = self._update_scaling_params()
+        # algo = FullPageCaptureAlgorithm()
+        if self._screenshot_type == ScreenshotType.ENTIRE_ELEMENT_SCREENSHOT:
+            self._last_screenshot = self._entire_element_screenshot(scale_provider)
+
+        elif self._screenshot_type == ScreenshotType.FULLPAGE_SCREENSHOT:
+            self._last_screenshot = self._full_page_screenshot(scale_provider)
+
+        elif self._screenshot_type == ScreenshotType.VIEWPORT_SCREENSHOT:
+            self._last_screenshot = self._viewport_screenshot(scale_provider)
+
+        elif self._screenshot_type == ScreenshotType.NOT_ENTIRE_ELEMENT_SCREENSHOT:
+            self._last_screenshot = self._not_entire_element_screenshot(scale_provider)
+
+        else:
+            raise EyesError("No proper ScreenshotType obtained")
+
+        if self.hide_scrollbars:
+            # noinspection PyUnboundLocalVariable
+            self._driver.set_overflow(original_overflow)
+        return self._last_screenshot
+
+    def _entire_element_screenshot(self, scale_provider):
+        logger.info('Entire element screenshot requested')
+        screenshot = self._driver.get_stitched_screenshot(self._region_to_check,
+                                                          self.seconds_to_wait_screenshot,
+                                                          scale_provider)
+        return EyesScreenshot.create_from_image(screenshot, self._driver)
+
+    def _not_entire_element_screenshot(self, scale_provider):
+        logger.info('Not entire element screenshot requested')
+        screenshot = self._viewport_screenshot(scale_provider)
+        screenshot = screenshot.get_sub_screenshot_by_element(self._region_to_check)
+        return screenshot
+
+    def _full_page_screenshot(self, scale_provider):
+        logger.info('Full page screenshot requested')
+        screenshot = self._driver.get_full_page_screenshot(self.seconds_to_wait_screenshot,
+                                                           scale_provider)
+        return EyesScreenshot.create_from_image(screenshot, self._driver)
+
+    def _viewport_screenshot(self, scale_provider):
+        logger.info('Viewport screenshot requested')
+        screenshot64 = self._driver.get_screesnhot_as_base64_from_main_frame(
+            self.seconds_to_wait_screenshot)
+        screenshot = _image_utils.image_from_bytes(base64.b64decode(screenshot64))
+        scale_provider.update_scale_ratio(screenshot.width)
+        pixel_ratio = 1 / scale_provider.scale_ratio
+        if pixel_ratio != 1.0:
+            screenshot = _image_utils.scale_image(screenshot, 1.0 / pixel_ratio)
+        return EyesScreenshot.create_from_image(screenshot, self._driver)
+
     def check_window(self, tag=None, match_timeout=-1, target=None):
         # type: (tp.Optional[tp.Text], int, tp.Optional[Target]) -> None
         """
@@ -589,23 +823,21 @@ class Eyes(object):
             logger.info("check_window(%s): ignored (disabled)" % tag)
             return
         logger.info("check_window('%s')" % tag)
-        if self.hide_scrollbars:
-            original_overflow = self._driver.hide_scrollbars()
+        self._screenshot_type = self._obtain_screenshot_type(is_element=False,
+                                                             inside_a_frame=bool(self._driver.get_frame_chain()),
+                                                             stitch_content=False,
+                                                             force_fullpage=self.force_full_page_screenshot)
+
         self._prepare_to_check()
         result = self._match_window_task.match_window(match_timeout, tag,
-                                                      self.force_full_page_screenshot,
                                                       self._user_inputs,
-                                                      self.wait_before_screenshots,
                                                       self.default_match_settings,
                                                       target,
                                                       self._should_match_once_on_timeout)
-        if self.hide_scrollbars:
-            # noinspection PyUnboundLocalVariable
-            self._driver.set_overflow(original_overflow)
         self._handle_match_result(result, tag)
 
-    def check_region(self, region, tag=None, match_timeout=-1, target=None):
-        # type: (Region, tp.Optional[tp.Text], int, tp.Optional[Target]) -> None
+    def check_region(self, region, tag=None, match_timeout=-1, target=None, stitch_content=False):
+        # type: (Region, tp.Optional[tp.Text], int, tp.Optional[Target], bool) -> None
         """
         Takes a snapshot of the given region from the browser using the web driver and matches it
         with the expected output. If the current context is a frame, the region is offsetted
@@ -625,19 +857,18 @@ class Eyes(object):
         logger.info("check_region([%s], '%s')" % (region, tag))
         if region.is_empty():
             raise EyesError("region cannot be empty!")
-        if self.hide_scrollbars:
-            original_overflow = self._driver.hide_scrollbars()
+
+        self._screenshot_type = self._obtain_screenshot_type(is_element=False,
+                                                             inside_a_frame=bool(self._driver.get_frame_chain()),
+                                                             stitch_content=stitch_content,
+                                                             force_fullpage=self.force_full_page_screenshot)
+        self._region_to_check = region
         self._prepare_to_check()
-        result = self._match_window_task.match_region(region, match_timeout, tag,
-                                                      self.force_full_page_screenshot,
+        result = self._match_window_task.match_window(match_timeout, tag,
                                                       self._user_inputs,
-                                                      self.wait_before_screenshots,
                                                       self.default_match_settings,
                                                       target,
                                                       self._should_match_once_on_timeout)
-        if self.hide_scrollbars:
-            # noinspection PyUnboundLocalVariable
-            self._driver.set_overflow(original_overflow)
         self._handle_match_result(result, tag)
 
     def check_region_by_element(self, element, tag=None, match_timeout=-1, target=None, stitch_content=False):
@@ -656,21 +887,18 @@ class Eyes(object):
             logger.info('check_region_by_element(): ignored (disabled)')
             return
         logger.info("check_region_by_element('%s')" % tag)
-        if self.hide_scrollbars:
-            original_overflow = self._driver.hide_scrollbars()
+        self._screenshot_type = self._obtain_screenshot_type(is_element=True,
+                                                             inside_a_frame=bool(self._driver.get_frame_chain()),
+                                                             stitch_content=stitch_content,
+                                                             force_fullpage=self.force_full_page_screenshot)
         self._prepare_to_check()
-        result = self._match_window_task.match_element(element, match_timeout, tag,
-                                                       self.force_full_page_screenshot,
-                                                       self._user_inputs,
-                                                       self.wait_before_screenshots,
-                                                       self.default_match_settings,
-                                                       target,
-                                                       self._should_match_once_on_timeout,
-                                                       stitch_content=stitch_content)
+        self._region_to_check = element
+        result = self._match_window_task.match_window(match_timeout, tag,
+                                                      self._user_inputs,
+                                                      self.default_match_settings,
+                                                      target,
+                                                      self._should_match_once_on_timeout)
 
-        if self.hide_scrollbars:
-            # noinspection PyUnboundLocalVariable
-            self._driver.set_overflow(original_overflow)
         self._handle_match_result(result, tag)
 
     def check_region_by_selector(self, by, value, tag=None, match_timeout=-1, target=None, stitch_content=False):
@@ -717,96 +945,13 @@ class Eyes(object):
             logger.info('check_region_in_frame_by_selector(): ignored (disabled)')
             return
         logger.info("check_region_in_frame_by_selector('%s')" % tag)
-        # We need to temporarily save the hide_scrollbars value, since we'll change it to make sure that hide_scrollbars
-        # will NOT be called twice (once outside the frame and once inside the frame).
-        original_hide_scrollbars_value = self.hide_scrollbars
-        if self.hide_scrollbars:
-            original_overflow = self._driver.hide_scrollbars()
-            self.hide_scrollbars = False
+
         # Switching to the relevant frame
         self._driver.switch_to.frame(frame_reference)
         logger.debug("calling 'check_region_by_selector'...")
         self.check_region_by_selector(by, value, tag, match_timeout, target, stitch_content)
         # Switching back to our original frame
         self._driver.switch_to.parent_frame()
-        if original_hide_scrollbars_value:
-            # noinspection PyUnboundLocalVariable
-            self._driver.set_overflow(original_overflow)
-            self.hide_scrollbars = original_hide_scrollbars_value
-
-    def _reset_last_screenshot(self):
-        # type: () -> None
-        self._last_screenshot = None
-        self._user_inputs = []  # type: UserInputs
-
-    def close(self, raise_ex=True):
-        # type: (bool) -> tp.Optional[TestResults]
-        """
-        Ends the test.
-
-        :param raise_ex: If true, an exception will be raised for failed/new tests.
-        :return: The test results.
-        """
-        if self.is_disabled:
-            logger.debug('close(): ignored (disabled)')
-            return None
-        try:
-            logger.debug('close({})'.format(raise_ex))
-            if not self._is_open:
-                raise ValueError("Eyes not open")
-
-            self._is_open = False
-
-            self._reset_last_screenshot()
-
-            # If there's no running session, we simply return the default test results.
-            if not self._running_session:
-                logger.debug('close(): Server session was not started')
-                logger.info('close(): --- Empty test ended.')
-                return TestResults()
-
-            is_new_session = self._running_session['is_new_session']
-            results_url = self._running_session['session_url']
-
-            logger.info("close(): Ending server session...")
-            should_save = (is_new_session and self.save_new_tests) or \
-                          ((not is_new_session) and self.save_failed_tests)
-            logger.debug("close(): automatically save session? %s" % should_save)
-            results = self._agent_connector.stop_session(self._running_session, False, should_save)
-            results.is_new = is_new_session
-            results.url = results_url
-            logger.info("close(): %s" % results)
-
-            if results.status == TestResultsStatus.Unresolved:
-                if results.is_new:
-                    instructions = "Please approve the new baseline at " + results_url
-                    logger.info("--- New test ended. " + instructions)
-                    if raise_ex:
-                        message = "'%s' of '%s'. %s" % (self._start_info['scenarioIdOrName'],
-                                                        self._start_info['appIdOrName'],
-                                                        instructions)
-                        raise NewTestError(message, results)
-                else:
-                    logger.info("--- Failed test ended. See details at {}".format(results_url))
-                    if raise_ex:
-                        raise DiffsFoundError("Test '{}' of '{}' detected differences! See details at: {}".format(
-                            self._start_info['scenarioIdOrName'],
-                            self._start_info['appIdOrName'],
-                            results_url), results)
-            elif results.status == TestResultsStatus.Failed:
-                logger.info("--- Failed test ended. See details at {}".format(results_url))
-                if raise_ex:
-                    raise TestFailedError("Test '{}' of '{}'. See details at: {}".format(
-                        self._start_info['scenarioIdOrName'],
-                        self._start_info['appIdOrName'],
-                        results_url), results)
-            # Test passed
-            logger.info("--- Test passed. See details at {}".format(results_url))
-
-            return results
-        finally:
-            self._running_session = None
-            logger.close()
 
     def add_mouse_trigger_by_element(self, action, element):
         # type: (tp.Text, AnyWebElement) -> None

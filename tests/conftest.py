@@ -21,8 +21,11 @@ from selenium.webdriver.remote.remote_connection import RemoteConnection
 from applitools import logger
 from applitools import VERSION as applitools_version
 from applitools.eyes import Eyes
+from applitools.logger import StdoutLogger
 
 from tests.platfroms import SUPPORTED_PLATFORMS, SUPPORTED_PLATFORMS_DICT
+
+logger.set_logger(StdoutLogger())
 
 
 @pytest.fixture(scope="function")

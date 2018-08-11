@@ -14,3 +14,7 @@ if PY3:
 else:
     ABC = abc.ABCMeta(str("ABC"), (), {})
     range = xrange  # type: ignore  # noqa: F821
+
+
+def iteritems(dct):
+    return (getattr(dct, 'iteritems') or dct.items)()

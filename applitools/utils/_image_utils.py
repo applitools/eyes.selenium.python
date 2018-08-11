@@ -4,258 +4,104 @@ Utilities for image manipulation.
 from __future__ import absolute_import
 
 import base64
-import copy
 import io
 import math
-import os
 import typing as tp
 
-import png
+from PIL import Image
 
-from applitools import logger
-from applitools.errors import EyesError
-from . import general_utils
-from .compat import range  # Python 2 / 3 compatibility
+from .. import logger
+from ..errors import EyesError
 
 if tp.TYPE_CHECKING:
-    from array import array
     from _io import BytesIO
+    from ..geometry import Region
+
+__all__ = ('image_from_file', 'image_from_bytes', 'image_from_base64',
+           'scale_image', 'get_base64', 'get_bytes', 'get_image_part')
 
 
-def quadrant_rotate(m, num_quadrants):
+def image_from_file(f):
     """
-    Rotates a matrix 90 deg clockwise or counter clockwise (depending whether num_quadrants is positive or negative,
-    respectively).
-
-    :param m: The 2D matrix to rotate.
-    :param num_quadrants: The number of rotations to perform.
-    :return: A rotated copy of the matrix.
+    Reads the PNG data from the given file stream and returns a new Image instance.
     """
-
-    def rotate_cw(m2):
-        """
-        Rotate m2 clockwise.
-
-        :param m2: The 2D matrix to rotate.
-        :return: The clockwise rotated matrix.
-        """
-        # We must use the "list" wrapper for compliance with Python 3
-        return list(map(list, list(zip(*m2[::-1]))))
-
-    def rotate_ccw(m2):
-        """
-        Rotate m2 counter-clockwise.
-
-        :param m2: The 2D matrix to rotate.
-        :return: The counter-clockwise rotated matrix.
-        """
-        # We must use the "list" wrapper for compliance with Python 3
-        return list(map(list, list(zip(*m2))[::-1]))
-
-    if num_quadrants == 0:
-        return m
-    rotate_func = rotate_cw if num_quadrants > 0 else rotate_ccw
-    # Perform the rotation.
-    result = m
-    for _ in range(abs(num_quadrants)):
-        result = rotate_func(result)
-    return result
+    return Image.open(f)
 
 
-def png_image_from_file(f):
+def image_from_bytes(png_bytes):
+    # type: (bytes) -> Image.Image
     """
-    Reads the PNG data from the given file stream and returns a new PngImage instance.
-
-    :param f: File stream.
-    :return: PngImage instance.
-    """
-    width, height, pixels_iterable, meta_info = png.Reader(file=f).asDirect()
-    return PngImage(width, height, list(pixels_iterable), meta_info)
-
-
-def png_image_from_bytes(png_bytes):
-    # type: (bytes) -> PngImage
-    """
-    Reads the PNG data from the given png bytes and returns a new PngImage instance.
+    Reads the PNG data from the given png bytes and returns a new Image instance.
 
     :param png_bytes: Png bytes.
-    :return: PngImage instance.
+    :return: Image instance.
     """
-    width, height, pixels_iterable, meta_info = png.Reader(bytes=png_bytes).asDirect()
-    return PngImage(width, height, list(pixels_iterable), meta_info)
+    return Image.open(io.BytesIO(png_bytes))
 
 
-class PngImage(object):
+def image_from_base64(base64_str):
+    # type: (str) -> Image.Image
     """
-    Encapsulates an image.
+    Reads the PNG data from the given png bytes and returns a new Image instance.
+
+    :param png_bytes: Png bytes.
+    :return: Image instance.
     """
+    return Image.open(io.BytesIO(base64.b64decode(base64_str)))
 
-    def __init__(self, width, height, pixel_bytes, meta_info):
-        # type: (int, int, tp.List[array], tp.Dict[tp.Text, tp.Any]) -> None
-        """
-        Initializes a PngImage object.
 
-        :param width: The width of the image.
-        :param height: The height of the image.
-        :param pixel_bytes: The of pixel bytes of the image, as a 2D matrix (i.e, a list of rows).
-        :param meta_info: The image meta info as given by png.Reader .
-        """
-        self.width = width
-        self.height = height
-        self.pixel_bytes = pixel_bytes
-        self.meta_info = copy.copy(meta_info)
-        # Images are either RGB or Greyscale
-        if not meta_info["greyscale"]:
-            self.pixel_size = 3
-        else:
-            self.pixel_size = 1
-        # If there's also an alpha channel
-        if meta_info["alpha"]:
-            self.pixel_size += 1
+def scale_image(image, scale_ratio):
+    # type: (Image.Image, float) -> Image.Image
+    if scale_ratio == 1:
+        return image
 
-    def _update_size(self, width, height):
-        """
-        Updates the size of the image.
+    image_ratio = float(image.height) / float(image.width)
+    scale_width = int(math.ceil(image.width * scale_ratio))
+    scale_height = int(math.ceil(scale_width * image_ratio))
+    image = image.convert('RGBA')
+    scaled_image = image.resize((scale_width, scale_height), resample=Image.BICUBIC)
+    return scaled_image
 
-        :param width: The updated width.
-        :param height: The updated height.
-        """
-        self.width = int(math.ceil(width))
-        self.height = int(math.ceil(height))
-        self.meta_info['size'] = (self.width, self.height)
 
-    def paste(self, left, top, pixel_bytes_to_paste):
-        """
-        Pastes the given pixels on the image. Expands width/height if needed. Pixel size must be
-        the same as the current image's pixels.
+def get_device_pixel_ratio(driver):
+    return driver.execute_script('return window.devicePixelRatio;')
 
-        :param left: The left most point.
-        :param top: The top most point.
-        :param pixel_bytes_to_paste: The pixels to paste.
-        """
-        x_start = left * self.pixel_size
-        pixel_bytes_to_paste_len = len(pixel_bytes_to_paste[0])
-        for y_offset in range(len(pixel_bytes_to_paste)):
-            y_current = top + y_offset
-            # It's okay to use self.height as a condition, even after y_current is greater
-            # than it, since in this case we append to the end of the list anyway.
-            if y_current < self.height:
-                original_row = self.pixel_bytes[y_current]
-                updated_row = (original_row[:x_start] + pixel_bytes_to_paste[y_offset] +
-                               original_row[(x_start + pixel_bytes_to_paste_len):])
-                self.pixel_bytes[y_current] = updated_row
-            else:
-                self.pixel_bytes.append(pixel_bytes_to_paste[y_offset])
-        # Update the width and height if required
-        paste_right = (x_start + pixel_bytes_to_paste_len) / self.pixel_size
-        self._update_size(max(self.width, paste_right), len(self.pixel_bytes))
 
-    def get_subimage(self, region):
-        # type: (tp.Any) -> PngImage
-        """
-        Gets an image of a given region.
+def get_base64(image):
+    # type: (Image.Image) -> str
+    """
+    Gets the base64 representation of the PNG bytes.
 
-        :param region: The region to search for.
-        :return: PngImage instance.
-        """
-        if region.is_empty():
-            raise EyesError('region is empty!')
-        result_pixels = []
-        x_start = region.left * self.pixel_size
-        x_end = x_start + (region.width * self.pixel_size)
-        y_start = region.top
-        for y_offset in range(region.height):
-            pixels_row = self.pixel_bytes[y_start + y_offset][x_start:x_end]
-            result_pixels.append(pixels_row)
-        meta_info = copy.copy(self.meta_info)
-        meta_info['size'] = (region.width, region.height)
-        return PngImage(region.width, region.height, result_pixels, meta_info)
+    :return: The base64 representation of the PNG bytes.
+    """
+    image_bytes_stream = io.BytesIO()
+    image.save(image_bytes_stream, format='PNG')
+    image64 = base64.b64encode(image_bytes_stream.getvalue()).decode('utf-8')
+    image_bytes_stream.close()
+    return image64
 
-    def remove_columns(self, left, count):
-        """
-        Removes pixels columns from the image.
 
-        :param left: The index of the left most column to remove.
-        :param count: The number of columns to remove.
-        """
-        for row_index in range(self.height):
-            self.pixel_bytes[row_index] = (self.pixel_bytes[row_index][:(left * self.pixel_size)] +
-                                           self.pixel_bytes[row_index][(left + count) * self.pixel_size:])
-            # Updating the width
-            self._update_size(len(self.pixel_bytes[0]) / self.pixel_size, self.height)
+def get_bytes(image):
+    # type: (Image.Image) -> bytes
+    """
+    Gets the image bytes.
 
-    def remove_rows(self, top, count):
-        """
-        Removes pixels rows from the image.
+    :return: The image bytes.
+    """
+    image_bytes_stream = io.BytesIO()
+    image.save(image_bytes_stream, format='PNG')
+    image_bytes = image_bytes_stream.getvalue()
+    image_bytes_stream.close()
+    return image_bytes
 
-        :param top: The index of the top most row to remove.
-        :param count: The number of rows to remove.
-        """
-        self.pixel_bytes = self.pixel_bytes[:top] + self.pixel_bytes[(top + count):]
-        self._update_size(self.width, len(self.pixel_bytes))
 
-    def get_channel(self, index):
-        """
-        Get the values for a specific color/alpha of the image's pixels.
+def get_image_part(image, region):
+    # type: (Image.Image, Region) -> Image.Image
+    """
+    Get a copy of the part of the image given by region.
 
-        :param index: The index of the channel we would like to get.
-        :return : A copy of the values for the given pixel channel.
-        """
-        if index > self.pixel_size - 1:
-            raise EyesError("Invalid channel: {}, (pixel size {})".format(index, self.pixel_size))
-        return map(lambda x: list(x[0::self.pixel_size]), self.pixel_bytes)
-
-    def quadrant_rotate(self, num_quadrants):
-        """
-        Rotates the image by 90 degrees clockwise or counter-clockwise.
-
-        :param num_quadrants: The number of rotations to perform.
-        """
-        # Divide the continuous sequence of bytes in each row into pixel groups (since values within a single pixel
-        # should maintain order).
-        logger.debug('Dividing into chunks...')
-        pixels = list(map(lambda bytes_row: general_utils.divide_to_chunks(bytes_row, self.pixel_size),
-                          self.pixel_bytes))
-        logger.debug('Done! Rotating pixels...')
-        rotated_pixels = quadrant_rotate(pixels, num_quadrants)
-        logger.debug('Done! flattening chunks back to bytes...')
-        # Unite the pixel groups back to continuous pixel bytes for each row.
-        rotated_pixel_bytes = list(map(lambda pixels_row: general_utils.join_chunks(pixels_row), rotated_pixels))
-        logger.debug('Done!')
-        self.pixel_bytes = rotated_pixel_bytes
-        self._update_size(len(rotated_pixel_bytes[0]) / self.pixel_size, len(rotated_pixel_bytes))
-
-    def write(self, output):
-        # type: (BytesIO) -> None
-        """
-        Writes the png to the output stream.
-
-        :param output: The output stream.
-        """
-        png.Writer(**self.meta_info).write(output, self.pixel_bytes)
-
-    def get_base64(self):
-        # type: () -> str
-        """
-        Gets the base64 representation of the PNG bytes.
-
-        :return: The base64 representation of the PNG bytes.
-        """
-        image_bytes_stream = io.BytesIO()
-        self.write(image_bytes_stream)
-        image64 = base64.b64encode(image_bytes_stream.getvalue()).decode('utf-8')
-        image_bytes_stream.close()
-        return image64
-
-    def get_bytes(self):
-        # type: () -> bytes
-        """
-        Gets the image PNG bytes.
-
-        :return: The image PNG bytes.
-        """
-        image_bytes_stream = io.BytesIO()
-        self.write(image_bytes_stream)
-        image_bytes = image_bytes_stream.getvalue()
-        image_bytes_stream.close()
-        return image_bytes
+    :return: The part of the image.
+    """
+    if region.is_empty():
+        raise EyesError('region is empty!')
+    return image.crop(box=(region.left, region.top, region.right, region.bottom))
