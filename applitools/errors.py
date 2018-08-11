@@ -1,6 +1,5 @@
-__all__ = ('EyesError', 'EyesIllegalArgument', 'OutOfBoundsError',
-           'UnsupportedCoordinateType', 'TestFailedError', 'NewTestError',
-           'DiffsFoundError', 'EyesDriverOperationException')
+__all__ = ('EyesError', 'EyesIllegalArgument', 'OutOfBoundsError', 'TestFailedError', 'NewTestError',
+           'DiffsFoundError')
 
 
 class EyesError(Exception):
@@ -22,22 +21,12 @@ class OutOfBoundsError(EyesError):
     """
 
 
-class UnsupportedCoordinateType(EyesError):
-    """
-
-    """
-
-class EyesDriverOperationException(EyesError):
-    """
-
-    """
-
-
 class TestFailedError(Exception):
     """
     Indicates that a test did not pass (i.e., test either failed or is a new test).
     """
-    def __init__(self, message, test_results=None,):
+
+    def __init__(self, message, test_results=None, ):
         self.message = message
         self.test_results = test_results
 
@@ -49,6 +38,7 @@ class NewTestError(TestFailedError):
     """
     Indicates that a test is a new test.
     """
+
     def __init__(self, message, test_results=None):
         super(NewTestError, self).__init__(message, test_results)
 
@@ -57,5 +47,6 @@ class DiffsFoundError(TestFailedError):
     """
     Indicates that an existing test ended, and that differences where found from the baseline.
     """
+
     def __init__(self, message, test_results=None):
         super(DiffsFoundError, self).__init__(message, test_results)

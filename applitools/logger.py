@@ -3,35 +3,13 @@ Logs handling.
 """
 from __future__ import absolute_import
 
-import os
 import sys
 import logging
 import functools
-import datetime as dt
 import typing as tp
-
-if tp.TYPE_CHECKING:
-    from PIL import Image
-    from ._webdriver import EyesScreenshot
-    from .geometry import Region
-
-
-def _parse_logger_level(logger_level):
-    # type: (tp.Union[str, int]) -> int
-    """
-    Adapt logger params to logging library
-    """
-    try:
-        return int(logger_level)
-    except ValueError:
-        levels = {'INFO': 20, 'DEBUG': 10}
-        return levels.get(logger_level.strip())
 
 _DEFAULT_EYES_LOGGER_NAME = 'eyes'
 _DEFAULT_EYES_FORMATTER = logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s')
-_DEFAULT_LOGGER_LEVEL = _parse_logger_level(os.environ.get('LOGGER_LEVEL', logging.INFO))
-_DEBUG_SCREENSHOT_PREFIX = os.environ.get('DEBUG_SCREENSHOT_PREFIX', 'screenshot_')
-_DEBUG_SCREENSHOT_PATH = os.environ.get('DEBUG_SCREENSHOT_PATH', '.')
 
 
 class _Logger(object):
@@ -39,7 +17,7 @@ class _Logger(object):
     Simple logger. Supports only info and debug.
     """
 
-    def __init__(self, name=__name__, level=_DEFAULT_LOGGER_LEVEL, handler_factory=lambda: None,
+    def __init__(self, name=__name__, level=logging.DEBUG, handler_factory=lambda: None,
                  formatter=None):
         # type: (tp.Text, int, tp.Callable, logging.Formatter) -> None
         """
@@ -109,23 +87,13 @@ class _Logger(object):
         if self._logger:
             self._logger.debug(msg)
 
-    def warning(self, msg):
-        # type: (tp.Text) -> None
-        """
-        Writes warning level msg to the logger.
-
-        :param msg: The message that will be written to the logger.
-        """
-        if self._logger:
-            self._logger.warning(msg)
-
 
 class StdoutLogger(_Logger):
     """
     A simple logger class for printing to STDOUT.
     """
 
-    def __init__(self, name=_DEFAULT_EYES_LOGGER_NAME, level=_DEFAULT_LOGGER_LEVEL):
+    def __init__(self, name=_DEFAULT_EYES_LOGGER_NAME, level=logging.DEBUG):
         # type: (tp.Text, int) -> None
         """
         Ctor.
@@ -143,7 +111,7 @@ class FileLogger(_Logger):
     """
 
     def __init__(self, filename="eyes.log", mode='a', encoding=None, delay=0,
-                 name=_DEFAULT_EYES_LOGGER_NAME, level=_DEFAULT_LOGGER_LEVEL):
+                 name=_DEFAULT_EYES_LOGGER_NAME, level=logging.DEBUG):
         """
         Ctor.
 
@@ -163,7 +131,7 @@ class NullLogger(_Logger):
     A simple logger class which does nothing (log messages are ignored).
     """
 
-    def __init__(self, name=_DEFAULT_EYES_LOGGER_NAME, level=_DEFAULT_LOGGER_LEVEL):
+    def __init__(self, name=_DEFAULT_EYES_LOGGER_NAME, level=logging.DEBUG):
         """
         Ctor.
 
@@ -174,9 +142,9 @@ class NullLogger(_Logger):
 
 
 # This will be set by the user.
-_logger_to_use = None  # type: tp.Optional[_Logger]
+_logger_to_use = None
 # Holds the actual logger after open is called.
-_logger = None  # type: tp.Optional[_Logger]
+_logger = None
 
 
 def set_logger(logger=None):
@@ -232,37 +200,3 @@ def debug(msg):
     """
     if _logger is not None:
         _logger.debug(msg)
-
-
-def warning(msg):
-    # type: (tp.Text) -> None
-    """
-    Writes info level msg to the logger.
-
-    :param msg: The message that will be written to the log.
-    """
-    if _logger is not None:
-        _logger.warning(msg)
-
-
-def save_screenshot(image, suffix, region=None):
-    # type: (tp.Union[Image.Image, EyesScreenshot], tp.Text, tp.Optional[Region]) -> None
-    """
-    A debug screenshot provider for saving screenshots to file.
-    """
-    if _logger and _logger._level == logging.DEBUG:
-        from ._webdriver import EyesScreenshot
-        if isinstance(image, EyesScreenshot):
-            image = image._screenshot
-
-        if region:
-            suffix = 'part-{suffix}-{left}_{top}_{width}x{height}'.format(
-                suffix=suffix, left=region.left, top=region.top,
-                width=region.width, height=region.height
-            )
-        filename = '{prefix}_{timestamp}_{suffix}.png'.format(prefix=_DEBUG_SCREENSHOT_PREFIX,
-                                                              timestamp=dt.datetime.now().time(),
-                                                              suffix=suffix)
-        full_path = os.path.join(_DEBUG_SCREENSHOT_PATH, filename)
-        debug('Save screenshot: {}'.format(full_path))
-        image.save(full_path, format='PNG')

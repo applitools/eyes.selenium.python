@@ -3,11 +3,11 @@ from __future__ import absolute_import
 import abc
 import base64
 import re
-
 import math
 import time
 import typing as tp
 
+from PIL import Image
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.switch_to import SwitchTo
@@ -22,10 +22,10 @@ from .geometry import Point, Region
 from .utils import _image_utils, general_utils
 from .utils.general_utils import cached_property
 from .utils.compat import ABC
-from PIL import Image
 
 if tp.TYPE_CHECKING:
     from .eyes import Eyes
+    from .scaling import ScaleProvider
     from .utils._custom_types import Num, ViewPort, FrameReference, AnyWebDriver, AnyWebElement
 
 
@@ -1376,7 +1376,7 @@ class EyesWebDriver(object):
         logger.debug("Finished waiting!")
 
     def get_full_page_screenshot(self, wait_before_screenshots, scale_provider):
-        # type: (Num) -> Image.Image
+        # type: (Num, ScaleProvider) -> Image.Image
         """
         Gets a full page screenshot.
 
@@ -1460,7 +1460,7 @@ class EyesWebDriver(object):
         return stitched_image
 
     def get_stitched_screenshot(self, element, wait_before_screenshots, scale_provider):
-        # type: (AnyWebElement, int) -> Image.Image
+        # type: (AnyWebElement, int, ScaleProvider) -> Image.Image
         """
         Gets a stitched screenshot for specific element
 

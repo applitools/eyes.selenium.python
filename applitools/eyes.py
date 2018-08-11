@@ -5,10 +5,8 @@ import os
 import typing as tp
 import uuid
 import abc
-
 from datetime import datetime
 
-from selenium.webdriver.remote.webelement import WebElement
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.remote.webdriver import WebDriver as RemoteWebDriver
 
