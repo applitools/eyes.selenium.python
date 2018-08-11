@@ -760,19 +760,15 @@ class Eyes(EyesBase):
         # algo = FullPageCaptureAlgorithm()
         if self._screenshot_type == ScreenshotType.ENTIRE_ELEMENT_SCREENSHOT:
             self._last_screenshot = self._entire_element_screenshot(scale_provider)
-            logger.save_screenshot(self._last_screenshot, 'entire_element_screenshot')
 
         elif self._screenshot_type == ScreenshotType.FULLPAGE_SCREENSHOT:
             self._last_screenshot = self._full_page_screenshot(scale_provider)
-            logger.save_screenshot(self._last_screenshot, 'full_page_screenshot')
 
         elif self._screenshot_type == ScreenshotType.VIEWPORT_SCREENSHOT:
             self._last_screenshot = self._viewport_screenshot(scale_provider)
-            logger.save_screenshot(self._last_screenshot, 'viewport_screenshot')
 
         elif self._screenshot_type == ScreenshotType.NOT_ENTIRE_ELEMENT_SCREENSHOT:
             self._last_screenshot = self._not_entire_element_screenshot(scale_provider)
-            logger.save_screenshot(self._last_screenshot, 'not_entire_element_screenshot')
 
         else:
             raise EyesError("No proper ScreenshotType obtained")
@@ -780,7 +776,6 @@ class Eyes(EyesBase):
         if self.hide_scrollbars:
             # noinspection PyUnboundLocalVariable
             self._driver.set_overflow(original_overflow)
-        logger.save_screenshot(self._last_screenshot, 'screenshot')
         return self._last_screenshot
 
     def _entire_element_screenshot(self, scale_provider):
@@ -788,7 +783,6 @@ class Eyes(EyesBase):
         screenshot = self._driver.get_stitched_screenshot(self._region_to_check,
                                                           self.seconds_to_wait_screenshot,
                                                           scale_provider)
-        logger.save_screenshot(screenshot, 'entire')
         return EyesScreenshot.create_from_image(screenshot, self._driver)
 
     def _not_entire_element_screenshot(self, scale_provider):
@@ -808,12 +802,10 @@ class Eyes(EyesBase):
         screenshot64 = self._driver.get_screesnhot_as_base64_from_main_frame(
             self.seconds_to_wait_screenshot)
         screenshot = _image_utils.image_from_bytes(base64.b64decode(screenshot64))
-        logger.save_screenshot(screenshot, 'viewport')
         scale_provider.update_scale_ratio(screenshot.width)
         pixel_ratio = 1 / scale_provider.scale_ratio
         if pixel_ratio != 1.0:
             screenshot = _image_utils.scale_image(screenshot, 1.0 / pixel_ratio)
-            logger.save_screenshot(screenshot, 'scaled-viewport')
         return EyesScreenshot.create_from_image(screenshot, self._driver)
 
     def check_window(self, tag=None, match_timeout=-1, target=None):

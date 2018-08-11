@@ -13,17 +13,18 @@ def test_quikstart_example(eyes, driver):
     eyes.open(driver=driver, app_name='Hello World!', test_name='My first Selenium Python test!',
               viewport_size={'width': 800, 'height': 600})
     driver.get('https://applitools.com/helloworld')
-    # Visual checkpoint #1.
+
     eyes.check_window('Hello!')
 
-    # Click the 'Click me!' button.
     driver.find_element_by_css_selector('button').click()
-
-    # Visual checkpoint #2.
     eyes.check_window('Click!')
+
     eyes.check_region(Region(20, 20, 50, 50), "step")
 
+    eyes.close()
 
+
+@pytest.mark.platform('Linux')
 def test_sampe_script(eyes, driver):
     eyes.force_full_page_screenshot = True
     eyes.stitch_mode = StitchMode.CSS
@@ -38,3 +39,15 @@ def test_sampe_script(eyes, driver):
     hero = driver.find_element_by_class_name("hero-container")
     eyes.check_region_by_element(hero, "Page Hero", target=(Target()
                                                             .ignore(Region(20, 20, 50, 50), Region(40, 40, 10, 20))))
+    eyes.close()
+
+
+@pytest.mark.platform('Linux')
+def test_check_window_with_ignore_region_fluent(eyes, driver):
+    eyes.force_full_page_screenshot = True
+    eyes.open(driver, "Eyes Selenium SDK - Fluent API", "TestCheckWindowWithIgnoreRegion_Fluent",
+                       {'width': 800, 'height': 600})
+    driver.get('http://applitools.github.io/demo/TestPages/FramesTestPage/')
+    eyes.check_window("Fluent - Window with Ignore region", target=Target().ignore(
+        Region(left=50, top=50, width=100, height=100)))
+    eyes.close()

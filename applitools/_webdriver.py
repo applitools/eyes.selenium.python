@@ -1403,7 +1403,6 @@ class EyesWebDriver(object):
         need_to_scale = True if pixel_ratio != 1.0 else False
         if need_to_scale:
             screenshot = _image_utils.scale_image(screenshot, 1.0 / pixel_ratio)
-            logger.save_screenshot(screenshot, 'scaled-full-page')
 
         # IMPORTANT This is required! Since when calculating the screenshot parts for full size,
         # we use a screenshot size which is a bit smaller (see comment below).
@@ -1449,7 +1448,6 @@ class EyesWebDriver(object):
 
             if need_to_scale:
                 part_image = _image_utils.scale_image(part_image, 1.0 / pixel_ratio)
-                logger.save_screenshot(part_image, 'scaled-full-page')
 
             stitched_image.paste(part_image, box=(current_scroll_position.x, current_scroll_position.y))
 
@@ -1527,7 +1525,6 @@ class EyesWebDriver(object):
                                                         current_scroll_position.y))
             part64 = self.get_screenshot_as_base64()
             part_image = _image_utils.image_from_bytes(base64.b64decode(part64))
-            logger.save_screenshot(part_image, 'part_image-full')
             # Cut to viewport size the full page screenshot of main frame for some browsers
             if self._frames:
                 if (self.browser_name == 'firefox' and self.browser_version < 60.0
@@ -1537,19 +1534,15 @@ class EyesWebDriver(object):
                     part_image = _image_utils.get_image_part(part_image, Region(top=frame_scroll_position,
                                                                                 height=viewport['height'],
                                                                                 width=viewport['width']))
-                    logger.save_screenshot(part_image, 'part_image-cutted')
             if need_to_scale:
                 part_image = _image_utils.scale_image(part_image, 1.0 / pixel_ratio)
-                logger.save_screenshot(part_image, 'scaled-part')
             part_image = _image_utils.get_image_part(part_image, element_region)
-            logger.save_screenshot(part_image, 'part_image_subimage')
 
             # first iteration
             if stitched_image is None:
                 stitched_image = part_image
                 continue
             stitched_image.paste(part_image, box=(current_scroll_position.x, current_scroll_position.y))
-            logger.save_screenshot(stitched_image, 'paste')
 
         if origin_overflow:
             element.set_overflow(origin_overflow)
