@@ -251,7 +251,7 @@ class EyesScreenshot(object):
         :return: A screenshot object representing the given region part of the image.
         """
         sub_screenshot_region = self.get_intersected_region(region)
-        if sub_screenshot_region.is_empty:
+        if sub_screenshot_region.is_empty():
             raise OutOfBoundsError("Region {0} is out of bounds!".format(region))
         # If we take a screenshot of a region inside a frame, then the frame's (0,0) is in the
         # negative offset of the region..
@@ -1406,7 +1406,6 @@ class EyesWebDriver(object):
         stitched_image.paste(screenshot, box=(0, 0))
         self.save_position()
 
-
         for part in screenshot_parts:
             # Since we already took the screenshot for 0,0
             if part.left == 0 and part.top == 0:
@@ -1503,9 +1502,6 @@ class EyesWebDriver(object):
                                                         current_scroll_position.y))
             part64 = self.get_screenshot_as_base64()
             part_image = _image_utils.image_from_bytes(base64.b64decode(part64))
-            if need_to_scale:
-                part_image = _image_utils.scale_image(part_image, 1.0 / pixel_ratio)
-                logger.save_screenshot(part_image, 'scaled-part')
             logger.save_screenshot(part_image, 'part_image-full')
             # Cut to viewport size the full page screenshot of main frame for some browsers
             if self._frames:
@@ -1513,10 +1509,13 @@ class EyesWebDriver(object):
                         or self.browser_name in ('internet explorer', 'safari')):
                     # TODO: Refactor this to make main screenshot only once
                     frame_scroll_position = int(self._frames[-1].location['y'])
-                    part_image = _image_utils.get_image_part(part_image, Region(top=frame_scroll_position, height=viewport['height'],
-                                                                width=viewport['width']))
+                    part_image = _image_utils.get_image_part(part_image, Region(top=frame_scroll_position,
+                                                                                height=viewport['height'],
+                                                                                width=viewport['width']))
                     logger.save_screenshot(part_image, 'part_image-cutted')
-
+            if need_to_scale:
+                part_image = _image_utils.scale_image(part_image, 1.0 / pixel_ratio)
+                logger.save_screenshot(part_image, 'scaled-part')
             part_image = _image_utils.get_image_part(part_image, element_region)
             logger.save_screenshot(part_image, 'part_image_subimage')
 
@@ -1529,7 +1528,6 @@ class EyesWebDriver(object):
 
         if origin_overflow:
             element.set_overflow(origin_overflow)
-
 
         return stitched_image
 

@@ -147,6 +147,10 @@ class Point(object):
         result.offset(p.x, p.y)
         return result
 
+    def scale(self, scale_ratio):
+        return Point(int(math.ceil(self.x * scale_ratio)),
+                     int(math.ceil(self.y * scale_ratio)))
+
 
 class Region(object):
     """
@@ -265,7 +269,6 @@ class Region(object):
         self.left = max(self.left, 0)
         self.top = max(self.top, 0)
 
-    @property
     def is_size_empty(self):
         # type: () -> bool
         """
@@ -273,7 +276,6 @@ class Region(object):
         """
         return self.width <= 0 or self.height <= 0
 
-    @property
     def is_empty(self):
         # type: () -> bool
         """
@@ -351,6 +353,20 @@ class Region(object):
     def middle_offset(self):
         # type: () -> Point
         return Point(int(round(self.width / 2)), int(round(self.height / 2)))
+
+    def offset(self, dx, dy):
+        location = self.location.offset(dx, dy)
+        return Region(left=location.x, top=location.y,
+                      width=self.size['width'],
+                      height=self.size['height'])
+
+    def scale(self, scale_ratio):
+        return Region(
+            left=int(math.ceil(self.left * scale_ratio)),
+            top=int(math.ceil(self.top * scale_ratio)),
+            width=int(math.ceil(self.width * scale_ratio)),
+            height=int(math.ceil(self.height * scale_ratio))
+        )
 
     def __str__(self):
         return "(%s, %s) %s x %s" % (self.left, self.top, self.width, self.height)

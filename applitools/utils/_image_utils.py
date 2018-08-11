@@ -10,11 +10,12 @@ import typing as tp
 
 from PIL import Image
 
+from .. import logger
 from ..errors import EyesError
 
 if tp.TYPE_CHECKING:
     from _io import BytesIO
-    from ..core import Region
+    from ..geometry import Region
 
 __all__ = ('image_from_file', 'image_from_bytes', 'image_from_base64',
            'scale_image', 'get_base64', 'get_bytes', 'get_image_part')
@@ -57,9 +58,9 @@ def scale_image(image, scale_ratio):
     image_ratio = float(image.height) / float(image.width)
     scale_width = int(math.ceil(image.width * scale_ratio))
     scale_height = int(math.ceil(scale_width * image_ratio))
-
+    image = image.convert('RGBA')
     scaled_image = image.resize((scale_width, scale_height), resample=Image.BICUBIC)
-    return scaled_image.convert('RGB')
+    return scaled_image
 
 
 def get_device_pixel_ratio(driver):
@@ -101,6 +102,6 @@ def get_image_part(image, region):
 
     :return: The part of the image.
     """
-    if region.is_empty:
+    if region.is_empty():
         raise EyesError('region is empty!')
     return image.crop(box=(region.left, region.top, region.right, region.bottom))
