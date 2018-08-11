@@ -31,6 +31,9 @@ class Point(object):
     def __add__(self, other):
         return Point(self.x + other.x, self.y + other.y)
 
+    def __iadd__(self, other):
+        return Point(self.x + other.x, self.y + other.y)
+
     def __sub__(self, other):
         return Point(self.x - other.x, self.y - other.y)
 
@@ -42,6 +45,9 @@ class Point(object):
 
     def __str__(self):
         return "({0}, {1})".format(self.x, self.y)
+
+    def __bool__(self):
+        return self.x and self.y
 
     @classmethod
     def create_top_left(cls):

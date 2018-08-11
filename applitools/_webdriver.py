@@ -2,6 +2,8 @@ from __future__ import absolute_import
 
 import abc
 import base64
+import re
+
 import math
 import time
 import typing as tp
@@ -400,6 +402,21 @@ class CSSTranslatePositionProvider(PositionProvider):
     def get_current_position(self):
         return self._current_position.clone()
 
+    def _get_position_from_transform(self, transform):
+        data = re.match(r"^translate\(\s*(\-?)([\d, \.]+)px,\s*(\-?)([\d, \.]+)px\s*\)", transform)
+        if not data:
+            raise EyesError("Can't parse CSS transition")
+
+        x = float(data.group(2))
+        y = float(data.group(4))
+        minus_x, minus_y = data.group(1), data.group(3)
+        if minus_x:
+            x *= -1
+        if minus_y:
+            y *= -1
+
+        return Point(float(x), float(y))
+
     def set_position(self, location):
         translate_command = "translate(-{}px, -{}px)".format(location.x, location.y)
         logger.debug(translate_command)
@@ -411,7 +428,15 @@ class CSSTranslatePositionProvider(PositionProvider):
         """
         Adds the transform to the states list.
         """
-        self._states.append(self._get_current_transform())
+        transforms = self._get_current_transform()
+        if not all(transforms.values()):
+            self._current_position = Point.create_top_left()
+        else:
+            point = Point(0, 0)
+            for transform in transforms.values():
+                point += self._get_position_from_transform(transform)
+            self._current_position = point
+        self._states.append(self._current_position)
 
 
 class ElementPositionProvider(PositionProvider):
