@@ -28,7 +28,6 @@ class TestClassicAPI(TestSetup):
     def test_check_frame(self):
         self.eyes.check_frame("frame1", "frame1", stitch_content=True)
 
-    @pytest.mark.skip("Not runnable in java sdk")
     def test_check_region_in_frame(self):
         self.eyes.check_region_in_frame_by_selector("frame1", By.ID, "inner-frame-div", tag="Inner frame div",
                                                     stitch_content=True)
