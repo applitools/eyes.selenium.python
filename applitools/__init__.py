@@ -9,4 +9,4 @@ except ValueError:
 
 __all__ = ['utils'] + modules
 
-VERSION = '3.12.1'
+VERSION = '3.13.0'
