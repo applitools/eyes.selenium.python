@@ -53,7 +53,7 @@ class MatchLevel(object):
 
 class ScreenshotType(object):
     ENTIRE_ELEMENT_SCREENSHOT = 'EntireElementScreenshot'
-    NOT_ENTIRE_ELEMENT_SCREENSHOT = 'NotEntireElementScreenshot'
+    REGION_OR_ELEMENT_SCREENSHOT = 'RegionOrElementScreenshot'
     FULLPAGE_SCREENSHOT = "FullPageScreenshot"
     VIEWPORT_SCREENSHOT = "ViewportScreenshot"
 
@@ -597,10 +597,10 @@ class Eyes(EyesBase):
         # If true, Eyes will remove the scrollbars from the pages before taking the screenshot.
         self.hide_scrollbars = False  # type: bool
 
-    def _obtain_screenshot_type(self, is_element, inside_a_frame, stitch_content, force_fullpage):
+    def _obtain_screenshot_type(self, is_element, inside_a_frame, stitch_content, force_fullpage, region=False):
         if stitch_content or force_fullpage:
             if is_element and not stitch_content:
-                return ScreenshotType.NOT_ENTIRE_ELEMENT_SCREENSHOT
+                return ScreenshotType.REGION_OR_ELEMENT_SCREENSHOT
 
             if not inside_a_frame:
                 if ((force_fullpage and not stitch_content) or
@@ -611,8 +611,8 @@ class Eyes(EyesBase):
                 return ScreenshotType.ENTIRE_ELEMENT_SCREENSHOT
 
         else:
-            if is_element and not stitch_content:
-                return ScreenshotType.NOT_ENTIRE_ELEMENT_SCREENSHOT
+            if region or (is_element and not stitch_content):
+                return ScreenshotType.REGION_OR_ELEMENT_SCREENSHOT
 
             if not stitch_content and not force_fullpage:
                 return ScreenshotType.VIEWPORT_SCREENSHOT
@@ -767,8 +767,8 @@ class Eyes(EyesBase):
         elif self._screenshot_type == ScreenshotType.VIEWPORT_SCREENSHOT:
             self._last_screenshot = self._viewport_screenshot(scale_provider)
 
-        elif self._screenshot_type == ScreenshotType.NOT_ENTIRE_ELEMENT_SCREENSHOT:
-            self._last_screenshot = self._not_entire_element_screenshot(scale_provider)
+        elif self._screenshot_type == ScreenshotType.REGION_OR_ELEMENT_SCREENSHOT:
+            self._last_screenshot = self._region_or_screenshot(scale_provider)
 
         else:
             raise EyesError("No proper ScreenshotType obtained")
@@ -785,10 +785,13 @@ class Eyes(EyesBase):
                                                           scale_provider)
         return EyesScreenshot.create_from_image(screenshot, self._driver)
 
-    def _not_entire_element_screenshot(self, scale_provider):
+    def _region_or_screenshot(self, scale_provider):
         logger.info('Not entire element screenshot requested')
         screenshot = self._viewport_screenshot(scale_provider)
-        screenshot = screenshot.get_sub_screenshot_by_element(self._region_to_check)
+        if isinstance(self._region_to_check, Region):
+            screenshot = screenshot.get_sub_screenshot_by_region(self._region_to_check)
+        else:
+            screenshot = screenshot.get_sub_screenshot_by_element(self._region_to_check)
         return screenshot
 
     def _full_page_screenshot(self, scale_provider):
@@ -861,7 +864,8 @@ class Eyes(EyesBase):
         self._screenshot_type = self._obtain_screenshot_type(is_element=False,
                                                              inside_a_frame=bool(self._driver.get_frame_chain()),
                                                              stitch_content=stitch_content,
-                                                             force_fullpage=self.force_full_page_screenshot)
+                                                             force_fullpage=self.force_full_page_screenshot,
+                                                             region=True)
         self._region_to_check = region
         self._prepare_to_check()
         result = self._match_window_task.match_window(match_timeout, tag,
