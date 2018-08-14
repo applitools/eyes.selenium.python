@@ -1,18 +1,20 @@
+from __future__ import absolute_import
+
 import abc
 import os
+import re
 import uuid
 
 from datetime import datetime
 
 from ..__version__ import __version__
-from applitools.core import logger
-from applitools.core.agent_connector import AgentConnector
-from applitools.core.match_window_task import MatchWindowTask
-from applitools.common import StitchMode
-from applitools.core.errors import EyesError, NewTestError, DiffsFoundError, TestFailedError
-from applitools.core.test_results import TestResults, TestResultsStatus
-from applitools.utils import general_utils
-from applitools.utils.compat import ABC
+from ..common import StitchMode
+from ..utils import general_utils, ABC
+from . import logger
+from .agent_connector import AgentConnector
+from .match_window_task import MatchWindowTask
+from .errors import EyesError, NewTestError, DiffsFoundError, TestFailedError
+from .test_results import TestResults, TestResultsStatus
 
 __all__ = ('FailureReports', 'MatchLevel', 'ExactMatchSettings', 'ImageMatchSettings', 'EyesBase')
 

@@ -4,10 +4,10 @@ import math
 import typing as tp
 from collections import OrderedDict
 
-from applitools.core.errors import EyesError
+from .errors import EyesError
 
 if tp.TYPE_CHECKING:
-    from applitools.utils.custom_types import ViewPort
+    from ..utils.custom_types import ViewPort
 
 __all__ = ('Point', 'Region',)
 

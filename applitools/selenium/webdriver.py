@@ -10,20 +10,21 @@ from selenium.webdriver.remote.switch_to import SwitchTo
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support.wait import WebDriverWait
 
-from applitools.selenium import viewport_size
-from applitools.core import logger
-from applitools.common import StitchMode
-from applitools.core.errors import EyesError
-from applitools.core.geometry import Point, Region
-from applitools.selenium.positioning import ElementPositionProvider, build_position_provider_for
-from applitools.selenium.webelement import EyesWebElement
-from applitools.utils import image_utils, general_utils
-from applitools.utils.general_utils import cached_property
+from ..common import StitchMode
+from ..core import logger
+from ..core.errors import EyesError
+from ..core.geometry import Point, Region
+from ..utils import image_utils, general_utils
+from ..utils.general_utils import cached_property
+
+from . import viewport_size
+from .positioning import ElementPositionProvider, build_position_provider_for
+from .webelement import EyesWebElement
 
 if tp.TYPE_CHECKING:
-    from applitools.selenium.eyes import Eyes
-    from applitools.core.scaling import ScaleProvider
-    from applitools.utils.custom_types import Num, ViewPort, FrameReference, AnyWebDriver, AnyWebElement
+    from ..core.scaling import ScaleProvider
+    from ..utils.custom_types import Num, ViewPort, FrameReference, AnyWebDriver, AnyWebElement
+    from .eyes import Eyes
 
 
 class _EyesSwitchTo(object):

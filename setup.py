@@ -1,10 +1,11 @@
 import codecs
+import os
+import re
 import sys
 
 from os import path
 
 from setuptools import setup
-from applitools import VERSION
 
 here = path.abspath(path.dirname(__file__))
 
@@ -40,10 +41,19 @@ if sys.version_info > (3, 4):
     install_dev_requires.append('mypy')
     install_dev_requires.append('flake8-mypy')
 
+# preventing ModuleNotFoundError caused by importing lib before installing deps
+with open(os.path.join(os.path.abspath('.'), 'applitools/__version__.py'), 'r') as f:
+    try:
+        version = re.findall(r"^__version__ = '([^']+)'\r?$",
+                             f.read(), re.M)[0]
+    except IndexError:
+        raise RuntimeError('Unable to determine version.')
+
 setup(
     name='eyes-selenium',
-    version=VERSION,
-    packages=['applitools', 'applitools.utils'],
+    version=version,
+    packages=['applitools', 'applitools.core',
+              'applitools.selenium', 'applitools.utils'],
     url='http://www.applitools.com',
     license='Apache License, Version 2.0',
     author='Applitools Team',

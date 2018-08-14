@@ -7,21 +7,22 @@ from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.remote.webdriver import WebDriver as RemoteWebDriver
 
 # noinspection PyProtectedMember
-from applitools.core.eyes_base import FailureReports, EyesBase
-from applitools.selenium import viewport_size
-from applitools.core import logger
-from applitools.core.match_window_task import MatchWindowTask
-from applitools.core.triggers import MouseTrigger, TextTrigger
-from applitools.selenium.webdriver import EyesFrame, EyesWebDriver
+from ..core import logger
+from ..core.eyes_base import FailureReports, EyesBase
+from ..core.match_window_task import MatchWindowTask
+from ..core.triggers import MouseTrigger, TextTrigger
+from ..core.errors import EyesError, TestFailedError
+from ..core.geometry import Region
+from ..core.scaling import ContextBasedScaleProvider, FixedScaleProvider
+from ..utils import image_utils
+
+from . import viewport_size
+from .webdriver import EyesFrame, EyesWebDriver
 from .capture import EyesScreenshot
-from applitools.core.errors import EyesError, TestFailedError
-from applitools.core.geometry import Region
-from applitools.utils import image_utils
-from applitools.core.scaling import ContextBasedScaleProvider, FixedScaleProvider
 
 if tp.TYPE_CHECKING:
-    from applitools.core.target import Target
-    from applitools.utils.custom_types import (ViewPort, MatchResult, AnyWebDriver, FrameReference, AnyWebElement)
+    from ..core.target import Target
+    from ..utils.custom_types import (ViewPort, MatchResult, AnyWebDriver, FrameReference, AnyWebElement)
 
 
 class ScreenshotType(object):

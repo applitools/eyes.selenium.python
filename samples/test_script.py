@@ -1,14 +1,12 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 
-from applitools.core import logger
-from applitools.common import StitchMode
-from applitools.eyes import Eyes
-from applitools.geometry import Region
-from applitools.logger import StdoutLogger
+from applitools import (
+    logger, StdoutLogger,
+    Eyes, StitchMode, Region,
+    Target, IgnoreRegionBySelector, FloatingRegion, FloatingBounds)
 
 # os.environ['HTTPS_PROXY'] = "http://localhost:9999"
-from applitools.target import Target, IgnoreRegionBySelector, FloatingRegion, FloatingBounds
 
 driver = webdriver.Chrome()
 

@@ -19,10 +19,8 @@ from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.remote.remote_connection import RemoteConnection
 
 from applitools import logger, StdoutLogger, Eyes, __version__
-# from applitools.selenium.eyes import Eyes
-# from applitools.core.logger import StdoutLogger
 
-from tests.platfroms import SUPPORTED_PLATFORMS, SUPPORTED_PLATFORMS_DICT
+from .platfroms import SUPPORTED_PLATFORMS, SUPPORTED_PLATFORMS_DICT
 
 logger.set_logger(StdoutLogger())
 

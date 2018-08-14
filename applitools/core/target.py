@@ -2,12 +2,12 @@ from __future__ import absolute_import
 
 import typing as tp
 
-from ..core.errors import EyesError
-from ..core.geometry import Region
+from .errors import EyesError
+from .geometry import Region
 
 if tp.TYPE_CHECKING:
-    from ..selenium.capture import EyesScreenshot
     from ..utils.custom_types import AnyWebDriver, AnyWebElement
+    from .capture import EyesScreenshotBase
 
 __all__ = ('IgnoreRegionByElement', 'IgnoreRegionBySelector', 'FloatingBounds', 'FloatingRegion',
            'FloatingRegionByElement', 'FloatingRegionByElement', 'FloatingRegionBySelector', 'Target')
@@ -21,7 +21,7 @@ class IgnoreRegionByElement(object):
         self.element = element
 
     def get_region(self, driver, eyes_screenshot):
-        # type: (AnyWebDriver, EyesScreenshot) -> Region
+        # type: (AnyWebDriver, EyesScreenshotBase) -> Region
         return eyes_screenshot.get_element_region_in_frame_viewport(self.element)
 
     def _str_(self):
@@ -40,7 +40,7 @@ class IgnoreRegionBySelector(object):
         self.value = value
 
     def get_region(self, driver, eyes_screenshot):
-        # type: (AnyWebDriver, EyesScreenshot) -> Region
+        # type: (AnyWebDriver, EyesScreenshotBase) -> Region
         element = driver.find_element(self.by, self.value)
         return eyes_screenshot.get_element_region_in_frame_viewport(element)
 
@@ -54,7 +54,7 @@ class _NopRegionWrapper(object):
         self.region = region
 
     def get_region(self, driver, eyes_screenshot):
-        # type: (AnyWebDriver, EyesScreenshot) -> tp.Any
+        # type: (AnyWebDriver, EyesScreenshotBase) -> tp.Any
         return self.region
 
     def __str__(self):
@@ -82,7 +82,7 @@ class FloatingRegion(object):
         self.bounds = bounds
 
     def get_region(self, driver, eyes_screenshot):
-        # type: (AnyWebDriver, EyesScreenshot) -> FloatingRegion
+        # type: (AnyWebDriver, EyesScreenshotBase) -> FloatingRegion
         """Used for compatibility when iterating over regions"""
         return self
 
@@ -116,7 +116,7 @@ class FloatingRegionByElement(object):
         self.bounds = bounds
 
     def get_region(self, driver, eyes_screenshot):
-        # type: (AnyWebDriver, EyesScreenshot) -> FloatingRegion
+        # type: (AnyWebDriver, EyesScreenshotBase) -> FloatingRegion
         region = eyes_screenshot.get_element_region_in_frame_viewport(self.element)
         return FloatingRegion(region, self.bounds)
 
@@ -138,7 +138,7 @@ class FloatingRegionBySelector(object):
         self.bounds = bounds
 
     def get_region(self, driver, eyes_screenshot):
-        # type: (AnyWebDriver, EyesScreenshot) -> FloatingRegion
+        # type: (AnyWebDriver, EyesScreenshotBase) -> FloatingRegion
         element = driver.find_element(self.by, self.value)
         region = eyes_screenshot.get_element_region_in_frame_viewport(element)
         return FloatingRegion(region, self.bounds)

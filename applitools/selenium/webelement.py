@@ -1,12 +1,14 @@
+from __future__ import absolute_import
+
 import math
 
 import time
 
 from selenium.webdriver.common.by import By
 
-from applitools import Region
-from applitools.core import logger
-from applitools.utils import general_utils
+from ..core.geometry import Region
+from ..core import logger
+from ..utils import general_utils
 
 
 class EyesWebElement(object):

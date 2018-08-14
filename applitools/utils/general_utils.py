@@ -8,15 +8,13 @@ import types
 import typing as tp
 from datetime import timedelta, tzinfo
 
-from .compat import range
-
 if tp.TYPE_CHECKING:
     from selenium.webdriver.remote.webdriver import WebDriver
     from selenium.webdriver.remote.webelement import WebElement
     from selenium.webdriver.remote.switch_to import SwitchTo
 
-    from applitools.selenium.webdriver import EyesWebDriver, _EyesSwitchTo
-    from applitools.selenium.webelement import EyesWebElement
+    from ..selenium.webdriver import EyesWebDriver, _EyesSwitchTo
+    from ..selenium.webelement import EyesWebElement
 
 
 class _UtcTz(tzinfo):

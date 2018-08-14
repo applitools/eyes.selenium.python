@@ -1,11 +1,13 @@
+from __future__ import absolute_import
+
 import abc
 import re
 
 from selenium.common.exceptions import WebDriverException
 
-from applitools.common import StitchMode
-from applitools.core import logger, EyesError, Point
-from applitools.utils import ABC
+from ..common import StitchMode
+from ..core import logger, EyesError, Point
+from ..utils import ABC
 
 
 class PositionProvider(ABC):

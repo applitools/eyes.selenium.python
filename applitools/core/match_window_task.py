@@ -6,20 +6,20 @@ import typing as tp
 from struct import pack
 
 # noinspection PyProtectedMember
-from applitools.core import logger
-from applitools.core.errors import OutOfBoundsError
-from applitools.core.geometry import Region
-from applitools.core.target import Target
-from applitools.utils import general_utils
+from ..utils import general_utils
+from . import logger
+from .errors import OutOfBoundsError
+from .geometry import Region
+from .target import Target
 
 if tp.TYPE_CHECKING:
+    from ..selenium.webdriver import EyesWebDriver
+    from ..selenium.eyes import Eyes
+    from ..utils.custom_types import (Num, RunningSession, AppOutput,
+                                      UserInputs, MatchResult, AnyWebDriver)
     from .agent_connector import AgentConnector
-    from applitools.selenium.webdriver import EyesWebDriver
-    from applitools.selenium.eyes import Eyes
-    from applitools.core.eyes_base import ImageMatchSettings
-    from applitools import EyesScreenshot
-    from applitools.utils.custom_types import (Num, RunningSession, AppOutput,
-                                               UserInputs, MatchResult, AnyWebDriver)
+    from .eyes_base import ImageMatchSettings
+    from .capture import EyesScreenshotBase
 
 __all__ = ('MatchWindowTask',)
 
@@ -48,14 +48,14 @@ class MatchWindowTask(object):
         self._running_session = running_session
         self._driver = driver
         self._default_retry_timeout = default_retry_timeout / 1000.0  # type: Num # since we want the time in seconds.
-        self._screenshot = None  # type: EyesScreenshot
+        self._screenshot = None  # type: EyesScreenshotBase
 
     @staticmethod
     def _create_match_data_bytes(app_output,  # type: AppOutput
                                  user_inputs,  # type: UserInputs
                                  tag,  # type: tp.Text
                                  ignore_mismatch,  # type: bool
-                                 screenshot,  # type: EyesScreenshot
+                                 screenshot,  # type: EyesScreenshotBase
                                  default_match_settings,  # type: ImageMatchSettings
                                  target=None,  # type: Target
                                  ignore=None,  # type: tp.Optional[tp.List]
@@ -98,7 +98,7 @@ class MatchWindowTask(object):
 
     @staticmethod
     def _get_dynamic_regions(target, driver, eyes_screenshot):
-        # type: (tp.Optional[Target], EyesWebDriver, EyesScreenshot) -> tp.Dict[str, tp.List[tp.Optional[Region]]]
+        # type: (tp.Optional[Target], EyesWebDriver, EyesScreenshotBase) -> tp.Dict[str, tp.List[tp.Optional[Region]]]
         ignore = []  # type: tp.List[Region]
         floating = []  # type: tp.List[Region]
         if target is not None:

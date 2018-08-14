@@ -6,9 +6,9 @@ import typing as tp
 import requests
 from requests.packages import urllib3
 
-from applitools.core import logger
-from applitools.core.test_results import TestResults
-from applitools.utils import general_utils
+from ..utils import general_utils
+from . import logger
+from .test_results import TestResults
 
 if tp.TYPE_CHECKING:
     from requests.models import Response

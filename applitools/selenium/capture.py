@@ -1,16 +1,21 @@
+from __future__ import absolute_import
+
 import typing as tp
 import base64
 
 from selenium.common.exceptions import WebDriverException
 
-from ..core import EyesError, Point, Region, OutOfBoundsError
+from ..core import EyesError, Point, Region, OutOfBoundsError, EyesScreenshotBase
 from ..utils import image_utils
 
 if tp.TYPE_CHECKING:
     from PIL import Image
+    from ..utils.custom_types import ViewPort, AnyWebElement, Num
+    from .webdriver import EyesWebDriver, EyesFrame
+    from .webelement import EyesWebElement
 
 
-class EyesScreenshot(object):
+class EyesScreenshot(EyesScreenshotBase):
     @staticmethod
     def create_from_base64(screenshot64, driver):
         """
@@ -34,7 +39,7 @@ class EyesScreenshot(object):
 
     def __init__(self, driver, screenshot=None, screenshot64=None,
                  is_viewport_screenshot=None, frame_location_in_screenshot=None):
-        # type: (EyesWebDriver, PngImage, None, tp.Optional[bool], tp.Optional[Point]) -> None
+        # type: (EyesWebDriver, Image.Image, None, tp.Optional[bool], tp.Optional[Point]) -> None
         """
         Initializes a Screenshot instance. Either screenshot or screenshot64 must NOT be None.
         Should not be used directly. Use create_from_image/create_from_base64 instead.
