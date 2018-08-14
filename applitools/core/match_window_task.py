@@ -6,19 +6,22 @@ import typing as tp
 from struct import pack
 
 # noinspection PyProtectedMember
-from . import logger
-from ._webdriver import EyesScreenshot
-from .errors import OutOfBoundsError
-from .geometry import Region
-from .target import Target
-from .utils import general_utils
+from applitools.core import logger
+from applitools.core.errors import OutOfBoundsError
+from applitools.core.geometry import Region
+from applitools.core.target import Target
+from applitools.utils import general_utils
 
 if tp.TYPE_CHECKING:
-    from ._agent_connector import AgentConnector
-    from ._webdriver import EyesWebElement, EyesWebDriver
-    from .eyes import Eyes, ImageMatchSettings
-    from .utils._custom_types import (Num, RunningSession, AppOutput,
-                                      UserInputs, MatchResult, AnyWebDriver)
+    from .agent_connector import AgentConnector
+    from applitools.selenium.webdriver import EyesWebDriver
+    from applitools.selenium.eyes import Eyes
+    from applitools.core.eyes_base import ImageMatchSettings
+    from applitools import EyesScreenshot
+    from applitools.utils.custom_types import (Num, RunningSession, AppOutput,
+                                               UserInputs, MatchResult, AnyWebDriver)
+
+__all__ = ('MatchWindowTask',)
 
 
 class MatchWindowTask(object):

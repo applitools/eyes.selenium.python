@@ -1,8 +1,7 @@
-import os
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 
-from applitools import logger
+from applitools.core import logger
 from applitools.common import StitchMode
 from applitools.eyes import Eyes
 from applitools.geometry import Region

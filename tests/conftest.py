@@ -18,10 +18,9 @@ from selenium import webdriver
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.remote.remote_connection import RemoteConnection
 
-from applitools import logger
-from applitools import VERSION as applitools_version
-from applitools.eyes import Eyes
-from applitools.logger import StdoutLogger
+from applitools import logger, StdoutLogger, Eyes, __version__
+# from applitools.selenium.eyes import Eyes
+# from applitools.core.logger import StdoutLogger
 
 from tests.platfroms import SUPPORTED_PLATFORMS, SUPPORTED_PLATFORMS_DICT
 
@@ -127,7 +126,7 @@ def _setup_env_vars_for_session():
     # setup environment variables once per test run if not settled up
     # needed for multi thread run
     os.environ['APPLITOOLS_BATCH_ID'] = os.environ.get('APPLITOOLS_BATCH_ID', str(uuid.uuid4()))
-    os.environ['APPLITOOLS_BATCH_NAME'] = 'Python {} | SDK {} Tests'.format(python_version, applitools_version)
+    os.environ['APPLITOOLS_BATCH_NAME'] = 'Python {} | SDK {} Tests'.format(python_version, __version__)
 
 
 def pytest_generate_tests(metafunc):

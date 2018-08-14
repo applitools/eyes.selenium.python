@@ -1,12 +1,20 @@
-import glob
-import sys
+from .common import StitchMode
+from .__version__ import __version__
 
-modules = glob.glob('*.py')
-try:
-    modules.remove('__init__.py')
-except ValueError:
-    pass
+from .core import *
+from .selenium import *
+from .utils import *
 
-__all__ = ['utils'] + modules
+# for backward compatibility
+from .core import errors, geometry, target
+from .selenium import eyes
 
-VERSION = '3.13.0'
+__all__ = (
+        core.__all__ +
+        selenium.__all__ +
+        utils.__all__ +
+        ('errors', 'geometry', 'target', 'StitchMode', 'eyes')
+)
+
+# for backward compability
+VERSION = __version__

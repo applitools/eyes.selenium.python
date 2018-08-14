@@ -15,7 +15,8 @@ if tp.TYPE_CHECKING:
     from selenium.webdriver.remote.webelement import WebElement
     from selenium.webdriver.remote.switch_to import SwitchTo
 
-    from applitools._webdriver import EyesWebDriver, EyesWebElement, _EyesSwitchTo
+    from applitools.selenium.webdriver import EyesWebDriver, _EyesSwitchTo
+    from applitools.selenium.webelement import EyesWebElement
 
 
 class _UtcTz(tzinfo):
@@ -44,47 +45,6 @@ def to_json(obj):
     Returns an object's json representation (defaults to __getstate__ for user defined types).
     """
     return json.dumps(obj, default=lambda o: o.__getstate__(), indent=4)
-
-
-def public_state_to_json(obj):
-    """
-    Returns an object's json representation, without(!) its private variables.
-    DO NOT USE! This method has a problem with "datetime" objects (which have no __dict__
-    attribute).
-    """
-
-    def get_public_state(o):
-        return {key: value for key, value in o.__dict__.items()
-                if not callable(value) and not key.startswith('_')}
-
-    return json.dumps(obj, default=lambda o: get_public_state(o), indent=4)
-
-
-def divide_to_chunks(l, chunk_size):
-    """
-    Divides a list into chunks.
-
-    :param l: The list to divide.
-    :param chunk_size: The size of each chunk
-    :return: A list of lists. Each internal list has a maximum size of chunk_size (last item might be shorter).
-    """
-    result = []
-    for i in range(0, len(l), chunk_size):
-        result.extend([l[i:i + chunk_size]])
-    return result
-
-
-def join_chunks(l):
-    """
-    Joins a list of chunks into a single continuous list of values.
-
-    :param l: The list of chunks to join.
-    :return: A single composed the concatenated values of the chunks.
-    """
-    result = []
-    for i in l:
-        result.extend(i)
-    return result
 
 
 def create_proxy_property(property_name, target_name, is_settable=False):

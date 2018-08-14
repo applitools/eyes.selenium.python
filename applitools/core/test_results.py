@@ -2,6 +2,8 @@ from __future__ import absolute_import
 
 import typing as tp
 
+__all__ = ('TestResults', 'TestResultsStatus')
+
 
 class TestResultsStatus(object):
     """
@@ -32,6 +34,7 @@ class TestResults(object):
 
     # TODO: update regarding JAVA SDK
     """
+
     def __init__(self, steps=0,  # type: int
                  matches=0,  # type: int
                  mismatches=0,  # type: int

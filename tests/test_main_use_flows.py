@@ -1,8 +1,8 @@
 import pytest
 from selenium.webdriver.common.by import By
 
-from applitools.geometry import Region
-from applitools.target import Target
+from applitools.core.geometry import Region
+from applitools.core.target import Target
 
 
 @pytest.mark.platform('Linux', 'Windows', 'macOS')

@@ -4,7 +4,7 @@ import pytest
 
 from applitools.errors import DiffsFoundError
 from applitools.eyes import Eyes
-from applitools.target import Target
+from applitools.core.target import Target
 
 
 @pytest.mark.platform('Linux')

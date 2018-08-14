@@ -6,11 +6,11 @@ from __future__ import absolute_import
 import time
 import typing as tp
 
-from . import logger
-from .errors import EyesError
+from applitools.core import logger
+from applitools.core.errors import EyesError
 
 if tp.TYPE_CHECKING:
-    from .utils._custom_types import ViewPort, AnyWebDriver
+    from applitools.utils.custom_types import ViewPort, AnyWebDriver
 
 _JS_GET_VIEWPORT_SIZE = """
     var height = undefined;

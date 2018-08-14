@@ -1,5 +1,7 @@
-from . import logger
-from .utils.compat import ABC
+from applitools.core import logger
+from applitools.utils.compat import ABC
+
+__all__ = ('FixedScaleProvider', 'NullScaleProvider', 'ContextBasedScaleProvider')
 
 
 class ScaleProvider(ABC):
