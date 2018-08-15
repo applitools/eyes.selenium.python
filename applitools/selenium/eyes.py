@@ -14,9 +14,7 @@ from ..core.triggers import MouseTrigger, TextTrigger
 from ..core.errors import EyesError, TestFailedError
 from ..core.geometry import Region
 from ..core.scaling import ContextBasedScaleProvider, FixedScaleProvider
-from ..utils import image_utils
-
-from . import viewport_size
+from ..utils import image_utils, eyes_selenium_utils
 from .webdriver import EyesFrame, EyesWebDriver
 from .capture import EyesScreenshot
 
@@ -42,7 +40,7 @@ class Eyes(EyesBase):
     @staticmethod
     def set_viewport_size(driver, viewportsize):
         # type: (AnyWebDriver, ViewPort) -> None
-        viewport_size.set_viewport_size(driver, viewportsize)
+        eyes_selenium_utils.set_viewport_size(driver, viewportsize)
 
     def __init__(self, server_url=EyesBase.DEFAULT_EYES_SERVER):
         super(Eyes, self).__init__(server_url)

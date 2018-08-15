@@ -1,13 +1,13 @@
 from __future__ import absolute_import
 
-from contextlib import contextmanager
-
 import time
 import typing as tp
+from contextlib import contextmanager
 
 from selenium.common.exceptions import WebDriverException
 
-from ..core import logger, RectangleSize, EyesError
+from ..core import logger, EyesError
+from .custom_types import ViewPort
 
 if tp.TYPE_CHECKING:
     from .custom_types import AnyWebDriver
@@ -74,7 +74,7 @@ _RETRIES = 3
 
 
 def get_current_frame_content_entire_size(driver):
-    # type: (AnyWebDriver) -> RectangleSize
+    # type: (AnyWebDriver) -> ViewPort
     """
     :return: The size of the entire content.
     """
@@ -82,7 +82,7 @@ def get_current_frame_content_entire_size(driver):
         width, height = driver.execute_script(_JS_GET_CONTENT_ENTIRE_SIZE)
     except WebDriverException:
         raise EyesError('Failed to extract entire size!')
-    return RectangleSize(width, height)
+    return dict(width=width, height=height)
 
 
 def get_device_pixel_ratio(driver):
@@ -91,7 +91,7 @@ def get_device_pixel_ratio(driver):
 
 
 def get_viewport_size(driver):
-    # type: (AnyWebDriver) -> RectangleSize
+    # type: (AnyWebDriver) -> ViewPort
     """
     Tries to get the viewport size using Javascript. If fails, gets the entire browser window
     size!
@@ -101,26 +101,24 @@ def get_viewport_size(driver):
     # noinspection PyBroadException
     try:
         width, height = driver.execute_script(_JS_GET_VIEWPORT_SIZE)
-        return RectangleSize(width, height)
+        return dict(width=width, height=height)
     except WebDriverException:
         logger.info('Failed to get viewport size. Only window size is available')
         return get_window_size(driver)
 
 
 def get_window_size(driver):
-    # type: (AnyWebDriver) -> RectangleSize
-    return RectangleSize(**driver.get_window_size())
+    # type: (AnyWebDriver) -> ViewPort
+    return driver.get_window_size()
 
 
 def set_window_size(driver, size):
-    # type: (AnyWebDriver, RectangleSize) -> None
-    driver.set_window_size(size.width, size.height)
+    # type: (AnyWebDriver, ViewPort) -> None
+    driver.set_window_size(size['width'], size['height'])
 
 
 def set_browser_size(driver, required_size):
-    # type: (AnyWebDriver, RectangleSize) -> bool
-
-    argument_guard.is_a(required_size, RectangleSize)
+    # type: (AnyWebDriver, ViewPort) -> bool
 
     retries_left = _RETRIES
 
@@ -143,13 +141,11 @@ def set_browser_size(driver, required_size):
 
 
 def set_browser_size_by_viewport_size(driver, actual_viewport_size, required_size):
-    # type: (AnyWebDriver, RectangleSize, RectangleSize) -> tp.Callable[AnyWebDriver, RectangleSize]
-    argument_guard.is_a(actual_viewport_size, RectangleSize)
-    argument_guard.is_a(required_size, RectangleSize)
+    # type: (AnyWebDriver, ViewPort, ViewPort) -> bool
 
     browser_size = get_window_size(driver)
     logger.debug("Current browser size: {}".format(browser_size))
-    required_browser_size = RectangleSize(
+    required_browser_size = dict(
         width=browser_size['width'] + (required_size['width'] - actual_viewport_size['width']),
         height=browser_size['height'] + (required_size['height'] - actual_viewport_size['height'])
     )
@@ -157,9 +153,7 @@ def set_browser_size_by_viewport_size(driver, actual_viewport_size, required_siz
 
 
 def set_viewport_size(driver, required_size):
-    # type: (AnyWebDriver, RectangleSize) -> None
-
-    argument_guard.is_a(required_size, RectangleSize)
+    # type: (AnyWebDriver, ViewPort) -> None
 
     logger.info("set_viewport_size({})".format(str(required_size)))
 
@@ -190,9 +184,9 @@ def set_viewport_size(driver, required_size):
     if actual_viewport_size == required_size:
         return None
 
-    width_diff = abs(actual_viewport_size['width'] - required_size.width)
+    width_diff = abs(actual_viewport_size['width'] - required_size['width'])
     width_step = -1 if width_diff > 0 else 1  # -1 for smaller size, 1 for larger
-    height_diff = abs(actual_viewport_size['height'] - required_size.height)
+    height_diff = abs(actual_viewport_size['height'] - required_size['height'])
     height_step = -1 if height_diff > 0 else 1
 
     browser_size = get_window_size(driver)
@@ -209,7 +203,7 @@ def set_viewport_size(driver, required_size):
             if abs(curr_height_change) <= height_diff:
                 curr_height_change += height_step
 
-            required_browser_size = RectangleSize(
+            required_browser_size = dict(
                 width=browser_size['width'] + curr_width_change,
                 height=browser_size['height'] + curr_height_change)
             if required_browser_size == last_required_browser_size:

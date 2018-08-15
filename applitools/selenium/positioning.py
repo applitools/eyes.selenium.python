@@ -2,12 +2,16 @@ from __future__ import absolute_import
 
 import abc
 import re
+import typing as tp
 
 from selenium.common.exceptions import WebDriverException
 
 from ..common import StitchMode
 from ..core import logger, EyesError, Point
 from ..utils import ABC
+
+if tp.TYPE_CHECKING:
+    from ..utils.custom_types import AnyWebDriver, ViewPort, AnyWebElement
 
 
 class PositionProvider(ABC):
@@ -185,7 +189,7 @@ class ElementPositionProvider(PositionProvider):
 
 
 def build_position_provider_for(stitch_mode,  # type: tp.Text
-                                driver,  # type: WebDriver
+                                driver,  # type: AnyWebDriver
                                 ):
     # type: (...) -> tp.Union[CSSTranslatePositionProvider, ScrollPositionProvider]
     if stitch_mode == StitchMode.Scroll:

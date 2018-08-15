@@ -1,14 +1,22 @@
 from __future__ import absolute_import
 
 import math
-
 import time
+import typing as tp
 
 from selenium.webdriver.common.by import By
 
 from ..core.geometry import Region
 from ..core import logger
 from ..utils import general_utils
+
+if tp.TYPE_CHECKING:
+    from selenium.webdriver.remote.webelement import WebElement
+
+    from ..core.geometry import Point
+    from ..utils.custom_types import AnyWebDriver
+    from .webdriver import EyesWebDriver
+    from .eyes import Eyes
 
 
 class EyesWebElement(object):

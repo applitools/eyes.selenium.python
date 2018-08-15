@@ -14,10 +14,7 @@ from ..common import StitchMode
 from ..core import logger
 from ..core.errors import EyesError
 from ..core.geometry import Point, Region
-from ..utils import image_utils, general_utils
-from ..utils.general_utils import cached_property
-
-from . import viewport_size
+from ..utils import cached_property, image_utils, general_utils, eyes_selenium_utils
 from .positioning import ElementPositionProvider, build_position_provider_for
 from .webelement import EyesWebElement
 
@@ -649,7 +646,7 @@ class EyesWebDriver(object):
         Returns:
             The viewport size of the current frame.
         """
-        return viewport_size.get_viewport_size(self)
+        return eyes_selenium_utils.get_viewport_size(self)
 
     def get_default_content_viewport_size(self):
         # type: () -> ViewPort

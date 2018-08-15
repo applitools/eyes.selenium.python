@@ -2,9 +2,8 @@ from __future__ import absolute_import
 
 import abc
 import os
-import re
 import uuid
-
+import typing as tp
 from datetime import datetime
 
 from ..__version__ import __version__
@@ -15,6 +14,11 @@ from .agent_connector import AgentConnector
 from .match_window_task import MatchWindowTask
 from .errors import EyesError, NewTestError, DiffsFoundError, TestFailedError
 from .test_results import TestResults, TestResultsStatus
+
+if tp.TYPE_CHECKING:
+    from ..utils.custom_types import (ViewPort, UserInputs, AppEnvironment, AnyWebDriver,
+                                      RunningSession, SessionStartInfo)
+    from .capture import EyesScreenshotBase
 
 __all__ = ('FailureReports', 'MatchLevel', 'ExactMatchSettings', 'ImageMatchSettings', 'EyesBase')
 
@@ -148,7 +152,7 @@ class EyesBase(ABC):
         self._running_session = None  # type: tp.Optional[RunningSession]
         self._match_timeout = EyesBase._DEFAULT_MATCH_TIMEOUT  # type: int
         self._stitch_mode = StitchMode.Scroll  # type: tp.Text
-        self._last_screenshot = None  # type: tp.Optional[EyesScreenshot]
+        self._last_screenshot = None  # type: tp.Optional[EyesScreenshotBase]
         self._should_match_once_on_timeout = False  # type: bool
         self._start_info = None  # type: tp.Optional[SessionStartInfo]
         self._test_name = None  # type: tp.Optional[tp.Text]

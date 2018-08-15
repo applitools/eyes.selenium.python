@@ -28,7 +28,7 @@ def not_none_or_empty(param):
 
 
 def greater_than_or_equal_to_zero(param, *args):
-    # type: (int) -> None
+    # type: (int, *int) -> None
     """
     Fails if the input integer parameter is negative.
     """

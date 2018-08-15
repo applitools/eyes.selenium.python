@@ -39,7 +39,6 @@ if sys.version_info < (3, 5):
 if sys.version_info > (3, 4):
     # mypy could be ran only with Python 3
     install_dev_requires.append('mypy')
-    install_dev_requires.append('flake8-mypy')
 
 # preventing ModuleNotFoundError caused by importing lib before installing deps
 with open(os.path.join(os.path.abspath('.'), 'applitools/__version__.py'), 'r') as f:

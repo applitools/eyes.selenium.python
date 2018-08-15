@@ -89,6 +89,16 @@ class _Logger(object):
         if self._logger:
             self._logger.debug(msg)
 
+    def warning(self, msg):
+        # type: (tp.Text) -> None
+        """
+        Writes warning level msg to the logger.
+
+        :param msg: The message that will be written to the logger.
+        """
+        if self._logger:
+            self._logger.warning(msg)
+
 
 class StdoutLogger(_Logger):
     """
