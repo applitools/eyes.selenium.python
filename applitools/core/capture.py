@@ -1,15 +1,19 @@
 from __future__ import absolute_import
+
 import abc
 import typing as tp
+
+from PIL import Image
 
 from ..utils import ABC, image_utils, argument_guard
 
 if tp.TYPE_CHECKING:
-    from PIL import Image
     from ..utils.custom_types import AnyWebElement, Num
     from ..selenium.webdriver import EyesFrame
     from ..selenium.webelement import EyesWebElement
     from .geometry import Point, Region
+
+    T = tp.TypeVar('T', bound='EyesScreenshotBase')
 
 __all__ = ('EyesScreenshotBase',)
 
@@ -39,6 +43,7 @@ class EyesScreenshotBase(ABC):
 
     @abc.abstractmethod
     def get_base64(self):
+        # type: () -> tp.Text
         """
         Returns a base64 screenshot.
 
@@ -79,14 +84,14 @@ class EyesScreenshotBase(ABC):
 
     @abc.abstractmethod
     def get_viewport_screenshot(self):
-        # type: () -> EyesScreenshotBase
+        # type: () -> T
         """
         Always return viewport size screenshot
         """
 
     @abc.abstractmethod
     def get_sub_screenshot_by_region(self, region):
-        # type: (Region) -> EyesScreenshotBase
+        # type: (Region) -> T
         """
         Gets the region part of the screenshot image.
 
@@ -114,6 +119,7 @@ class EyesScreenshotBase(ABC):
         return image_utils.get_bytes(self._screenshot)
 
     def get_intersected_region_by_element(self, element):
+        # type: (EyesWebElement) -> Region
         """
         Gets the intersection of the element's region with the screenshot image.
 
@@ -125,7 +131,7 @@ class EyesScreenshotBase(ABC):
         return self.get_intersected_region(element_region)
 
     def get_sub_screenshot_by_element(self, element):
-        # type: (EyesWebElement) -> EyesScreenshotBase
+        # type: (EyesWebElement) -> T
         """
         Gets the element's region part of the screenshot image.
 

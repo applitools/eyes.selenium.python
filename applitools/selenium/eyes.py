@@ -89,7 +89,7 @@ class Eyes(EyesBase):
             logger.info('No OS set, checking for mobile OS...')
             # Since in Python Appium driver is the same for Android and iOS, we need to use the desired
             # capabilities to figure this out.
-            if self._driver.is_mobile_device():
+            if eyes_selenium_utils.is_mobile_device(self._driver):
                 platform_name = self._driver.platform_name
                 logger.info(platform_name + ' detected')
                 platform_version = self._driver.platform_version
@@ -210,7 +210,7 @@ class Eyes(EyesBase):
                 top_level_context_entire_size=self._driver.get_entire_page_size(),
                 viewport_size=self._driver.get_viewport_size(),
                 device_pixel_ratio=device_pixel_ratio,
-                is_mobile_device=self._driver.is_mobile_device())  # type: ScaleProvider
+                is_mobile_device=eyes_selenium_utils.is_mobile_device(self._driver))  # type: ScaleProvider
         except Exception:
             # This can happen in Appium for example.
             logger.info("Failed to set ContextBasedScaleProvider.")

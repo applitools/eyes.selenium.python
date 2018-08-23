@@ -2,7 +2,6 @@ from __future__ import absolute_import
 
 import typing as tp
 
-
 if tp.TYPE_CHECKING:
     from selenium.webdriver.remote.webdriver import WebDriver
     from selenium.webdriver.remote.webelement import WebElement
@@ -10,7 +9,6 @@ if tp.TYPE_CHECKING:
     from ..core.geometry import Region
     from ..selenium.webdriver import EyesWebDriver
     from ..selenium.webelement import EyesWebElement
-
 
     RunningSession = tp.Dict[tp.Text, tp.Any]
     ViewPort = tp.Dict[tp.Text, int]

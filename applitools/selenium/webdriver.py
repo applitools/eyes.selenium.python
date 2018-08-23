@@ -283,7 +283,7 @@ class EyesWebDriver(object):
 
         :return: True if the platform running the test is a mobile platform. False otherwise.
         """
-        return self.driver.capabilities.get('platformName') in ('Android', 'iOS')
+        return eyes_selenium_utils.is_mobile_device(self.driver)
 
     def get(self, url):
         # type: (tp.Text) -> tp.Optional[tp.Any]
@@ -931,7 +931,7 @@ class EyesWebDriver(object):
         return Point(x, y)
 
     def execute_script(self, script, *args):
-        return self.driver.execute_script(script, args)
+        return self.driver.execute_script(script, *args)
 
     def get_window_size(self, windowHandle='current'):
         return self.driver.get_window_size(windowHandle)

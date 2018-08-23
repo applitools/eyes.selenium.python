@@ -6,13 +6,12 @@ import base64
 from selenium.common.exceptions import WebDriverException
 
 from ..core import EyesError, Point, Region, OutOfBoundsError, EyesScreenshotBase
-from ..utils import image_utils
+from ..utils import image_utils, eyes_selenium_utils
 
 if tp.TYPE_CHECKING:
     from PIL import Image
-    from ..utils.custom_types import ViewPort, AnyWebElement, Num
-    from .webdriver import EyesWebDriver, EyesFrame
-    from .webelement import EyesWebElement
+    from ..utils.custom_types import ViewPort
+    from .webdriver import EyesWebDriver
 
 
 class EyesScreenshot(EyesScreenshotBase):
@@ -150,21 +149,6 @@ class EyesScreenshot(EyesScreenshotBase):
                               is_viewport_screenshot=self._is_viewport_screenshot,
                               frame_location_in_screenshot=sub_screenshot_frame_location)
 
-    def get_sub_screenshot_by_element(self, element):
-        sub_screenshot_region = self.get_intersected_region(region)
-        if sub_screenshot_region.is_empty():
-            raise OutOfBoundsError("Region {0} is out of bounds!".format(region))
-        # If we take a screenshot of a region inside a frame, then the frame's (0,0) is in the
-        # negative offset of the region..
-        sub_screenshot_frame_location = Point(-region.left, -region.top)
-
-        # FIXME Calculate relative region location? (same as the java version)
-
-        screenshot = image_utils.get_image_part(self._screenshot, sub_screenshot_region)
-        return EyesScreenshot(self._driver, screenshot,
-                              is_viewport_screenshot=self._is_viewport_screenshot,
-                              frame_location_in_screenshot=sub_screenshot_frame_location)
-
     def get_element_region_in_frame_viewport(self, element):
         location, size = element.location, element.size
 
@@ -198,7 +182,7 @@ class EyesScreenshot(EyesScreenshotBase):
 
     def get_viewport_screenshot(self):
         # if screenshot if full page
-        if not self._is_viewport_screenshot and not self._driver.is_mobile_device():
+        if not self._is_viewport_screenshot and not eyes_selenium_utils.is_mobile_device(self._driver):
             return self.get_sub_screenshot_by_region(
                 Region(top=self._scroll_position.y, height=self._viewport_size['height'],
                        width=self._viewport_size['width']))

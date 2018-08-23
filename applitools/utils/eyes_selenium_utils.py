@@ -5,6 +5,7 @@ import typing as tp
 from contextlib import contextmanager
 
 from selenium.common.exceptions import WebDriverException
+from selenium.webdriver.remote.webdriver import WebDriver
 
 from ..core import logger, EyesError
 
@@ -72,6 +73,25 @@ _SLEEP = 1  # sec
 _RETRIES = 3
 
 
+def is_mobile_device(driver):
+    # type: (AnyWebDriver) -> bool
+    """
+    Returns whether the platform running is a mobile device or not.
+
+    :return: True if the platform running the test is a mobile platform. False otherwise.
+    """
+    driver = get_underlying_driver(driver)
+    return driver.desired_capabilities.get('platformName') in ('Android', 'iOS')
+
+
+def get_underlying_driver(driver):
+    # type: (AnyWebDriver) -> WebDriver
+    from ..selenium.webdriver import EyesWebDriver
+    if isinstance(driver, EyesWebDriver):
+        driver = driver.driver
+    return driver
+
+
 def get_current_frame_content_entire_size(driver):
     # type: (AnyWebDriver) -> ViewPort
     """
@@ -122,7 +142,7 @@ def set_browser_size(driver, required_size):
     retries_left = _RETRIES
 
     # set browser size for mobile devices isn't working
-    if driver.is_mobile_device():
+    if is_mobile_device(driver):
         return True
 
     while True:
