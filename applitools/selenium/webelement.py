@@ -28,8 +28,8 @@ class EyesWebElement(object):
 
     # Properties require special handling since even testing if they're callable "activates"
     # them, which makes copying them automatically a problem.
-    _READONLY_PROPERTIES = ['tag_name', 'text', 'location_once_scrolled_into_view', 'size',
-                            'location', 'parent', 'id', 'rect', 'screenshot_as_base64', 'screenshot_as_png',
+    _READONLY_PROPERTIES = ['tag_name', 'text', 'location_once_scrolled_into_view',
+                            'parent', 'rect', 'screenshot_as_base64', 'screenshot_as_png',
                             'location_in_view', 'anonymous_children']
     _JS_GET_COMPUTED_STYLE_FORMATTED_STR = """
             var elem = arguments[0];
@@ -101,6 +101,21 @@ class EyesWebElement(object):
         if top < 0:
             top, height = 0, max(0, height + top)
         return Region(left, top, width, height)
+
+    @property
+    def location(self):
+        return self.element.location
+
+    @property
+    def size(self):
+        return self.element.size
+
+    @property
+    def id(self):
+        return self.element.id
+
+    def value_of_css_property(self, property_name):
+        return self.element.value_of_css_property(property_name)
 
     def find_element(self, by=By.ID, value=None):
         """

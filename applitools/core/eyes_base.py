@@ -16,8 +16,8 @@ from .errors import EyesError, NewTestError, DiffsFoundError, TestFailedError
 from .test_results import TestResults, TestResultsStatus
 
 if tp.TYPE_CHECKING:
-    from ..utils.custom_types import (ViewPort, UserInputs, AppEnvironment, AnyWebDriver,
-                                      RunningSession, SessionStartInfo)
+    from ..utils.custom_types import (ViewPort, UserInputs, AppEnvironment,
+                                      RunningSession, SessionStartInfo, RegionOrElement)
     from .capture import EyesScreenshotBase
 
 __all__ = ('FailureReports', 'MatchLevel', 'ExactMatchSettings', 'ImageMatchSettings', 'EyesBase')
@@ -157,7 +157,7 @@ class EyesBase(ABC):
         self._start_info = None  # type: tp.Optional[SessionStartInfo]
         self._test_name = None  # type: tp.Optional[tp.Text]
         self._user_inputs = []  # type: UserInputs
-        self._region_to_check = None
+        self._region_to_check = None  # type: tp.Optional[RegionOrElement]
 
         # key-value pairs to be associated with the test. Can be used for filtering later.
         self._properties = []  # type: tp.List
@@ -475,7 +475,7 @@ class EyesBase(ABC):
             logger.close()
 
     def open_base(self, app_name, test_name, viewport_size=None):
-        # type: (AnyWebDriver, tp.Text, tp.Text, tp.Optional[ViewPort]) -> None
+        # type: (tp.Text, tp.Text, tp.Optional[ViewPort]) -> None
         """
         Starts a test.
 

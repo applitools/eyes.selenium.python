@@ -191,7 +191,7 @@ class ElementPositionProvider(PositionProvider):
 def build_position_provider_for(stitch_mode,  # type: tp.Text
                                 driver,  # type: AnyWebDriver
                                 ):
-    # type: (...) -> tp.Union[CSSTranslatePositionProvider, ScrollPositionProvider]
+    # type: (...) -> PositionProvider
     if stitch_mode == StitchMode.Scroll:
         return ScrollPositionProvider(driver)
     elif stitch_mode == StitchMode.CSS:

@@ -929,3 +929,15 @@ class EyesWebDriver(object):
             x += frame.location['x']
             y += frame.location['y']
         return Point(x, y)
+
+    def execute_script(self, script, *args):
+        return self.driver.execute_script(script, args)
+
+    def get_window_size(self, windowHandle='current'):
+        return self.driver.get_window_size(windowHandle)
+
+    def set_window_size(self, width, height, windowHandle='current'):
+        self.driver.set_window_size(width, height, windowHandle)
+
+    def set_window_position(self, x, y, windowHandle='current'):
+        self.driver.set_window_position(x, y, windowHandle)

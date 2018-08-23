@@ -48,7 +48,7 @@ class MatchWindowTask(object):
         self._running_session = running_session
         self._driver = driver
         self._default_retry_timeout = default_retry_timeout / 1000.0  # type: Num # since we want the time in seconds.
-        self._screenshot = None  # type: EyesScreenshotBase
+        self._screenshot = None  # type: tp.Optional[EyesScreenshotBase]
 
     @staticmethod
     def _create_match_data_bytes(app_output,  # type: AppOutput
@@ -98,7 +98,7 @@ class MatchWindowTask(object):
 
     @staticmethod
     def _get_dynamic_regions(target, driver, eyes_screenshot):
-        # type: (tp.Optional[Target], EyesWebDriver, EyesScreenshotBase) -> tp.Dict[str, tp.List[tp.Optional[Region]]]
+        # type: (tp.Optional[Target], EyesWebDriver, EyesScreenshotBase) -> tp.Dict[str, tp.List[Region]]
         ignore = []  # type: tp.List[Region]
         floating = []  # type: tp.List[Region]
         if target is not None:

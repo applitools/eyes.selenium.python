@@ -16,6 +16,7 @@ if tp.TYPE_CHECKING:
 
 
 class EyesScreenshot(EyesScreenshotBase):
+
     @staticmethod
     def create_from_base64(screenshot64, driver):
         """
@@ -56,13 +57,15 @@ class EyesScreenshot(EyesScreenshotBase):
                                                     to the top,left of the screenshot.
         :raise EyesError: If the screenshots are None.
         """
-        self._screenshot64 = screenshot64
-        if screenshot:
-            self._screenshot = screenshot
-        elif screenshot64:
-            self._screenshot = image_utils.image_from_bytes(base64.b64decode(screenshot64))
-        else:
+        if screenshot is None and screenshot64 is None:
             raise EyesError("both screenshot and screenshot64 are None!")
+
+        if screenshot64:
+            screenshot = image_utils.image_from_bytes(base64.b64decode(screenshot64))
+
+        # initializing of screenshot
+        super(EyesScreenshot, self).__init__(image=screenshot)
+
         self._driver = driver
         self._viewport_size = driver.get_default_content_viewport_size()  # type: ViewPort
 
@@ -103,17 +106,7 @@ class EyesScreenshot(EyesScreenshotBase):
         self._frame_screenshot_intersect.intersect(Region(width=self._screenshot.width,
                                                           height=self._screenshot.height))
 
-    @staticmethod
     def calc_frame_location_in_screenshot(frame_chain, is_viewport_screenshot):
-        # type: (tp.List[EyesFrame], tp.Optional[bool]) -> Point
-        """
-        :param frame_chain: List of the frames.
-        :param is_viewport_screenshot: Whether the viewport is a screenshot or not.
-        :return: The frame location as it would be on the screenshot. Notice that this value
-            might actually be OUTSIDE the screenshot (e.g, if this is a viewport screenshot and
-            the frame is located outside the viewport). This is not an error. The value can also
-            be negative.
-        """
         first_frame = frame_chain[0]
         location_in_screenshot = Point(first_frame.location['x'], first_frame.location['y'])
         # We only need to consider the scroll of the default content if the screenshot is a
@@ -130,57 +123,49 @@ class EyesScreenshot(EyesScreenshotBase):
         return location_in_screenshot
 
     def get_frame_chain(self):
-        # type: () -> tp.List[EyesFrame]
-        """
-        Returns a copy of the fram chain.
-
-        :return: A copy of the frame chain, as received by the driver when the screenshot was
-            created.
-        """
         return [frame.clone() for frame in self._frame_chain]
 
     def get_base64(self):
-        """
-        Returns a base64 screenshot.
-
-        :return: The base64 representation of the png.
-        """
         if not self._screenshot64:
             self._screenshot64 = image_utils.get_base64(self._screenshot)
         return self._screenshot64
 
-    def get_bytes(self):
-        # type: () -> bytes
-        """
-        Returns the bytes of the screenshot.
-
-        :return: The bytes representation of the png.
-        """
-        return image_utils.get_bytes(self._screenshot)
-
     def get_location_relative_to_frame_viewport(self, location):
-        # type: (tp.Dict[tp.Text, Num]) -> tp.Dict[tp.Text, Num]
-        """
-        Gets the relative location from a given location to the viewport.
-
-        :param location: A dict with 'x' and 'y' keys representing the location we want
-            to adjust.
-        :return: A location (keys are 'x' and 'y') adjusted to the current frame/viewport.
-        """
         result = {'x': location['x'], 'y': location['y']}
         if self._frame_chain or self._is_viewport_screenshot:
             result['x'] -= self._scroll_position.x
             result['y'] -= self._scroll_position.y
         return result
 
-    def get_element_region_in_frame_viewport(self, element):
-        # type: (AnyWebElement) -> Region
-        """
-        Gets The element region in the frame.
+    def get_sub_screenshot_by_region(self, region):
+        sub_screenshot_region = self.get_intersected_region(region)
+        if sub_screenshot_region.is_empty():
+            raise OutOfBoundsError("Region {0} is out of bounds!".format(region))
+        # If we take a screenshot of a region inside a frame, then the frame's (0,0) is in the
+        # negative offset of the region..
+        sub_screenshot_frame_location = Point(-region.left, -region.top)
+        # FIXME Calculate relative region location? (same as the java version)
+        screenshot = image_utils.get_image_part(self._screenshot, sub_screenshot_region)
+        return EyesScreenshot(self._driver, screenshot,
+                              is_viewport_screenshot=self._is_viewport_screenshot,
+                              frame_location_in_screenshot=sub_screenshot_frame_location)
 
-        :param element: The element to get the region in the frame.
-        :return: The element's region in the frame with scroll considered if necessary
-        """
+    def get_sub_screenshot_by_element(self, element):
+        sub_screenshot_region = self.get_intersected_region(region)
+        if sub_screenshot_region.is_empty():
+            raise OutOfBoundsError("Region {0} is out of bounds!".format(region))
+        # If we take a screenshot of a region inside a frame, then the frame's (0,0) is in the
+        # negative offset of the region..
+        sub_screenshot_frame_location = Point(-region.left, -region.top)
+
+        # FIXME Calculate relative region location? (same as the java version)
+
+        screenshot = image_utils.get_image_part(self._screenshot, sub_screenshot_region)
+        return EyesScreenshot(self._driver, screenshot,
+                              is_viewport_screenshot=self._is_viewport_screenshot,
+                              frame_location_in_screenshot=sub_screenshot_frame_location)
+
+    def get_element_region_in_frame_viewport(self, element):
         location, size = element.location, element.size
 
         relative_location = self.get_location_relative_to_frame_viewport(location)
@@ -205,70 +190,13 @@ class EyesScreenshot(EyesScreenshotBase):
         return Region(x, y, width, height)
 
     def get_intersected_region(self, region):
-        # type: (Region) -> Region
-        """
-        Gets the intersection of the region with the screenshot image.
-
-        :param region: The region in the frame.
-        :return: The part of the region which intersects with
-            the screenshot image.
-        """
         region_in_screenshot = region.clone()
         region_in_screenshot.left += self._frame_location_in_screenshot.x
         region_in_screenshot.top += self._frame_location_in_screenshot.y
         region_in_screenshot.intersect(self._frame_screenshot_intersect)
         return region_in_screenshot
 
-    def get_intersected_region_by_element(self, element):
-        """
-        Gets the intersection of the element's region with the screenshot image.
-
-        :param element: The element in the frame.
-        :return: The part of the element's region which intersects with
-            the screenshot image.
-        """
-        element_region = self.get_element_region_in_frame_viewport(element)
-        return self.get_intersected_region(element_region)
-
-    def get_sub_screenshot_by_region(self, region):
-        # type: (Region) -> EyesScreenshot
-        """
-        Gets the region part of the screenshot image.
-
-        :param region: The region in the frame.
-        :return: A screenshot object representing the given region part of the image.
-        """
-        sub_screenshot_region = self.get_intersected_region(region)
-        if sub_screenshot_region.is_empty():
-            raise OutOfBoundsError("Region {0} is out of bounds!".format(region))
-        # If we take a screenshot of a region inside a frame, then the frame's (0,0) is in the
-        # negative offset of the region..
-        sub_screenshot_frame_location = Point(-region.left, -region.top)
-
-        # FIXME Calculate relative region location? (same as the java version)
-
-        screenshot = image_utils.get_image_part(self._screenshot, sub_screenshot_region)
-        return EyesScreenshot(self._driver, screenshot,
-                              is_viewport_screenshot=self._is_viewport_screenshot,
-                              frame_location_in_screenshot=sub_screenshot_frame_location)
-
-    def get_sub_screenshot_by_element(self, element):
-        # type: (EyesWebElement) -> EyesScreenshot
-        """
-        Gets the element's region part of the screenshot image.
-
-        :param element: The element in the frame.
-        :return: A screenshot object representing the element's region part of the
-            image.
-        """
-        element_region = self.get_element_region_in_frame_viewport(element)
-        return self.get_sub_screenshot_by_region(element_region)
-
     def get_viewport_screenshot(self):
-        # type: () -> EyesScreenshot
-        """
-        Always return viewport size screenshot
-        """
         # if screenshot if full page
         if not self._is_viewport_screenshot and not self._driver.is_mobile_device():
             return self.get_sub_screenshot_by_region(

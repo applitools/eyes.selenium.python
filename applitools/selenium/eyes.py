@@ -20,6 +20,7 @@ from .capture import EyesScreenshot
 
 if tp.TYPE_CHECKING:
     from ..core.target import Target
+    from ..core.scaling import ScaleProvider
     from ..utils.custom_types import (ViewPort, MatchResult, AnyWebDriver, FrameReference, AnyWebElement)
 
 
@@ -48,7 +49,7 @@ class Eyes(EyesBase):
         self._driver = None  # type: tp.Optional[AnyWebDriver]
         self._match_window_task = None  # type: tp.Optional[MatchWindowTask]
         self._viewport_size = None  # type: tp.Optional[ViewPort]
-        self._screenshot_type = None  # type: tp.Optional[ScreenshotType]
+        self._screenshot_type = None  # type: tp.Optional[str]  # ScreenshotType
         self._device_pixel_ratio = self._UNKNOWN_DEVICE_PIXEL_RATIO
 
         # If true, Eyes will create a full page screenshot (by using stitching) for browsers which only
@@ -58,7 +59,8 @@ class Eyes(EyesBase):
         # If true, Eyes will remove the scrollbars from the pages before taking the screenshot.
         self.hide_scrollbars = False  # type: bool
 
-    def _obtain_screenshot_type(self, is_element, inside_a_frame, stitch_content, force_fullpage, region=False):
+    def _obtain_screenshot_type(self, is_element, inside_a_frame, stitch_content, force_fullpage, is_region=False):
+        # type:(bool, bool, bool, bool, bool) -> str
         if stitch_content or force_fullpage:
             if is_element and not stitch_content:
                 return ScreenshotType.REGION_OR_ELEMENT_SCREENSHOT
@@ -72,7 +74,7 @@ class Eyes(EyesBase):
                 return ScreenshotType.ENTIRE_ELEMENT_SCREENSHOT
 
         else:
-            if region or (is_element and not stitch_content):
+            if is_region or (is_element and not stitch_content):
                 return ScreenshotType.REGION_OR_ELEMENT_SCREENSHOT
 
             if not stitch_content and not force_fullpage:
@@ -115,7 +117,7 @@ class Eyes(EyesBase):
         return self._driver
 
     def get_viewport_size(self):
-        # type: () -> tp.Dict[tp.Text, int]
+        # type: () -> ViewPort
         """
         Returns the size of the viewport of the application under test (e.g, the browser).
         """
@@ -153,7 +155,7 @@ class Eyes(EyesBase):
         return ''
 
     def _get_inferred_environment(self):
-        # type: () -> tp.Text
+        # type: () -> tp.Optional[tp.Text]
         try:
             user_agent = self._driver.execute_script('return navigator.userAgent')
         except WebDriverException:
@@ -189,36 +191,40 @@ class Eyes(EyesBase):
                                            self._start_info['appIdOrName']))
 
     def _update_scaling_params(self):
-        if self._device_pixel_ratio == self._UNKNOWN_DEVICE_PIXEL_RATIO:
-            logger.info('Trying to extract device pixel ratio...')
-            try:
-                device_pixel_ratio = image_utils.get_device_pixel_ratio(self._driver)
-            except Exception as e:
-                logger.info('Failed to extract device pixel ratio! Using default. Error %s ' % e)
-                device_pixel_ratio = self._DEFAULT_DEVICE_PIXEL_RATIO
-            logger.info('Device pixel ratio: {}'.format(device_pixel_ratio))
+        # type: () -> tp.Optional[ScaleProvider]
+        if self._device_pixel_ratio != self._UNKNOWN_DEVICE_PIXEL_RATIO:
+            logger.debug("Device pixel ratio was already changed")
+            return None
 
-            logger.info("Setting scale provider...")
-            try:
-                scale_provider = ContextBasedScaleProvider(
-                    top_level_context_entire_size=self._driver.get_entire_page_size(),
-                    viewport_size=self._driver.get_viewport_size(),
-                    device_pixel_ratio=device_pixel_ratio,
-                    is_mobile_device=self._driver.is_mobile_device())
-            except Exception:
-                # This can happen in Appium for example.
-                logger.info("Failed to set ContextBasedScaleProvider.")
-                logger.info("Using FixedScaleProvider instead...")
-                scale_provider = FixedScaleProvider(1 / device_pixel_ratio)
-            logger.info("Done!")
-            return scale_provider
+        logger.info('Trying to extract device pixel ratio...')
+        try:
+            device_pixel_ratio = image_utils.get_device_pixel_ratio(self._driver)
+        except Exception as e:
+            logger.info('Failed to extract device pixel ratio! Using default. Error %s ' % e)
+            device_pixel_ratio = self._DEFAULT_DEVICE_PIXEL_RATIO
+        logger.info('Device pixel ratio: {}'.format(device_pixel_ratio))
+
+        logger.info("Setting scale provider...")
+        try:
+            scale_provider = ContextBasedScaleProvider(
+                top_level_context_entire_size=self._driver.get_entire_page_size(),
+                viewport_size=self._driver.get_viewport_size(),
+                device_pixel_ratio=device_pixel_ratio,
+                is_mobile_device=self._driver.is_mobile_device())  # type: ScaleProvider
+        except Exception:
+            # This can happen in Appium for example.
+            logger.info("Failed to set ContextBasedScaleProvider.")
+            logger.info("Using FixedScaleProvider instead...")
+            scale_provider = FixedScaleProvider(1 / device_pixel_ratio)
+        logger.info("Done!")
+        return scale_provider
 
     def get_screenshot(self):
         if self.hide_scrollbars:
             original_overflow = self._driver.hide_scrollbars()
 
         scale_provider = self._update_scaling_params()
-        # algo = FullPageCaptureAlgorithm()
+
         if self._screenshot_type == ScreenshotType.ENTIRE_ELEMENT_SCREENSHOT:
             self._last_screenshot = self._entire_element_screenshot(scale_provider)
 
@@ -240,6 +246,7 @@ class Eyes(EyesBase):
         return self._last_screenshot
 
     def _entire_element_screenshot(self, scale_provider):
+        # type: (ScaleProvider) -> EyesScreenshot
         logger.info('Entire element screenshot requested')
         screenshot = self._driver.get_stitched_screenshot(self._region_to_check,
                                                           self.seconds_to_wait_screenshot,
@@ -247,6 +254,7 @@ class Eyes(EyesBase):
         return EyesScreenshot.create_from_image(screenshot, self._driver)
 
     def _region_or_screenshot(self, scale_provider):
+        # type: (ScaleProvider) -> EyesScreenshot
         logger.info('Not entire element screenshot requested')
         screenshot = self._viewport_screenshot(scale_provider)
         if isinstance(self._region_to_check, Region):
@@ -256,12 +264,14 @@ class Eyes(EyesBase):
         return screenshot
 
     def _full_page_screenshot(self, scale_provider):
+        # type: (ScaleProvider) -> EyesScreenshot
         logger.info('Full page screenshot requested')
         screenshot = self._driver.get_full_page_screenshot(self.seconds_to_wait_screenshot,
                                                            scale_provider)
         return EyesScreenshot.create_from_image(screenshot, self._driver)
 
     def _viewport_screenshot(self, scale_provider):
+        # type: (ScaleProvider) -> EyesScreenshot
         logger.info('Viewport screenshot requested')
         screenshot64 = self._driver.get_screesnhot_as_base64_from_main_frame(
             self.seconds_to_wait_screenshot)
@@ -273,6 +283,7 @@ class Eyes(EyesBase):
         return EyesScreenshot.create_from_image(screenshot, self._driver).get_viewport_screenshot()
 
     def open(self, driver, app_name, test_name, viewport_size=None):
+        # type: (AnyWebDriver, tp.Text, tp.Text, tp.Optional[ViewPort]) -> EyesWebDriver
         if self.is_disabled:
             logger.debug('open(): ignored (disabled)')
             return driver
@@ -344,7 +355,7 @@ class Eyes(EyesBase):
                                                              inside_a_frame=bool(self._driver.get_frame_chain()),
                                                              stitch_content=stitch_content,
                                                              force_fullpage=self.force_full_page_screenshot,
-                                                             region=True)
+                                                             is_region=True)
         self._region_to_check = region
         self._prepare_to_check()
         result = self._match_window_task.match_window(match_timeout, tag,

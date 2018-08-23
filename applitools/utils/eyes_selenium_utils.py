@@ -7,10 +7,9 @@ from contextlib import contextmanager
 from selenium.common.exceptions import WebDriverException
 
 from ..core import logger, EyesError
-from .custom_types import ViewPort
 
 if tp.TYPE_CHECKING:
-    from .custom_types import AnyWebDriver
+    from .custom_types import AnyWebDriver, ViewPort
 
 __all__ = ('get_current_frame_content_entire_size', 'get_device_pixel_ratio', 'get_viewport_size',
            'get_window_size', 'set_window_size', 'set_browser_size', 'set_browser_size_by_viewport_size',
