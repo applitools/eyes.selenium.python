@@ -10,19 +10,20 @@ from ..utils import general_utils
 from . import logger
 from .errors import OutOfBoundsError
 from .geometry import Region
-from .target import Target
 
 if tp.TYPE_CHECKING:
-    from ..selenium.webdriver import EyesWebDriver
     from ..selenium.eyes import Eyes
+    from ..selenium.target import Target
     from ..utils.custom_types import (Num, RunningSession, AppOutput,
-                                      UserInputs, MatchResult, AnyWebDriver)
+                                      UserInputs, MatchResult)
     from .agent_connector import AgentConnector
     from .eyes_base import ImageMatchSettings
     from .capture import EyesScreenshotBase
 
 __all__ = ('MatchWindowTask',)
 
+
+# TODO: remove Eyes and Target dependencies from here
 
 class MatchWindowTask(object):
     """
@@ -32,21 +33,19 @@ class MatchWindowTask(object):
 
     MINIMUM_MATCH_TIMEOUT = 60  # Milliseconds
 
-    def __init__(self, eyes, agent_connector, running_session, driver, default_retry_timeout):
-        # type: (Eyes, AgentConnector, RunningSession, AnyWebDriver, Num) -> None
+    def __init__(self, eyes, agent_connector, running_session, default_retry_timeout):
+        # type: (Eyes, AgentConnector, RunningSession, Num) -> None
         """
         Ctor.
 
         :param eyes: The Eyes instance which created this task.
         :param agent_connector: The agent connector to use for communication.
         :param running_session:  The current eyes session.
-        :param driver: The webdriver for which the current session is run.
         :param default_retry_timeout: The default match timeout. (milliseconds)
         """
         self._eyes = eyes
         self._agent_connector = agent_connector
         self._running_session = running_session
-        self._driver = driver
         self._default_retry_timeout = default_retry_timeout / 1000.0  # type: Num # since we want the time in seconds.
         self._screenshot = None  # type: tp.Optional[EyesScreenshotBase]
 
@@ -57,13 +56,11 @@ class MatchWindowTask(object):
                                  ignore_mismatch,  # type: bool
                                  screenshot,  # type: EyesScreenshotBase
                                  default_match_settings,  # type: ImageMatchSettings
-                                 target=None,  # type: Target
+                                 target,  # type: Target
                                  ignore=None,  # type: tp.Optional[tp.List]
                                  floating=None,  # type: tp.Optional[tp.List]
                                  ):
         # type: (...) -> bytes
-        if target is None:
-            target = Target()  # Use defaults
         if ignore is None:
             ignore = []
         if floating is None:
@@ -97,20 +94,20 @@ class MatchWindowTask(object):
         return body
 
     @staticmethod
-    def _get_dynamic_regions(target, driver, eyes_screenshot):
-        # type: (tp.Optional[Target], EyesWebDriver, EyesScreenshotBase) -> tp.Dict[str, tp.List[Region]]
+    def _get_dynamic_regions(target, eyes_screenshot):
+        # type: (tp.Optional[Target], EyesScreenshotBase) -> tp.Dict[str, tp.List[Region]]
         ignore = []  # type: tp.List[Region]
         floating = []  # type: tp.List[Region]
         if target is not None:
             for region_wrapper in target.ignore_regions:
                 try:
-                    current_region = region_wrapper.get_region(driver, eyes_screenshot)
+                    current_region = region_wrapper.get_region(eyes_screenshot)
                     ignore.append(current_region)
                 except OutOfBoundsError as err:
                     logger.info("WARNING: Region specified by {} is out of bounds! {}".format(region_wrapper, err))
             for floating_wrapper in target.floating_regions:
                 try:
-                    current_floating = floating_wrapper.get_region(driver, eyes_screenshot)
+                    current_floating = floating_wrapper.get_region(eyes_screenshot)
                     floating.append(current_floating)
                 except OutOfBoundsError as err:
                     logger.info("WARNING: Floating region specified by {} is out of bounds! {}".format(floating_wrapper,
@@ -125,7 +122,7 @@ class MatchWindowTask(object):
         # type: (...) -> bytes
         title = self._eyes.get_title()
         self._screenshot = self._eyes.get_screenshot()
-        dynamic_regions = MatchWindowTask._get_dynamic_regions(target, self._driver, self._screenshot)
+        dynamic_regions = MatchWindowTask._get_dynamic_regions(target, self._screenshot)
         app_output = {'title': title, 'screenshot64': None}  # type: AppOutput
         return self._create_match_data_bytes(app_output, user_inputs, tag, ignore_mismatch,
                                              self._screenshot, default_match_settings, target,

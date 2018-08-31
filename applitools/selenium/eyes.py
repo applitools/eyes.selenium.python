@@ -19,7 +19,7 @@ from .webdriver import EyesFrame, EyesWebDriver
 from .capture import EyesScreenshot
 
 if tp.TYPE_CHECKING:
-    from ..core.target import Target
+    from ..selenium.target import Target
     from ..core.scaling import ScaleProvider
     from ..utils.custom_types import (ViewPort, MatchResult, AnyWebDriver, FrameReference, AnyWebElement)
 
@@ -173,7 +173,7 @@ class Eyes(EyesBase):
         if not self._running_session:
             self._start_session()
             self._match_window_task = MatchWindowTask(self, self._agent_connector,
-                                                      self._running_session, self._driver,
+                                                      self._running_session,
                                                       self.match_timeout)
 
     def _handle_match_result(self, result, tag):
@@ -315,6 +315,8 @@ class Eyes(EyesBase):
         if self.is_disabled:
             logger.info("check_window(%s): ignored (disabled)" % tag)
             return
+        if target is None:
+            target = Target()
         logger.info("check_window('%s')" % tag)
         self._screenshot_type = self._obtain_screenshot_type(is_element=False,
                                                              inside_a_frame=bool(self._driver.get_frame_chain()),
@@ -350,7 +352,8 @@ class Eyes(EyesBase):
         logger.info("check_region([%s], '%s')" % (region, tag))
         if region.is_empty():
             raise EyesError("region cannot be empty!")
-
+        if target is None:
+            target = Target()
         self._screenshot_type = self._obtain_screenshot_type(is_element=False,
                                                              inside_a_frame=bool(self._driver.get_frame_chain()),
                                                              stitch_content=stitch_content,
@@ -380,6 +383,8 @@ class Eyes(EyesBase):
         if self.is_disabled:
             logger.info('check_region_by_element(): ignored (disabled)')
             return
+        if target is None:
+            target = Target()
         logger.info("check_region_by_element('%s')" % tag)
         self._screenshot_type = self._obtain_screenshot_type(is_element=True,
                                                              inside_a_frame=bool(self._driver.get_frame_chain()),

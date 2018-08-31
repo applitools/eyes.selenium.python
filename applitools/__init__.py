@@ -6,8 +6,8 @@ from .selenium import *  # noqa
 from .utils import *  # noqa
 
 # for backward compatibility
-from .core import errors, geometry, target  # noqa
-from .selenium import eyes  # noqa
+from .core import errors, geometry  # noqa
+from .selenium import eyes, target  # noqa
 
 __all__ = (
         core.__all__ +  # noqa
