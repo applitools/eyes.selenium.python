@@ -7,9 +7,11 @@ Example of usage:
     pytest -n 5     # run tests on all supported platforms in 5 thread
     pytest --platform 'iPhone 10.0'  # run tests only for iPhone 10.0 platform in one thread
     pytest --platform 'Linux' --browser firefox    # run all tests on Linux platform with firefox browser
+    pytest --browser firefox    # run all tests on your current platform with firefox browser
+    pytest --browser firefox --headless 1   # run all tests on your current platform with firefox browser in headless mode
 """
-
 import os
+import sys
 
 import pytest
 
@@ -104,7 +106,14 @@ def pytest_addoption(parser):
     parser.addoption("--headless", action="store")
 
 
-def _get_capabilities(platform_name='Linux', browser_name=None, headless=False):
+def _get_capabilities(platform_name=None, browser_name=None, headless=False):
+    if platform_name is None:
+        sys2platform_name = {
+            'linux': 'Linux',
+            'darwin': 'macOS 10.13',
+            'win32': 'Windows 10'
+        }
+        platform_name = sys2platform_name[sys.platform]
     platform = SUPPORTED_PLATFORMS_DICT[platform_name]
     if platform.is_appium_based:
         capabilities = [platform.platform_capabilities()]
