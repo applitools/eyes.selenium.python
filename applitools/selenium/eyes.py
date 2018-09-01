@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import base64
+import contextlib
 import typing as tp
 
 from selenium.common.exceptions import WebDriverException
@@ -17,9 +18,9 @@ from ..core.scaling import ContextBasedScaleProvider, FixedScaleProvider
 from ..utils import image_utils, eyes_selenium_utils
 from .webdriver import EyesFrame, EyesWebDriver
 from .capture import EyesScreenshot
+from .target import Target
 
 if tp.TYPE_CHECKING:
-    from ..selenium.target import Target
     from ..core.scaling import ScaleProvider
     from ..utils.custom_types import (ViewPort, MatchResult, AnyWebDriver, FrameReference, AnyWebElement)
 
@@ -219,10 +220,15 @@ class Eyes(EyesBase):
         logger.info("Done!")
         return scale_provider
 
-    def get_screenshot(self):
+    @contextlib.contextmanager
+    def hide_scrollbars_if_needed(self):
         if self.hide_scrollbars:
             original_overflow = self._driver.hide_scrollbars()
+        yield
+        if self.hide_scrollbars:
+            self._driver.set_overflow(original_overflow)
 
+    def _get_screenshot(self):
         scale_provider = self._update_scaling_params()
 
         if self._screenshot_type == ScreenshotType.ENTIRE_ELEMENT_SCREENSHOT:
@@ -239,11 +245,14 @@ class Eyes(EyesBase):
 
         else:
             raise EyesError("No proper ScreenshotType obtained")
-
-        if self.hide_scrollbars:
-            # noinspection PyUnboundLocalVariable
-            self._driver.set_overflow(original_overflow)
         return self._last_screenshot
+
+    def get_screenshot(self, hide_scrollbars_called=False):
+        if hide_scrollbars_called:
+            return self._get_screenshot()
+        else:
+            with self.hide_scrollbars_if_needed():
+                return self._get_screenshot()
 
     def _entire_element_screenshot(self, scale_provider):
         # type: (ScaleProvider) -> EyesScreenshot

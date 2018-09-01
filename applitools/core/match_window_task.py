@@ -121,8 +121,9 @@ class MatchWindowTask(object):
                                        ignore_mismatch=False):
         # type: (...) -> bytes
         title = self._eyes.get_title()
-        self._screenshot = self._eyes.get_screenshot()
-        dynamic_regions = MatchWindowTask._get_dynamic_regions(target, self._screenshot)
+        with self._eyes.hide_scrollbars_if_needed():
+            self._screenshot = self._eyes.get_screenshot(hide_scrollbars_called=True)
+            dynamic_regions = MatchWindowTask._get_dynamic_regions(target, self._screenshot)
         app_output = {'title': title, 'screenshot64': None}  # type: AppOutput
         return self._create_match_data_bytes(app_output, user_inputs, tag, ignore_mismatch,
                                              self._screenshot, default_match_settings, target,
