@@ -9,7 +9,9 @@ from collections import OrderedDict
 from .errors import EyesError
 
 if tp.TYPE_CHECKING:
-    from .geometry import Region, Point
+    from .geometry import Point, Region
+
+__all__ = ('TextTrigger', 'MouseTrigger')
 
 MOUSE_ACTION = {'click': 'Click', 'right_click': 'RightClick', 'double_click': 'DoubleClick',
                 'move': 'Move', 'down': 'Down', 'up': 'Up'}

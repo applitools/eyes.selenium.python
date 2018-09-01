@@ -7,7 +7,7 @@ from applitools.target import Target, IgnoreRegionBySelector, FloatingRegion, Fl
 
 
 @pytest.mark.platform('Linux')
-def test_quikstart_example(eyes, driver):
+def test_quickstart_example(eyes, driver):
     required_viewport = {'width': 450, 'height': 300}
     eyes.set_viewport_size(driver, required_viewport)
     eyes.open(driver=driver, app_name='Hello World!', test_name='My first Selenium Python test!',
@@ -25,7 +25,7 @@ def test_quikstart_example(eyes, driver):
 
 
 @pytest.mark.platform('Linux')
-def test_sampe_script(eyes, driver):
+def test_sample_script(eyes, driver):
     eyes.force_full_page_screenshot = True
     eyes.stitch_mode = StitchMode.CSS
 
@@ -46,7 +46,7 @@ def test_sampe_script(eyes, driver):
 def test_check_window_with_ignore_region_fluent(eyes, driver):
     eyes.force_full_page_screenshot = True
     eyes.open(driver, "Eyes Selenium SDK - Fluent API", "TestCheckWindowWithIgnoreRegion_Fluent",
-                       {'width': 800, 'height': 600})
+              {'width': 800, 'height': 600})
     driver.get('http://applitools.github.io/demo/TestPages/FramesTestPage/')
     eyes.check_window("Fluent - Window with Ignore region", target=Target().ignore(
         Region(left=50, top=50, width=100, height=100)))

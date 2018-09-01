@@ -10,12 +10,10 @@ import typing as tp
 
 from PIL import Image
 
-from .. import logger
-from ..errors import EyesError
+from ..core.errors import EyesError
 
 if tp.TYPE_CHECKING:
-    from _io import BytesIO
-    from ..geometry import Region
+    from ..core.geometry import Region
 
 __all__ = ('image_from_file', 'image_from_bytes', 'image_from_base64',
            'scale_image', 'get_base64', 'get_bytes', 'get_image_part')

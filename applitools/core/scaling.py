@@ -1,5 +1,9 @@
+from __future__ import absolute_import
+
+from ..utils import ABC
 from . import logger
-from .utils.compat import ABC
+
+__all__ = ('FixedScaleProvider', 'NullScaleProvider', 'ContextBasedScaleProvider')
 
 
 class ScaleProvider(ABC):

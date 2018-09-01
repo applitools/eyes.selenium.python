@@ -6,6 +6,8 @@ from __future__ import absolute_import
 import abc
 import sys
 
+__all__ = ('ABC', 'range', 'iteritems')
+
 PY3 = sys.version_info >= (3,)
 
 if PY3:
