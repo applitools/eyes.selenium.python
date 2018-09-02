@@ -11,6 +11,7 @@ class ScaleProvider(ABC):
 
     def __init__(self, *args, **kwargs):
         self._scale_ratio = self._UNKNOWN_SCALE_RATIO
+        self.device_pixel_ratio = 1
 
     @property
     def scale_ratio(self):
@@ -22,6 +23,7 @@ class ScaleProvider(ABC):
 
 class FixedScaleProvider(ScaleProvider):
     def __init__(self, scale_ratio):
+        super(FixedScaleProvider, self).__init__(scale_ratio)
         self._scale_ratio = scale_ratio
 
 

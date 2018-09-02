@@ -811,12 +811,11 @@ class EyesWebDriver(object):
         element_height = element.get_client_height()
 
         border_left_width = element.get_computed_style_int('border-left-width')
-        border_top_height = element.get_computed_style_int('border-top-width')
-
+        border_top_width = element.get_computed_style_int('border-top-width')
         element_region = Region(pl['x'] + border_left_width,
-                                pl['y'] + border_top_height,
+                                pl['y'] + border_top_width,
                                 element_width, element_height)
-
+        logger.debug("Element region: {}".format(element_region))
         # Firefox 60 and above make a screenshot of the current frame when other browsers
         # make a screenshot of the viewport. So we scroll down to frame at _will_switch_to method
         # and add a left margin here.
@@ -837,6 +836,9 @@ class EyesWebDriver(object):
         scale_provider.update_scale_ratio(screenshot.width)
         pixel_ratio = 1 / scale_provider.scale_ratio
         need_to_scale = True if pixel_ratio != 1.0 else False
+
+        if need_to_scale:
+            element_region = element_region.scale(scale_provider.device_pixel_ratio)
 
         # Starting with element region size part of the screenshot. Use it as a size template.
         stitched_image = Image.new('RGBA', (entire_element.width, entire_element.height))
@@ -860,9 +862,10 @@ class EyesWebDriver(object):
                     part_image = image_utils.get_image_part(part_image, Region(top=frame_scroll_position,
                                                                                height=viewport['height'],
                                                                                width=viewport['width']))
+            # We cut original image before scaling to prevent appearing of artifacts
+            part_image = image_utils.get_image_part(part_image, element_region)
             if need_to_scale:
                 part_image = image_utils.scale_image(part_image, 1.0 / pixel_ratio)
-            part_image = image_utils.get_image_part(part_image, element_region)
 
             # first iteration
             if stitched_image is None:
