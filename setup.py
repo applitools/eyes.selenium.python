@@ -24,7 +24,8 @@ install_dev_requires = [
     'bumpversion',
     'flake8',
     'flake8-import-order',
-    'flake8-bugbear']
+    'flake8-bugbear',
+    'towncrier']
 
 install_testing_requires = [
     'pytest >= 3.0.0',
