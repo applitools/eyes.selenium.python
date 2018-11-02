@@ -1,20 +1,21 @@
 from __future__ import absolute_import
 
-import typing as tp
 import base64
+import typing as tp
 
 from selenium.common.exceptions import WebDriverException
 
-from ..core import EyesError, Point, Region, OutOfBoundsError, EyesScreenshotBase
-from ..utils import image_utils, eyes_selenium_utils
+from applitools.core import EyesScreenshot, EyesError, Point, Region, OutOfBoundsError
+from applitools.utils import image_utils
 
 if tp.TYPE_CHECKING:
     from PIL import Image
-    from ..utils.custom_types import ViewPort
-    from .webdriver import EyesWebDriver
+
+    from applitools.utils.custom_types import ViewPort
+    from applitools.selenium import EyesWebDriver, eyes_selenium_utils
 
 
-class EyesScreenshot(EyesScreenshotBase):
+class EyesWebDriverScreenshot(EyesScreenshot):
 
     @staticmethod
     def create_from_base64(screenshot64, driver):
@@ -24,18 +25,18 @@ class EyesScreenshot(EyesScreenshotBase):
         :param screenshot64: The base64 representation of the png bytes.
         :param driver: The webdriver for the session.
         """
-        return EyesScreenshot(driver, screenshot64=screenshot64)
+        return EyesWebDriverScreenshot(driver, screenshot64=screenshot64)
 
     @staticmethod
     def create_from_image(screenshot, driver):
-        # type: (Image.Image, EyesWebDriver) -> EyesScreenshot
+        # type: (Image.Image, EyesWebDriver) -> EyesWebDriverScreenshot
         """
         Creates an instance from the base64 data.
 
         :param screenshot: The screenshot image.
         :param driver: The webdriver for the session.
         """
-        return EyesScreenshot(driver, screenshot=screenshot)
+        return EyesWebDriverScreenshot(driver, screenshot=screenshot)
 
     def __init__(self, driver, screenshot=None, screenshot64=None,
                  is_viewport_screenshot=None, frame_location_in_screenshot=None):
@@ -63,7 +64,7 @@ class EyesScreenshot(EyesScreenshotBase):
             screenshot = image_utils.image_from_bytes(base64.b64decode(screenshot64))
 
         # initializing of screenshot
-        super(EyesScreenshot, self).__init__(image=screenshot)
+        super(EyesWebDriverScreenshot, self).__init__(image=screenshot)
 
         self._driver = driver
         self._viewport_size = driver.get_default_content_viewport_size()  # type: ViewPort
@@ -89,7 +90,7 @@ class EyesScreenshot(EyesScreenshotBase):
         self._is_viewport_screenshot = is_viewport_screenshot
         if frame_location_in_screenshot is None:
             if self._frame_chain:
-                frame_location_in_screenshot = EyesScreenshot \
+                frame_location_in_screenshot = EyesWebDriverScreenshot \
                     .calc_frame_location_in_screenshot(self._frame_chain, is_viewport_screenshot)
             else:
                 # The frame is the default content
@@ -105,6 +106,7 @@ class EyesScreenshot(EyesScreenshotBase):
         self._frame_screenshot_intersect.intersect(Region(width=self._screenshot.width,
                                                           height=self._screenshot.height))
 
+    @staticmethod
     def calc_frame_location_in_screenshot(frame_chain, is_viewport_screenshot):
         first_frame = frame_chain[0]
         location_in_screenshot = Point(first_frame.location['x'], first_frame.location['y'])
@@ -145,9 +147,9 @@ class EyesScreenshot(EyesScreenshotBase):
         sub_screenshot_frame_location = Point(-region.left, -region.top)
         # FIXME Calculate relative region location? (same as the java version)
         screenshot = image_utils.get_image_part(self._screenshot, sub_screenshot_region)
-        return EyesScreenshot(self._driver, screenshot,
-                              is_viewport_screenshot=self._is_viewport_screenshot,
-                              frame_location_in_screenshot=sub_screenshot_frame_location)
+        return EyesWebDriverScreenshot(self._driver, screenshot,
+                                       is_viewport_screenshot=self._is_viewport_screenshot,
+                                       frame_location_in_screenshot=sub_screenshot_frame_location)
 
     def get_element_region_in_frame_viewport(self, element):
         location, size = element.location, element.size

@@ -254,3 +254,6 @@ class EyesWebElement(object):
         """Scrolls to the specified location inside the element."""
         self._driver.execute_script(
             self._JS_SCROLL_TO_FORMATTED_STR.format(location.x, location.y), self.element)
+
+    def __str__(self):
+        return "EyesWebElement: id {}, tag_name {}".format(self.element.id, self.element.tag_name, )

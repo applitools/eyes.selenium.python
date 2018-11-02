@@ -3,22 +3,22 @@ from __future__ import absolute_import
 import abc
 import os
 import uuid
+import warnings
 import typing as tp
 from datetime import datetime
 
 from ..__version__ import __version__
-from ..common import StitchMode
 from ..utils import general_utils, ABC
 from . import logger
 from .agent_connector import AgentConnector
-from .match_window_task import MatchWindowTask
 from .errors import EyesError, NewTestError, DiffsFoundError, TestFailedError
+from .match_window_task import MatchWindowTask
 from .test_results import TestResults, TestResultsStatus
 
 if tp.TYPE_CHECKING:
-    from ..utils.custom_types import (ViewPort, UserInputs, AppEnvironment,
+    from ..utils.custom_types import (ViewPort, UserInputs, AppEnvironment, MatchResult,
                                       RunningSession, SessionStartInfo, RegionOrElement)
-    from .capture import EyesScreenshotBase
+    from .capture import EyesScreenshot
 
 __all__ = ('FailureReports', 'MatchLevel', 'ExactMatchSettings', 'ImageMatchSettings', 'EyesBase')
 
@@ -151,8 +151,7 @@ class EyesBase(ABC):
         self._app_name = None  # type: tp.Optional[tp.Text]
         self._running_session = None  # type: tp.Optional[RunningSession]
         self._match_timeout = EyesBase._DEFAULT_MATCH_TIMEOUT  # type: int
-        self._stitch_mode = StitchMode.Scroll  # type: tp.Text
-        self._last_screenshot = None  # type: tp.Optional[EyesScreenshotBase]
+        self._last_screenshot = None  # type: tp.Optional[EyesScreenshot]
         self._should_match_once_on_timeout = False  # type: bool
         self._start_info = None  # type: tp.Optional[SessionStartInfo]
         self._test_name = None  # type: tp.Optional[tp.Text]
@@ -204,6 +203,9 @@ class EyesBase(ABC):
 
         # The number of milliseconds to wait before each time a screenshot is taken.
         self.wait_before_screenshots = EyesBase._DEFAULT_WAIT_BEFORE_SCREENSHOTS  # type: int
+
+        # If true, we will send full DOM to the server for analyzing
+        self.send_dom = False
 
     @abc.abstractmethod
     def get_title(self):
@@ -266,28 +268,6 @@ class EyesBase(ABC):
         :param match_level: The match level to set. Should be one of the values defined by MatchLevel
         """
         self.default_match_settings.match_level = match_level
-
-    @property
-    def stitch_mode(self):
-        # type: () -> tp.Text
-        """
-        Gets the stitch mode.
-
-        :return: The stitch mode.
-        """
-        return self._stitch_mode
-
-    @stitch_mode.setter
-    def stitch_mode(self, stitch_mode):
-        # type: (tp.Text) -> None
-        """
-        Sets the stitch property - default is by scrolling.
-
-        :param stitch_mode: The stitch mode to set - either scrolling or css.
-        """
-        self._stitch_mode = stitch_mode
-        if stitch_mode == StitchMode.CSS:
-            self.hide_scrollbars = True
 
     @property
     def match_timeout(self):
@@ -543,3 +523,78 @@ class EyesBase(ABC):
         # type: () -> None
         self._last_screenshot = None
         self._user_inputs = []  # type: UserInputs
+
+    def _ensure_running_session(self):
+        if not self.is_open():
+            raise EyesError('Eyes not open!')
+
+        if not self._running_session:
+            self._start_session()
+            self._match_window_task = MatchWindowTask(self, self._agent_connector,
+                                                      self._running_session,
+                                                      self.match_timeout)
+
+    def _check_window_base(self, tag=None, match_timeout=-1, target=None):
+        if self.is_disabled:
+            logger.info("check_window(%s): ignored (disabled)" % tag)
+            # TODO: create propper MatchResult class
+            result = {"as_expected": True, "screenshot": None}
+            return result
+
+        self._ensure_running_session()
+
+        self.before_match_window()
+
+        # TODO: implement MatchWIndow_ analog
+        result = self._match_window_task.match_window(retry_timeout=match_timeout,
+                                                      tag=tag,
+                                                      user_inputs=self._user_inputs,
+                                                      default_match_settings=self.default_match_settings,
+                                                      target=target,
+                                                      run_once_after_wait=self._should_match_once_on_timeout)
+        self.after_match_window()
+        self._handle_match_result(result, tag)
+
+    def _handle_match_result(self, result, tag):
+        # type: (MatchResult, tp.Text) -> None
+        self._last_screenshot = result['screenshot']
+        as_expected = result['as_expected']
+        self._user_inputs = []
+        if not as_expected:
+            self._should_match_once_on_timeout = True
+            if self._running_session and not self._running_session['is_new_session']:
+                logger.info("Window mismatch %s" % tag)
+                if self.failure_reports == FailureReports.IMMEDIATE:
+                    raise TestFailedError("Mismatch found in '%s' of '%s'" %
+                                          (self._start_info['scenarioIdOrName'],
+                                           self._start_info['appIdOrName']))
+
+    @abc.abstractmethod
+    def try_capture_dom(self):
+        # type: () -> tp.Text
+        """
+        Returns the string with DOM of the current page in the prepared format or empty string
+        """
+
+    def after_match_window(self):
+        """
+        Allow to add custom behavior before sending data to the server
+        """
+
+    def before_match_window(self):
+        """
+        Allow to add custom behavior after receiving response from the server
+        """
+
+    def try_post_dom_snapshot(self, dom_json):
+        # type: (tp.Text) -> tp.Optional[tp.Text]
+        """
+        In case DOM data is valid uploads it to the server and return URL where it stored.
+        """
+        if dom_json is None:
+            return None
+        try:
+            return self._agent_connector.post_dom_snapshot(dom_json)
+        except Exception as e:
+            warnings.warn("Couldn't send DOM Json. Passing...\n Got next error: {}".format(e))
+            return None

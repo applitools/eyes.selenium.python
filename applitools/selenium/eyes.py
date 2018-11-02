@@ -3,26 +3,29 @@ from __future__ import absolute_import
 import base64
 import contextlib
 import typing as tp
+import warnings
 
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.remote.webdriver import WebDriver as RemoteWebDriver
 
 # noinspection PyProtectedMember
-from ..core import logger
-from ..core.eyes_base import FailureReports, EyesBase
-from ..core.match_window_task import MatchWindowTask
-from ..core.triggers import MouseTrigger, TextTrigger
-from ..core.errors import EyesError, TestFailedError
-from ..core.geometry import Region
-from ..core.scaling import ContextBasedScaleProvider, FixedScaleProvider
-from ..utils import image_utils, eyes_selenium_utils
+from applitools.core import logger
+from applitools.core.eyes_base import FailureReports, EyesBase
+from applitools.core.match_window_task import MatchWindowTask
+from applitools.core.triggers import MouseTrigger, TextTrigger
+from applitools.core.errors import EyesError, TestFailedError
+from applitools.core.geometry import Region
+from applitools.core.scaling import ContextBasedScaleProvider, FixedScaleProvider
+from applitools.utils import image_utils
+from . import eyes_selenium_utils
 from .webdriver import EyesFrame, EyesWebDriver
-from .capture import EyesScreenshot
+from .capture import EyesWebDriverScreenshot, dom_capture
 from .target import Target
+from .positioning import build_position_provider_for, StitchMode
 
 if tp.TYPE_CHECKING:
-    from ..core.scaling import ScaleProvider
-    from ..utils.custom_types import (ViewPort, MatchResult, AnyWebDriver, FrameReference, AnyWebElement)
+    from applitools.core.scaling import ScaleProvider
+    from applitools.utils.custom_types import (ViewPort, MatchResult, AnyWebDriver, FrameReference, AnyWebElement)
 
 
 class ScreenshotType(object):
@@ -52,6 +55,7 @@ class Eyes(EyesBase):
         self._viewport_size = None  # type: tp.Optional[ViewPort]
         self._screenshot_type = None  # type: tp.Optional[str]  # ScreenshotType
         self._device_pixel_ratio = self._UNKNOWN_DEVICE_PIXEL_RATIO
+        self._stitch_mode = StitchMode.Scroll  # type: tp.Text
 
         # If true, Eyes will create a full page screenshot (by using stitching) for browsers which only
         # returns the viewport screenshot.
@@ -60,6 +64,29 @@ class Eyes(EyesBase):
         # If true, Eyes will remove the scrollbars from the pages before taking the screenshot.
         self.hide_scrollbars = False  # type: bool
 
+    @property
+    def stitch_mode(self):
+        # type: () -> tp.Text
+        """
+        Gets the stitch mode.
+
+        :return: The stitch mode.
+        """
+        return self._stitch_mode
+
+    @stitch_mode.setter
+    def stitch_mode(self, stitch_mode):
+        # type: (tp.Text) -> None
+        """
+        Sets the stitch property - default is by scrolling.
+
+        :param stitch_mode: The stitch mode to set - either scrolling or css.
+        """
+        self._stitch_mode = stitch_mode
+        if stitch_mode == StitchMode.CSS:
+            self.hide_scrollbars = True
+            self.send_dom = True
+
     def _obtain_screenshot_type(self, is_element, inside_a_frame, stitch_content, force_fullpage, is_region=False):
         # type:(bool, bool, bool, bool, bool) -> str
         if stitch_content or force_fullpage:
@@ -67,7 +94,7 @@ class Eyes(EyesBase):
                 return ScreenshotType.REGION_OR_ELEMENT_SCREENSHOT
 
             if not inside_a_frame:
-                if ((force_fullpage and not stitch_content) or
+                if ((force_fullpage and not stitch_content) or  # noqa
                         (stitch_content and not is_element)):
                     return ScreenshotType.FULLPAGE_SCREENSHOT
 
@@ -165,32 +192,6 @@ class Eyes(EyesBase):
             return "useragent:%s" % user_agent
         return None
 
-    def _prepare_to_check(self):
-        # type: () -> None
-        logger.debug("_prepare_to_check()")
-        if not self.is_open():
-            raise EyesError('Eyes not open!')
-
-        if not self._running_session:
-            self._start_session()
-            self._match_window_task = MatchWindowTask(self, self._agent_connector,
-                                                      self._running_session,
-                                                      self.match_timeout)
-
-    def _handle_match_result(self, result, tag):
-        # type: (MatchResult, tp.Text) -> None
-        self._last_screenshot = result['screenshot']
-        as_expected = result['as_expected']
-        self._user_inputs = []
-        if not as_expected:
-            self._should_match_once_on_timeout = True
-            if self._running_session and not self._running_session['is_new_session']:
-                logger.info("Window mismatch %s" % tag)
-                if self.failure_reports == FailureReports.IMMEDIATE:
-                    raise TestFailedError("Mismatch found in '%s' of '%s'" %
-                                          (self._start_info['scenarioIdOrName'],
-                                           self._start_info['appIdOrName']))
-
     def _update_scaling_params(self):
         # type: () -> tp.Optional[ScaleProvider]
         if self._device_pixel_ratio != self._UNKNOWN_DEVICE_PIXEL_RATIO:
@@ -255,15 +256,15 @@ class Eyes(EyesBase):
                 return self._get_screenshot()
 
     def _entire_element_screenshot(self, scale_provider):
-        # type: (ScaleProvider) -> EyesScreenshot
+        # type: (ScaleProvider) -> EyesWebDriverScreenshot
         logger.info('Entire element screenshot requested')
         screenshot = self._driver.get_stitched_screenshot(self._region_to_check,
                                                           self.seconds_to_wait_screenshot,
                                                           scale_provider)
-        return EyesScreenshot.create_from_image(screenshot, self._driver)
+        return EyesWebDriverScreenshot.create_from_image(screenshot, self._driver)
 
     def _region_or_screenshot(self, scale_provider):
-        # type: (ScaleProvider) -> EyesScreenshot
+        # type: (ScaleProvider) -> EyesWebDriverScreenshot
         logger.info('Not entire element screenshot requested')
         screenshot = self._viewport_screenshot(scale_provider)
         if isinstance(self._region_to_check, Region):
@@ -273,14 +274,14 @@ class Eyes(EyesBase):
         return screenshot
 
     def _full_page_screenshot(self, scale_provider):
-        # type: (ScaleProvider) -> EyesScreenshot
+        # type: (ScaleProvider) -> EyesWebDriverScreenshot
         logger.info('Full page screenshot requested')
         screenshot = self._driver.get_full_page_screenshot(self.seconds_to_wait_screenshot,
                                                            scale_provider)
-        return EyesScreenshot.create_from_image(screenshot, self._driver)
+        return EyesWebDriverScreenshot.create_from_image(screenshot, self._driver)
 
     def _viewport_screenshot(self, scale_provider):
-        # type: (ScaleProvider) -> EyesScreenshot
+        # type: (ScaleProvider) -> EyesWebDriverScreenshot
         logger.info('Viewport screenshot requested')
         screenshot64 = self._driver.get_screesnhot_as_base64_from_main_frame(
             self.seconds_to_wait_screenshot)
@@ -289,7 +290,7 @@ class Eyes(EyesBase):
         pixel_ratio = 1 / scale_provider.scale_ratio
         if pixel_ratio != 1.0:
             screenshot = image_utils.scale_image(screenshot, 1.0 / pixel_ratio)
-        return EyesScreenshot.create_from_image(screenshot, self._driver).get_viewport_screenshot()
+        return EyesWebDriverScreenshot.create_from_image(screenshot, self._driver).get_viewport_screenshot()
 
     def open(self, driver, app_name, test_name, viewport_size=None):
         # type: (AnyWebDriver, tp.Text, tp.Text, tp.Optional[ViewPort]) -> EyesWebDriver
@@ -321,24 +322,12 @@ class Eyes(EyesBase):
         :param target: (Target) The target for the check_window call
         :return: None
         """
-        if self.is_disabled:
-            logger.info("check_window(%s): ignored (disabled)" % tag)
-            return
-        if target is None:
-            target = Target()
         logger.info("check_window('%s')" % tag)
         self._screenshot_type = self._obtain_screenshot_type(is_element=False,
                                                              inside_a_frame=bool(self._driver.get_frame_chain()),
                                                              stitch_content=False,
                                                              force_fullpage=self.force_full_page_screenshot)
-
-        self._prepare_to_check()
-        result = self._match_window_task.match_window(match_timeout, tag,
-                                                      self._user_inputs,
-                                                      self.default_match_settings,
-                                                      target,
-                                                      self._should_match_once_on_timeout)
-        self._handle_match_result(result, tag)
+        self._check_window_base(tag, match_timeout, target)
 
     def check_region(self, region, tag=None, match_timeout=-1, target=None, stitch_content=False):
         # type: (Region, tp.Optional[tp.Text], int, tp.Optional[Target], bool) -> None
@@ -354,28 +343,16 @@ class Eyes(EyesBase):
         :param target: (Target) The target for the check_window call
         :return: None
         """
-
-        if self.is_disabled:
-            logger.info('check_region(): ignored (disabled)')
-            return
         logger.info("check_region([%s], '%s')" % (region, tag))
         if region.is_empty():
             raise EyesError("region cannot be empty!")
-        if target is None:
-            target = Target()
         self._screenshot_type = self._obtain_screenshot_type(is_element=False,
                                                              inside_a_frame=bool(self._driver.get_frame_chain()),
                                                              stitch_content=stitch_content,
                                                              force_fullpage=self.force_full_page_screenshot,
                                                              is_region=True)
         self._region_to_check = region
-        self._prepare_to_check()
-        result = self._match_window_task.match_window(match_timeout, tag,
-                                                      self._user_inputs,
-                                                      self.default_match_settings,
-                                                      target,
-                                                      self._should_match_once_on_timeout)
-        self._handle_match_result(result, tag)
+        self._check_window_base(tag, match_timeout, target)
 
     def check_region_by_element(self, element, tag=None, match_timeout=-1, target=None, stitch_content=False):
         # type: (AnyWebElement, tp.Optional[tp.Text], int, tp.Optional[Target], bool) -> None
@@ -389,25 +366,13 @@ class Eyes(EyesBase):
         :param target: (Target) The target for the check_window call
         :return: None
         """
-        if self.is_disabled:
-            logger.info('check_region_by_element(): ignored (disabled)')
-            return
-        if target is None:
-            target = Target()
         logger.info("check_region_by_element('%s')" % tag)
         self._screenshot_type = self._obtain_screenshot_type(is_element=True,
                                                              inside_a_frame=bool(self._driver.get_frame_chain()),
                                                              stitch_content=stitch_content,
                                                              force_fullpage=self.force_full_page_screenshot)
-        self._prepare_to_check()
         self._region_to_check = element
-        result = self._match_window_task.match_window(match_timeout, tag,
-                                                      self._user_inputs,
-                                                      self.default_match_settings,
-                                                      target,
-                                                      self._should_match_once_on_timeout)
-
-        self._handle_match_result(result, tag)
+        self._check_window_base(tag, match_timeout, target)
 
     def check_region_by_selector(self, by, value, tag=None, match_timeout=-1, target=None, stitch_content=False):
         # type: (tp.Text, tp.Text, tp.Optional[tp.Text], int, tp.Optional[Target], bool) -> None
@@ -422,9 +387,6 @@ class Eyes(EyesBase):
         :param target: (Target) The target for the check_window call
         :return: None
         """
-        if self.is_disabled:
-            logger.info('check_region_by_selector(): ignored (disabled)')
-            return
         logger.debug("calling 'check_region_by_element'...")
         self.check_region_by_element(self._driver.find_element(by, value), tag,
                                      match_timeout, target, stitch_content)
@@ -449,17 +411,16 @@ class Eyes(EyesBase):
         :param target: (Target) The target for the check_window call
         :return: None
         """
+        # TODO: remove this disable
         if self.is_disabled:
             logger.info('check_region_in_frame_by_selector(): ignored (disabled)')
             return
         logger.info("check_region_in_frame_by_selector('%s')" % tag)
 
         # Switching to the relevant frame
-        self._driver.switch_to.frame(frame_reference)
-        logger.debug("calling 'check_region_by_selector'...")
-        self.check_region_by_selector(by, value, tag, match_timeout, target, stitch_content)
-        # Switching back to our original frame
-        self._driver.switch_to.parent_frame()
+        with self._driver.switch_to.frame_and_back(frame_reference):
+            logger.debug("calling 'check_region_by_selector'...")
+            self.check_region_by_selector(by, value, tag, match_timeout, target, stitch_content)
 
     def add_mouse_trigger_by_element(self, action, element):
         # type: (tp.Text, AnyWebElement) -> None
@@ -517,3 +478,12 @@ class Eyes(EyesBase):
         trigger = TextTrigger(control, text)
         self._user_inputs.append(trigger)
         logger.info("add_text_trigger: Added %s" % trigger)
+
+    def try_capture_dom(self):
+        try:
+            dom_json = dom_capture.get_full_window_dom(self._driver)
+            return dom_json
+        except Exception as e:
+            warnings.warn(
+                'Exception raising during capturing DOM Json. Passing...\n Got next error: {}'.format(str(e)))
+            return None

@@ -301,7 +301,7 @@ class Region(object):
         :return: True if the point is inside the rectangle. Otherwise False.
         """
         x, y = pt.as_tuple()
-        return (self.left <= x <= self.right and
+        return (self.left <= x <= self.right and  # noqa
                 self.top <= y <= self.bottom)
 
     def overlaps(self, other):

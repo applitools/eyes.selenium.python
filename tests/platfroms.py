@@ -48,7 +48,7 @@ class Platform(namedtuple('Platform', 'name version browsers extra')):
             options = ChromeOptions()
             options.add_argument('disable-infobars')
         if options and headless:
-            options.set_headless()
+            options.headless = True
 
         # huck for preventing overwriting 'platform' value in desired_capabilities by chrome options
         browser_caps = options.to_capabilities() if options else {}

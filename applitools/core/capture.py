@@ -13,12 +13,12 @@ if tp.TYPE_CHECKING:
     from ..selenium.webelement import EyesWebElement
     from .geometry import Point, Region
 
-    T = tp.TypeVar('T', bound='EyesScreenshotBase')
+    T = tp.TypeVar('T', bound='EyesScreenshot')
 
-__all__ = ('EyesScreenshotBase',)
+__all__ = ('EyesScreenshot',)
 
 
-class EyesScreenshotBase(ABC):
+class EyesScreenshot(ABC):
     """
     Base class for handling screenshots.
     """

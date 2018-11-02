@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import warnings
 import functools
 import time
 import typing as tp
@@ -18,7 +19,7 @@ if tp.TYPE_CHECKING:
                                       UserInputs, MatchResult)
     from .agent_connector import AgentConnector
     from .eyes_base import ImageMatchSettings
-    from .capture import EyesScreenshotBase
+    from .capture import EyesScreenshot
 
 __all__ = ('MatchWindowTask',)
 
@@ -47,14 +48,14 @@ class MatchWindowTask(object):
         self._agent_connector = agent_connector
         self._running_session = running_session
         self._default_retry_timeout = default_retry_timeout / 1000.0  # type: Num # since we want the time in seconds.
-        self._screenshot = None  # type: tp.Optional[EyesScreenshotBase]
+        self._screenshot = None  # type: tp.Optional[EyesScreenshot]
 
     @staticmethod
     def _create_match_data_bytes(app_output,  # type: AppOutput
                                  user_inputs,  # type: UserInputs
                                  tag,  # type: tp.Text
                                  ignore_mismatch,  # type: bool
-                                 screenshot,  # type: EyesScreenshotBase
+                                 screenshot,  # type: EyesScreenshot
                                  default_match_settings,  # type: ImageMatchSettings
                                  target,  # type: Target
                                  ignore=None,  # type: tp.Optional[tp.List]
@@ -65,6 +66,9 @@ class MatchWindowTask(object):
             ignore = []
         if floating is None:
             floating = []
+        if target is None:
+            from applitools.selenium.target import Target  # noqa
+            target = Target()
 
         match_data = {
             "IgnoreMismatch": ignore_mismatch,
@@ -95,7 +99,7 @@ class MatchWindowTask(object):
 
     @staticmethod
     def _get_dynamic_regions(target, eyes_screenshot):
-        # type: (tp.Optional[Target], EyesScreenshotBase) -> tp.Dict[str, tp.List[Region]]
+        # type: (tp.Optional[Target], EyesScreenshot) -> tp.Dict[str, tp.List[Region]]
         ignore = []  # type: tp.List[Region]
         floating = []  # type: tp.List[Region]
         if target is not None:
@@ -125,6 +129,17 @@ class MatchWindowTask(object):
             self._screenshot = self._eyes.get_screenshot(hide_scrollbars_called=True)
             dynamic_regions = MatchWindowTask._get_dynamic_regions(target, self._screenshot)
         app_output = {'title': title, 'screenshot64': None}  # type: AppOutput
+
+        if self._eyes.send_dom:
+            dom_json = self._eyes.try_capture_dom()
+            if dom_json:
+                dom_url = self._eyes.try_post_dom_snapshot(dom_json)
+                if dom_url is None:
+                    warnings.warn('Failed to upload DOM. Skipping...')
+                else:
+                    app_output['DomUrl'] = dom_url
+
+        logger.debug('AppOutput: {}'.format(app_output))
         return self._create_match_data_bytes(app_output, user_inputs, tag, ignore_mismatch,
                                              self._screenshot, default_match_settings, target,
                                              dynamic_regions['ignore'], dynamic_regions['floating'])
@@ -146,6 +161,7 @@ class MatchWindowTask(object):
             return {"as_expected": True, "screenshot": self._screenshot}
         retry = time.time() - start
         logger.debug("Failed. Elapsed time: {0:.1f} seconds".format(retry))
+
         while retry < retry_timeout:
             logger.debug('Matching...')
             time.sleep(self._MATCH_INTERVAL)

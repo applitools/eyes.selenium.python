@@ -6,12 +6,19 @@ import typing as tp
 
 from selenium.common.exceptions import WebDriverException
 
-from ..common import StitchMode
-from ..core import logger, EyesError, Point
-from ..utils import ABC
+from applitools.core import logger, EyesError, Point
+from applitools.utils import ABC
 
 if tp.TYPE_CHECKING:
-    from ..utils.custom_types import AnyWebDriver, ViewPort, AnyWebElement
+    from applitools.utils.custom_types import AnyWebDriver, ViewPort, AnyWebElement
+
+
+class StitchMode(object):
+    """
+    The type of methods for stitching full-page screenshots.
+    """
+    Scroll = "Scroll"
+    CSS = "CSS"
 
 
 class PositionProvider(ABC):

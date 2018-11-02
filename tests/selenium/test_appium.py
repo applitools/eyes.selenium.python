@@ -8,8 +8,8 @@ from selenium.webdriver.common.by import By
                              "noReset": True,
                              "browserName": '',
                              })
+@pytest.mark.eyes(hide_scrollbars=False)
 def test_android_native(eyes, driver):
-    eyes.hide_scrollbars = False
     eyes.open(driver, "Contacts!", "My first Appium Python test!")
     eyes.check_window("Contact list!")
     eyes.close()
@@ -17,9 +17,9 @@ def test_android_native(eyes, driver):
 
 # TODO: add stitch content to check_region in tests below
 @pytest.mark.platform('Android')
+@pytest.mark.eyes(hide_scrollbars=False)
 @pytest.mark.skip
 def test_final_application_android(eyes, driver):
-    eyes.hide_scrollbars = False
     driver = eyes.open(driver, "sample2", "titleicon5")
     driver.get("http://atom:mota@lgi-www-sat.trimm.net/test/upc/title-with-icon.html")
     eyes.check_window("test2")
@@ -30,9 +30,9 @@ def test_final_application_android(eyes, driver):
 
 
 @pytest.mark.platform('iPhone')
+@pytest.mark.eyes(hide_scrollbars=False)
 @pytest.mark.skip
 def test_final_application_ios(eyes, driver):
-    eyes.hide_scrollbars = False
     driver = eyes.open(driver, "sample", "IOS")
     driver.get("http://atom:mota@lgi-www-sat.trimm.net/test/ziggo/title-with-icon.html")
     eyes.check_window()

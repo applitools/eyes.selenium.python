@@ -25,10 +25,8 @@ def test_quickstart_example(eyes, driver):
 
 
 @pytest.mark.platform('Linux')
+@pytest.mark.eyes(force_full_page_screenshot=True, stitch_mode=StitchMode.CSS)
 def test_sample_script(eyes, driver):
-    eyes.force_full_page_screenshot = True
-    eyes.stitch_mode = StitchMode.CSS
-
     driver = eyes.open(driver, "Python app", "applitools", {'width': 800, 'height': 600})
     driver.get('http://www.applitools.com')
     eyes.check_window("Home", target=(Target()
@@ -43,8 +41,8 @@ def test_sample_script(eyes, driver):
 
 
 @pytest.mark.platform('Linux')
+@pytest.mark.eyes(force_full_page_screenshot=True)
 def test_check_window_with_ignore_region_fluent(eyes, driver):
-    eyes.force_full_page_screenshot = True
     eyes.open(driver, "Eyes Selenium SDK - Fluent API", "TestCheckWindowWithIgnoreRegion_Fluent",
               {'width': 800, 'height': 600})
     driver.get('http://applitools.github.io/demo/TestPages/FramesTestPage/')

@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import base64
+import contextlib
 import time
 import typing as tp
 
@@ -10,17 +11,17 @@ from selenium.webdriver.remote.switch_to import SwitchTo
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support.wait import WebDriverWait
 
-from ..common import StitchMode
-from ..core import logger
-from ..core.errors import EyesError
-from ..core.geometry import Point, Region
-from ..utils import cached_property, image_utils, general_utils, eyes_selenium_utils
+from applitools.core import logger
+from applitools.core.errors import EyesError
+from applitools.core.geometry import Point, Region
+from applitools.utils import cached_property, image_utils, general_utils
+from . import eyes_selenium_utils, StitchMode
 from .positioning import ElementPositionProvider, build_position_provider_for
 from .webelement import EyesWebElement
 
 if tp.TYPE_CHECKING:
-    from ..core.scaling import ScaleProvider
-    from ..utils.custom_types import Num, ViewPort, FrameReference, AnyWebDriver, AnyWebElement
+    from applitools.core.scaling import ScaleProvider
+    from applitools.utils.custom_types import Num, ViewPort, FrameReference, AnyWebDriver, AnyWebElement
     from .eyes import Eyes
 
 
@@ -28,6 +29,7 @@ class _EyesSwitchTo(object):
     """
     Wraps a selenium "SwitchTo" object, so we can keep track of switching between frames.
     """
+    # TODO: Make more similar to EyesTargetLocator
     _READONLY_PROPERTIES = ['alert', 'active_element']
     PARENT_FRAME = 1
 
@@ -43,6 +45,13 @@ class _EyesSwitchTo(object):
         self._driver = driver  # type: AnyWebDriver
         general_utils.create_proxy_interface(self, switch_to, self._READONLY_PROPERTIES)
 
+    @contextlib.contextmanager
+    def frame_and_back(self, frame_reference):
+        # type: (FrameReference) -> tp.Generator
+        self.frame(frame_reference)
+        yield
+        self.parent_frame()
+
     def frame(self, frame_reference):
         # type: (FrameReference) -> None
         """
@@ -56,6 +65,7 @@ class _EyesSwitchTo(object):
         elif isinstance(frame_reference, int):
             frame_elements_list = self._driver.find_elements_by_css_selector('frame, iframe')
             frame_element = frame_elements_list[frame_reference]
+            # TODO: Fix bug with IndexError which has been shown in _traverse_dom_tree
         else:
             # It must be a WebElement
             if isinstance(frame_reference, EyesWebElement):
@@ -169,6 +179,9 @@ class EyesFrame(object):
         """
         return EyesFrame(self.reference, self.location.copy(), self.size.copy(), self.id_,
                          self.parent_scroll_position.clone())
+
+    def __str__(self):
+        return "EyesFrame: {}".format(self.reference)
 
 
 class EyesWebDriver(object):

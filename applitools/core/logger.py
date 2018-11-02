@@ -7,6 +7,7 @@ import sys
 import logging
 import functools
 import typing as tp
+import warnings
 
 _DEFAULT_EYES_LOGGER_NAME = 'eyes'
 _DEFAULT_EYES_FORMATTER = logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s')
@@ -88,16 +89,6 @@ class _Logger(object):
         """
         if self._logger:
             self._logger.debug(msg)
-
-    def warning(self, msg):
-        # type: (tp.Text) -> None
-        """
-        Writes warning level msg to the logger.
-
-        :param msg: The message that will be written to the logger.
-        """
-        if self._logger:
-            self._logger.warning(msg)
 
 
 class StdoutLogger(_Logger):
@@ -214,16 +205,5 @@ def debug(msg):
         _logger.debug(msg)
 
 
-def warning(msg):
-    # type: (tp.Text) -> None
-    """
-    Writes info level msg to the logger.
-
-    :param msg: The message that will be written to the log.
-    """
-    if _logger is not None:
-        _logger.warning(msg)
-
-
 def deprecation(msg):
-    warning('DEPRECATION: {}'.format(msg))
+    warnings.warn('DEPRECATION: {}'.format(msg))
