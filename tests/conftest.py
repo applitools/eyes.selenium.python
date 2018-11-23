@@ -101,8 +101,9 @@ def driver(request, browser_config):
     username = os.environ.get('SAUCE_USERNAME', None)
     access_key = os.environ.get('SAUCE_ACCESS_KEY', None)
 
+    force_remote = request.config.getoption('remote')
     selenium_url = os.environ.get('SELENIUM_SERVER_URL', 'http://127.0.0.1:4444/wd/hub')
-    if 'ondemand.saucelabs.com' in selenium_url:
+    if 'ondemand.saucelabs.com' in selenium_url or force_remote:
         selenium_url = "https://%s:%s@ondemand.saucelabs.com:443/wd/hub" % (username, access_key)
     logger.debug('SELENIUM_URL={}'.format(selenium_url))
 
@@ -133,6 +134,7 @@ def pytest_addoption(parser):
     parser.addoption("--platform", action="store")
     parser.addoption("--browser", action="store")
     parser.addoption("--headless", action="store")
+    parser.addoption("--remote", action="store")
 
 
 def _get_capabilities(platform_name=None, browser_name=None, headless=False):

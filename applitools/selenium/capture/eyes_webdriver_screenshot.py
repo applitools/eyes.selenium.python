@@ -7,12 +7,12 @@ from selenium.common.exceptions import WebDriverException
 
 from applitools.core import EyesScreenshot, EyesError, Point, Region, OutOfBoundsError
 from applitools.utils import image_utils
+from applitools.selenium import eyes_selenium_utils
 
 if tp.TYPE_CHECKING:
     from PIL import Image
-
     from applitools.utils.custom_types import ViewPort
-    from applitools.selenium import EyesWebDriver, eyes_selenium_utils
+    from applitools.selenium import EyesWebDriver
 
 
 class EyesWebDriverScreenshot(EyesScreenshot):

@@ -132,9 +132,9 @@ class Eyes(EyesBase):
                 logger.info("Setting OS: " + os)
             else:
                 logger.info('No mobile OS detected.')
-        app_env = {'os': os, 'hostingApp': self.host_app,
+        app_env = {'os':          os, 'hostingApp': self.host_app,
                    'displaySize': self._viewport_size,
-                   'inferred': self._get_inferred_environment()}
+                   'inferred':    self._get_inferred_environment()}
         return app_env
 
     def get_driver(self):
@@ -149,28 +149,10 @@ class Eyes(EyesBase):
         """
         Returns the size of the viewport of the application under test (e.g, the browser).
         """
-        return self._driver.get_viewport_size()
-
-    def _assign_viewport_size(self):
-        # type: () -> None
-        """
-        Assign the viewport size we need to be in the default content frame.
-        """
-        original_frame_chain = self._driver.get_frame_chain()
-        self._driver.switch_to.default_content()
-        try:
-            if self._viewport_size:
-                logger.debug("Assigning viewport size {0}".format(self._viewport_size))
-                self.set_viewport_size(self._driver, self._viewport_size)
-            else:
-                logger.debug("No viewport size given. Extracting the viewport size from the driver...")
-                self._viewport_size = self.get_viewport_size()
-                logger.debug("Viewport size {0}".format(self._viewport_size))
-        except EyesError:
-            raise TestFailedError('Failed to assign viewport size!')
-        finally:
-            # Going back to the frame we started at
-            self._driver.switch_to.frames(original_frame_chain)
+        if self._viewport_size:
+            return self._viewport_size
+        self._viewport_size = self._driver.get_viewport_size()
+        return self._viewport_size
 
     def get_title(self):
         if self._should_get_title:
@@ -209,10 +191,11 @@ class Eyes(EyesBase):
         logger.info("Setting scale provider...")
         try:
             scale_provider = ContextBasedScaleProvider(
-                top_level_context_entire_size=self._driver.get_entire_page_size(),
-                viewport_size=self._driver.get_viewport_size(),
-                device_pixel_ratio=device_pixel_ratio,
-                is_mobile_device=eyes_selenium_utils.is_mobile_device(self._driver))  # type: ScaleProvider
+                    top_level_context_entire_size=self._driver.get_entire_page_size(),
+                    viewport_size=self.get_viewport_size(),
+                    device_pixel_ratio=device_pixel_ratio,
+                    # always False as in Java version
+                    is_mobile_device=False)  # type: ScaleProvider
         except Exception:
             # This can happen in Appium for example.
             logger.info("Failed to set ContextBasedScaleProvider.")
@@ -284,13 +267,19 @@ class Eyes(EyesBase):
         # type: (ScaleProvider) -> EyesWebDriverScreenshot
         logger.info('Viewport screenshot requested')
         screenshot64 = self._driver.get_screesnhot_as_base64_from_main_frame(
-            self.seconds_to_wait_screenshot)
+                self.seconds_to_wait_screenshot)
         screenshot = image_utils.image_from_bytes(base64.b64decode(screenshot64))
         scale_provider.update_scale_ratio(screenshot.width)
         pixel_ratio = 1 / scale_provider.scale_ratio
         if pixel_ratio != 1.0:
             screenshot = image_utils.scale_image(screenshot, 1.0 / pixel_ratio)
         return EyesWebDriverScreenshot.create_from_image(screenshot, self._driver).get_viewport_screenshot()
+
+    def _ensure_viewport_size(self):
+        if self._viewport_size is None:
+            self._viewport_size = self._driver.get_default_content_viewport_size()
+            if not eyes_selenium_utils.is_mobile_device(self._driver):
+                self.set_viewport_size(self._driver, self._viewport_size)
 
     def open(self, driver, app_name, test_name, viewport_size=None):
         # type: (AnyWebDriver, tp.Text, tp.Text, tp.Optional[ViewPort]) -> EyesWebDriver
@@ -307,6 +296,7 @@ class Eyes(EyesBase):
                 logger.info("WARNING: driver is not a RemoteWebDriver (class: {0})".format(driver.__class__))
             self._driver = EyesWebDriver(driver, self, self._stitch_mode)
 
+        self._ensure_viewport_size()
         self.open_base(app_name, test_name, viewport_size)
 
         return self._driver
@@ -485,5 +475,5 @@ class Eyes(EyesBase):
             return dom_json
         except Exception as e:
             warnings.warn(
-                'Exception raising during capturing DOM Json. Passing...\n Got next error: {}'.format(str(e)))
+                    'Exception raising during capturing DOM Json. Passing...\n Got next error: {}'.format(str(e)))
             return None

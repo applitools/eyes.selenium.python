@@ -65,7 +65,7 @@ setup(
             'towncrier',
         ],
         'testing': [
-            'pytest >= 3.0.0',
+            'pytest < 4.0.0',
             'pytest-cov',
             'pytest-xdist',
         ],
