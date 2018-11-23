@@ -13,7 +13,7 @@ from applitools.target import Target
 ],
                          indirect=True,
                          ids=lambda o: "with FSP" if o['force_full_page_screenshot'] else "no FSP")
-@pytest.mark.viewport_size({'width': 1200, 'height': 800})
+@pytest.mark.viewport_size({'width': 800, 'height': 600})
 @pytest.mark.test_page_url('http://applitools.github.io/demo/TestPages/FramesTestPage/')
 class TestSetup(object):
     pass
