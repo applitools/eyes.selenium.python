@@ -43,9 +43,10 @@ class Eyes(EyesBase):
     _DEFAULT_DEVICE_PIXEL_RATIO = 1
 
     @staticmethod
-    def set_viewport_size(driver, viewportsize):
+    def set_viewport_size(driver, size):
         # type: (AnyWebDriver, ViewPort) -> None
-        eyes_selenium_utils.set_viewport_size(driver, viewportsize)
+        assert driver is not None
+        eyes_selenium_utils.set_viewport_size(driver, size)
 
     def __init__(self, server_url=EyesBase.DEFAULT_EYES_SERVER):
         super(Eyes, self).__init__(server_url)
@@ -295,6 +296,10 @@ class Eyes(EyesBase):
             if not isinstance(driver, RemoteWebDriver):
                 logger.info("WARNING: driver is not a RemoteWebDriver (class: {0})".format(driver.__class__))
             self._driver = EyesWebDriver(driver, self, self._stitch_mode)
+
+        if viewport_size is not None:
+            self._viewport_size = viewport_size
+            eyes_selenium_utils.set_viewport_size(self._driver, viewport_size)
 
         self._ensure_viewport_size()
         self.open_base(app_name, test_name, viewport_size)
