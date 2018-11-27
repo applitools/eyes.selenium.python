@@ -55,10 +55,15 @@ def eyes(request):
 
 
 @pytest.fixture(scope="function")
-def eyes_session(request, eyes, driver):
+def eyes_open(request, eyes, driver):
     test_page_url = request.node.get_closest_marker('test_page_url').args[-1]
-    viewport_size = request.node.get_closest_marker('viewport_size').args[-1]
-    test_suite_name = request.node.get_closest_marker('test_suite_name').args[-1]
+
+    viewport_size = request.node.get_closest_marker('viewport_size')
+    viewport_size = viewport_size.args[-1] if viewport_size else None
+
+    test_suite_name = request.node.get_closest_marker('test_suite_name')
+    test_suite_name = test_suite_name.args[-1] if test_suite_name else 'Python SDK'
+
     # use camel case in method name for fit java sdk tests name
     test_name = request.function.__name__.title().replace('_', '')
 
@@ -68,19 +73,24 @@ def eyes_session(request, eyes, driver):
     driver = eyes.open(driver, test_suite_name, test_name,
                        viewport_size=viewport_size)
     driver.get(test_page_url)
-
-    # TODO: implement eyes.setDebugScreenshotsPrefix("Java_" + testName + "_");
-
-    request.cls.eyes = eyes
-    request.cls.driver = driver
-
-    yield
+    yield eyes, driver
     results = eyes.close()
     print(results)
 
 
 @pytest.fixture(scope="function")
-def driver_session(request, driver):
+def eyes_for_class(request, eyes_open):
+    # TODO: implement eyes.setDebugScreenshotsPrefix("Java_" + testName + "_");
+
+    eyes, driver = eyes_open
+    request.cls.eyes = eyes
+    request.cls.driver = driver
+
+    yield
+
+
+@pytest.fixture(scope="function")
+def driver_for_class(request, driver):
     test_page_url = request.node.get_closest_marker('test_page_url').args[0]
     viewport_size = request.node.get_closest_marker('viewport_size').args[0]
 
@@ -140,9 +150,9 @@ def pytest_addoption(parser):
 def _get_capabilities(platform_name=None, browser_name=None, headless=False):
     if platform_name is None:
         sys2platform_name = {
-            'linux': 'Linux',
+            'linux':  'Linux',
             'darwin': 'macOS 10.13',
-            'win32': 'Windows 10'
+            'win32':  'Windows 10'
         }
         platform_name = sys2platform_name[sys.platform]
     platform = SUPPORTED_PLATFORMS_DICT[platform_name]

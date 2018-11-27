@@ -6,7 +6,7 @@ from applitools.target import Target
 
 
 @pytest.mark.platform('Linux', 'Windows', 'macOS')
-@pytest.mark.usefixtures("eyes_session")
+@pytest.mark.usefixtures("eyes_for_class")
 @pytest.mark.parametrize('eyes', [
     {'force_full_page_screenshot': True},
     {'force_full_page_screenshot': False},
