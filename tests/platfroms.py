@@ -80,9 +80,9 @@ SUPPORTED_PLATFORMS = [
     Platform(name='Linux', version='', browsers=COMMON_BROWSERS, extra=None),
     Platform(name='macOS', version='10.13', browsers=COMMON_BROWSERS + [('safari', 'latest')], extra=None),
 
-    Platform(name='iPhone', version='11.3', browsers=[], extra={
+    Platform(name='iOS', version='11.3', browsers=[], extra={
         "appiumVersion":     "1.9.1",
-        "deviceName":        "Iphone Emulator",
+        "deviceName":        "iPhone Simulator",
         "deviceOrientation": "portrait",
         "browserName":       "Safari",
         "newCommandTimeout": 60 * 5

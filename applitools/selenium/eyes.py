@@ -280,7 +280,7 @@ class Eyes(EyesBase):
         if self._viewport_size is None:
             self._viewport_size = self._driver.get_default_content_viewport_size()
             if not eyes_selenium_utils.is_mobile_device(self._driver):
-                self.set_viewport_size(self._driver, self._viewport_size)
+                eyes_selenium_utils.set_viewport_size(self._driver, self._viewport_size)
 
     def open(self, driver, app_name, test_name, viewport_size=None):
         # type: (AnyWebDriver, tp.Text, tp.Text, tp.Optional[ViewPort]) -> EyesWebDriver

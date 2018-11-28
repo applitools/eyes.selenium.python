@@ -32,7 +32,7 @@ def test_final_application_android(eyes_open):
 
 
 @pytest.mark.mobile
-@pytest.mark.platform('iPhone')
+@pytest.mark.platform('iOS')
 @pytest.mark.parametrize('eyes', [
     {'force_full_page_screenshot': True, 'hide_scrollbars': False},
     {'force_full_page_screenshot': False, 'hide_scrollbars': False},

@@ -80,8 +80,22 @@ def is_mobile_device(driver):
 
     :return: True if the platform running the test is a mobile platform. False otherwise.
     """
+    is_mobile = """
+if( navigator.userAgent.match(/Android/i) ||
+    navigator.userAgent.match(/iPhone/i) ||
+    navigator.userAgent.match(/iPad/i)   ||
+    navigator.userAgent.match(/iPod/i) ) {
+    return true;
+} else {
+    return false;
+}
+    """
+    # TODO: Implement proper UserAgent handling
     driver = get_underlying_driver(driver)
-    return driver.desired_capabilities.get('platformName') in ('Android', 'iOS')
+    is_mobile_platform = driver.desired_capabilities.get('platformName') in ('Android', 'iOS')
+    if not is_mobile_platform:
+        is_mobile_platform = driver.execute_script(is_mobile)
+    return is_mobile_platform
 
 
 def get_underlying_driver(driver):
