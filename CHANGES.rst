@@ -1,4 +1,4 @@
-3.15.0 (2018-11-29)
+3.15.0 (2018-12-04)
 ===================
 
 Features
@@ -12,3 +12,10 @@ Bugfixes
 --------
 
 - Fix of run SDK with the mobile device (`#30 <https://github.com/applitools/eyes.selenium.python/pull/30>`_)
+
+
+Misc
+----
+
+- (`#29 <https://github.com/applitools/eyes.selenium.python/pull/29>`_)
+=======

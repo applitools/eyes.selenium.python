@@ -1,7 +1,6 @@
 from __future__ import absolute_import, unicode_literals
 
 import json
-import warnings
 import typing as tp
 import multiprocessing as mp
 from collections import OrderedDict
@@ -158,16 +157,10 @@ CSS_DOWNLOAD_TIMEOUT = 3  # Secs
 def get_full_window_dom(driver, return_as_dict=False):
     # type: (EyesWebDriver, bool) -> tp.Union[str, dict]
 
-    # Speed up frame switching with using origin selenium switch_to
-    origin_switch_to = driver.switch_to._switch_to
     dom_tree = json.loads(driver.execute_script(_CAPTURE_FRAME_SCRIPT, _ARGS_OBJ), object_pairs_hook=OrderedDict)
 
-    # In case of some artifacts from previous run
-    origin_switch_to.default_content()
     logger.debug('Traverse DOM Tree')
     _traverse_dom_tree(driver, {'childNodes': [dom_tree], 'tagName': 'OUTER_HTML'})
-    # Clean up after frame switching
-    origin_switch_to.default_content()
 
     if return_as_dict:
         return dom_tree
@@ -201,16 +194,12 @@ def _traverse_dom_tree(driver, dom_tree):
     node = DomNode.create_from_dom_tree(dom_tree)
     if not node.tag_name:
         return None
-    # Use switch_to from selenium cause bug in _EyesSwitchTo
-    origin_switch_to = driver.switch_to._switch_to
     for index, sub_dom_tree in enumerate(_loop(driver, dom_tree)):
         # Reduce recursion optimization. Save from extra _loop calls
         if not sub_dom_tree['childNodes']:
             continue
-
-        origin_switch_to.frame(index)
-        _traverse_dom_tree(driver, sub_dom_tree)
-        origin_switch_to.parent_frame()
+        with driver.switch_to.frame_and_back(index):
+            _traverse_dom_tree(driver, sub_dom_tree)
 
 
 def _loop(driver, dom_tree):
@@ -261,7 +250,7 @@ def _process_raw_css_node(node, minimize_css=True):
     @general_utils.retry()
     def get_css(url):
         if url.startswith('blob:'):
-            warnings.warn('Passing blob URL: {}'.format(url))
+            logger.warning('Passing blob URL: {}'.format(url))
             return ''
         return requests.get(url, timeout=CSS_DOWNLOAD_TIMEOUT).text.strip()
 
@@ -304,13 +293,13 @@ def _parse_and_serialize_css(node, text, minimize=False):
                     # remove whitespaces inside blocks
                     style_node.content = [tok for tok in style_node.content if tok.type != 'whitespace']
                 except AttributeError as e:
-                    warnings.warn("Cannot serialize item: {}, cause error: {}".format(style_node, str(e)))
+                    logger.warning("Cannot serialize item: {}, cause error: {}".format(style_node, str(e)))
             serialized = style_node.serialize()
             if minimize:
                 serialized = serialized.replace('\n', '').replace('/**/', ' ').replace(' {', '{')
 
         except TypeError as e:
-            warnings.warn(str(e))
+            logger.warning(str(e))
             continue
         yield CssNode.create_serialized_node(text=serialized)
 

@@ -73,6 +73,7 @@ def eyes_open(request, eyes, driver):
     driver = eyes.open(driver, test_suite_name, test_name,
                        viewport_size=viewport_size)
     driver.get(test_page_url)
+
     yield eyes, driver
     results = eyes.close()
     print(results)
@@ -85,7 +86,6 @@ def eyes_for_class(request, eyes_open):
     eyes, driver = eyes_open
     request.cls.eyes = eyes
     request.cls.driver = driver
-
     yield
 
 

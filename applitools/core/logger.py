@@ -3,24 +3,35 @@ Logs handling.
 """
 from __future__ import absolute_import
 
+import os
 import sys
 import logging
-import functools
-import typing as tp
 import warnings
+import functools
+import datetime as dt
+import typing as tp
+
+from applitools.utils.compat import ABC
+
+if tp.TYPE_CHECKING:
+    from PIL import Image
+    from ..core.geometry import Region
 
 _DEFAULT_EYES_LOGGER_NAME = 'eyes'
 _DEFAULT_EYES_FORMATTER = logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s')
+_DEFAULT_LOGGER_LEVEL = int(os.environ.get('LOGGER_LEVEL', logging.INFO))
+_DEBUG_SCREENSHOT_PREFIX = os.environ.get('DEBUG_SCREENSHOT_PREFIX', 'screenshot_')
+_DEBUG_SCREENSHOT_PATH = os.environ.get('DEBUG_SCREENSHOT_PATH', '.')
 
 __all__ = ('StdoutLogger', 'FileLogger', 'NullLogger')
 
 
-class _Logger(object):
+class _Logger(ABC):
     """
     Simple logger. Supports only info and debug.
     """
 
-    def __init__(self, name=__name__, level=logging.DEBUG, handler_factory=lambda: None,
+    def __init__(self, name=__name__, level=_DEFAULT_LOGGER_LEVEL, handler_factory=lambda: None,
                  formatter=None):
         # type: (tp.Text, int, tp.Callable, logging.Formatter) -> None
         """
@@ -96,7 +107,7 @@ class StdoutLogger(_Logger):
     A simple logger class for printing to STDOUT.
     """
 
-    def __init__(self, name=_DEFAULT_EYES_LOGGER_NAME, level=logging.DEBUG):
+    def __init__(self, name=_DEFAULT_EYES_LOGGER_NAME, level=_DEFAULT_LOGGER_LEVEL):
         # type: (tp.Text, int) -> None
         """
         Ctor.
@@ -114,7 +125,7 @@ class FileLogger(_Logger):
     """
 
     def __init__(self, filename="eyes.log", mode='a', encoding=None, delay=0,
-                 name=_DEFAULT_EYES_LOGGER_NAME, level=logging.DEBUG):
+                 name=_DEFAULT_EYES_LOGGER_NAME, level=_DEFAULT_LOGGER_LEVEL):
         """
         Ctor.
 
@@ -134,7 +145,7 @@ class NullLogger(_Logger):
     A simple logger class which does nothing (log messages are ignored).
     """
 
-    def __init__(self, name=_DEFAULT_EYES_LOGGER_NAME, level=logging.DEBUG):
+    def __init__(self, name=_DEFAULT_EYES_LOGGER_NAME, level=_DEFAULT_LOGGER_LEVEL):
         """
         Ctor.
 
@@ -145,9 +156,9 @@ class NullLogger(_Logger):
 
 
 # This will be set by the user.
-_logger_to_use = None
+_logger_to_use = None  # type: tp.Optional[_Logger]
 # Holds the actual logger after open is called.
-_logger = None
+_logger = None  # type: tp.Optional[_Logger]
 
 
 def set_logger(logger=None):
@@ -205,5 +216,30 @@ def debug(msg):
         _logger.debug(msg)
 
 
-def deprecation(msg):
-    warnings.warn('DEPRECATION: {}'.format(msg))
+def warning(msg):
+    # type: (tp.Text) -> None
+    """
+    Writes info level msg to the logger.
+
+    :param msg: The message that will be written to the log.
+    """
+    warnings.warn(msg)
+
+
+def save_screenshot(image, suffix, region=None):
+    # type: (Image.Image, tp.Text, tp.Optional[Region]) -> None
+    """
+    A debug screenshot provider for saving screenshots to file.
+    """
+    if _logger and _logger._level == logging.DEBUG:
+        if region:
+            suffix = 'part-{suffix}-{left}_{top}_{width}x{height}'.format(
+                suffix=suffix, left=region.left, top=region.top,
+                width=region.width, height=region.height
+            )
+        filename = '{prefix}_{timestamp}_{suffix}.png'.format(prefix=_DEBUG_SCREENSHOT_PREFIX,
+                                                              timestamp=dt.datetime.now().time(),
+                                                              suffix=suffix)
+        full_path = os.path.join(_DEBUG_SCREENSHOT_PATH, filename)
+        debug('Save screenshot: {}'.format(full_path))
+        image.save(full_path, format='PNG')

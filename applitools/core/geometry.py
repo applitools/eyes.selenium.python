@@ -16,6 +16,7 @@ class Point(object):
     """
     A point with the coordinates (x,y).
     """
+    __slots__ = ('x', 'y')
 
     def __init__(self, x=0, y=0):
         # type: (float, float) -> None
@@ -23,12 +24,12 @@ class Point(object):
         self.y = int(round(y))
 
     def __getstate__(self):
-        return {"x": self.x, "y": self.y}
+        return OrderedDict([("x", self.x),
+                            ("y", self.y)])
 
-    # Required is required in order for jsonpickle to work on this object.
-    # noinspection PyMethodMayBeStatic
     def __setstate__(self, state):
-        raise EyesError('Cannot create Point instance from dict!')
+        self.x = state['x']
+        self.y = state['y']
 
     def __add__(self, other):
         return Point(self.x + other.x, self.y + other.y)
@@ -50,6 +51,11 @@ class Point(object):
 
     def __bool__(self):
         return self.x and self.y
+
+    def __getitem__(self, item):
+        if item not in ('x', 'y'):
+            raise KeyError
+        return getattr(self, item)
 
     @classmethod
     def create_top_left(cls):
@@ -112,6 +118,11 @@ class Point(object):
         self.y = self.y + dy
         return self
 
+    def offset_by_location(self, location):
+        # type: (Point) -> Point
+        self.offset(location.x, location.y)
+        return self
+
     def offset_negative(self, dx, dy):
         # type: (int, int) -> Point
         self.x -= dx
@@ -164,6 +175,7 @@ class Region(object):
     """
     A rectangle identified by left,top, width, height.
     """
+    __slots__ = ('left', 'top', 'width', 'height')
 
     def __init__(self, left=0, top=0, width=0, height=0):
         # type: (float, float, float, float) -> None

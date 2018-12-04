@@ -5,12 +5,12 @@ import typing as tp
 
 from PIL import Image
 
-from ..utils import ABC, image_utils, argument_guard
+from applitools.utils import ABC, image_utils, argument_guard
 
 if tp.TYPE_CHECKING:
-    from ..utils.custom_types import AnyWebElement, Num
-    from ..selenium.webdriver import EyesFrame
-    from ..selenium.webelement import EyesWebElement
+    from applitools.utils.custom_types import AnyWebElement, Num
+    from applitools.selenium.frames import FrameChain
+    from applitools.selenium.webelement import EyesWebElement
     from .geometry import Point, Region
 
     T = tp.TypeVar('T', bound='EyesScreenshot')
@@ -31,7 +31,7 @@ class EyesScreenshot(ABC):
     @staticmethod
     @abc.abstractmethod
     def calc_frame_location_in_screenshot(frame_chain, is_viewport_screenshot):
-        # type: (tp.List[EyesFrame], tp.Optional[bool]) -> Point
+        # type: (FrameChain, tp.Optional[bool]) -> Point
         """
         :param frame_chain: List of the frames.
         :param is_viewport_screenshot: Whether the viewport is a screenshot or not.
@@ -99,9 +99,10 @@ class EyesScreenshot(ABC):
         :return: A screenshot object representing the given region part of the image.
         """
 
+    @property
     @abc.abstractmethod
-    def get_frame_chain(self):
-        # type: () -> tp.List[EyesFrame]
+    def frame_chain(self):
+        # type: () -> FrameChain
         """
         Returns a copy of the fram chain.
 

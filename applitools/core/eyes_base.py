@@ -3,7 +3,6 @@ from __future__ import absolute_import
 import abc
 import os
 import uuid
-import warnings
 import typing as tp
 from datetime import datetime
 
@@ -17,8 +16,9 @@ from .test_results import TestResults, TestResultsStatus
 
 if tp.TYPE_CHECKING:
     from ..utils.custom_types import (ViewPort, UserInputs, AppEnvironment, MatchResult,
-                                      RunningSession, SessionStartInfo, RegionOrElement)
+                                      RunningSession, SessionStartInfo)
     from .capture import EyesScreenshot
+    from .geometry import Region
 
 __all__ = ('FailureReports', 'MatchLevel', 'ExactMatchSettings', 'ImageMatchSettings', 'EyesBase')
 
@@ -156,7 +156,8 @@ class EyesBase(ABC):
         self._start_info = None  # type: tp.Optional[SessionStartInfo]
         self._test_name = None  # type: tp.Optional[tp.Text]
         self._user_inputs = []  # type: UserInputs
-        self._region_to_check = None  # type: tp.Optional[RegionOrElement]
+        self._region_to_check = None  # type: tp.Optional[Region]
+        self._viewport_size = None  # type: ViewPort
 
         # key-value pairs to be associated with the test. Can be used for filtering later.
         self._properties = []  # type: tp.List
@@ -454,6 +455,12 @@ class EyesBase(ABC):
         finally:
             logger.close()
 
+    def before_open(self):
+        pass
+
+    def after_open(self):
+        pass
+
     def open_base(self, app_name, test_name, viewport_size=None):
         # type: (tp.Text, tp.Text, tp.Optional[ViewPort]) -> None
         """
@@ -484,10 +491,19 @@ class EyesBase(ABC):
         if self.is_open():
             self.abort_if_not_closed()
             raise EyesError('a test is already running')
+
+        self.before_open()
+
         self._app_name = app_name
         self._test_name = test_name
         self._viewport_size = viewport_size
+
+        if viewport_size is not None:
+            self._ensure_running_session()
+
         self._is_open = True
+
+        self.after_open()
 
     def _create_start_info(self):
         # type: () -> None
@@ -525,14 +541,23 @@ class EyesBase(ABC):
         self._user_inputs = []  # type: UserInputs
 
     def _ensure_running_session(self):
-        if not self.is_open():
-            raise EyesError('Eyes not open!')
+        if self._running_session:
+            logger.debug('Session already running.')
+            return
+        self._start_session()
+        self._match_window_task = MatchWindowTask(self, self._agent_connector,
+                                                  self._running_session,
+                                                  self.match_timeout)
 
-        if not self._running_session:
-            self._start_session()
-            self._match_window_task = MatchWindowTask(self, self._agent_connector,
-                                                      self._running_session,
-                                                      self.match_timeout)
+    def before_match_window(self):
+        """
+        Allow to add custom behavior after receiving response from the server
+        """
+
+    def after_match_window(self):
+        """
+        Allow to add custom behavior before sending data to the server
+        """
 
     def _check_window_base(self, tag=None, match_timeout=-1, target=None):
         if self.is_disabled:
@@ -546,6 +571,7 @@ class EyesBase(ABC):
         self.before_match_window()
 
         # TODO: implement MatchWIndow_ analog
+
         result = self._match_window_task.match_window(retry_timeout=match_timeout,
                                                       tag=tag,
                                                       user_inputs=self._user_inputs,
@@ -576,16 +602,6 @@ class EyesBase(ABC):
         Returns the string with DOM of the current page in the prepared format or empty string
         """
 
-    def after_match_window(self):
-        """
-        Allow to add custom behavior before sending data to the server
-        """
-
-    def before_match_window(self):
-        """
-        Allow to add custom behavior after receiving response from the server
-        """
-
     def try_post_dom_snapshot(self, dom_json):
         # type: (tp.Text) -> tp.Optional[tp.Text]
         """
@@ -596,5 +612,5 @@ class EyesBase(ABC):
         try:
             return self._agent_connector.post_dom_snapshot(dom_json)
         except Exception as e:
-            warnings.warn("Couldn't send DOM Json. Passing...\n Got next error: {}".format(e))
+            logger.warning("Couldn't send DOM Json. Passing...\n Got next error: {}".format(e))
             return None

@@ -3,7 +3,6 @@ from __future__ import absolute_import
 import base64
 import contextlib
 import typing as tp
-import warnings
 
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.remote.webdriver import WebDriver as RemoteWebDriver
@@ -18,14 +17,14 @@ from applitools.core.geometry import Region
 from applitools.core.scaling import ContextBasedScaleProvider, FixedScaleProvider
 from applitools.utils import image_utils
 from . import eyes_selenium_utils
-from .webdriver import EyesFrame, EyesWebDriver
+from .webdriver import EyesWebDriver
 from .capture import EyesWebDriverScreenshot, dom_capture
 from .target import Target
-from .positioning import build_position_provider_for, StitchMode
+from .positioning import StitchMode, ElementPositionProvider
 
 if tp.TYPE_CHECKING:
     from applitools.core.scaling import ScaleProvider
-    from applitools.utils.custom_types import (ViewPort, MatchResult, AnyWebDriver, FrameReference, AnyWebElement)
+    from applitools.utils.custom_types import (ViewPort, AnyWebDriver, FrameReference, AnyWebElement)
 
 
 class ScreenshotType(object):
@@ -57,6 +56,7 @@ class Eyes(EyesBase):
         self._screenshot_type = None  # type: tp.Optional[str]  # ScreenshotType
         self._device_pixel_ratio = self._UNKNOWN_DEVICE_PIXEL_RATIO
         self._stitch_mode = StitchMode.Scroll  # type: tp.Text
+        self._element_position_provider = None  # type: tp.Optional[ElementPositionProvider]
 
         # If true, Eyes will create a full page screenshot (by using stitching) for browsers which only
         # returns the viewport screenshot.
@@ -251,10 +251,8 @@ class Eyes(EyesBase):
         # type: (ScaleProvider) -> EyesWebDriverScreenshot
         logger.info('Not entire element screenshot requested')
         screenshot = self._viewport_screenshot(scale_provider)
-        if isinstance(self._region_to_check, Region):
-            screenshot = screenshot.get_sub_screenshot_by_region(self._region_to_check)
-        else:
-            screenshot = screenshot.get_sub_screenshot_by_element(self._region_to_check)
+        region = screenshot.get_element_region_in_frame_viewport(self._region_to_check)
+        screenshot = screenshot.get_sub_screenshot_by_region(region)
         return screenshot
 
     def _full_page_screenshot(self, scale_provider):
@@ -267,14 +265,19 @@ class Eyes(EyesBase):
     def _viewport_screenshot(self, scale_provider):
         # type: (ScaleProvider) -> EyesWebDriverScreenshot
         logger.info('Viewport screenshot requested')
-        screenshot64 = self._driver.get_screesnhot_as_base64_from_main_frame(
-                self.seconds_to_wait_screenshot)
-        screenshot = image_utils.image_from_bytes(base64.b64decode(screenshot64))
-        scale_provider.update_scale_ratio(screenshot.width)
+
+        self._driver._wait_before_screenshot(self.seconds_to_wait_screenshot)
+        if not self._driver.is_mobile_device():
+            image64 = self._driver.get_screesnhot_as_base64_from_main_frame()
+        else:
+            image64 = self._driver.get_screenshot_as_base64()
+
+        image = image_utils.image_from_bytes(base64.b64decode(image64))
+        scale_provider.update_scale_ratio(image.width)
         pixel_ratio = 1 / scale_provider.scale_ratio
         if pixel_ratio != 1.0:
-            screenshot = image_utils.scale_image(screenshot, 1.0 / pixel_ratio)
-        return EyesWebDriverScreenshot.create_from_image(screenshot, self._driver).get_viewport_screenshot()
+            image = image_utils.scale_image(image, 1.0 / pixel_ratio)
+        return EyesWebDriverScreenshot.create_from_image(image, self._driver).get_viewport_screenshot()
 
     def _ensure_viewport_size(self):
         if self._viewport_size is None:
@@ -319,7 +322,7 @@ class Eyes(EyesBase):
         """
         logger.info("check_window('%s')" % tag)
         self._screenshot_type = self._obtain_screenshot_type(is_element=False,
-                                                             inside_a_frame=bool(self._driver.get_frame_chain()),
+                                                             inside_a_frame=bool(self._driver.frame_chain),
                                                              stitch_content=False,
                                                              force_fullpage=self.force_full_page_screenshot)
         self._check_window_base(tag, match_timeout, target)
@@ -342,7 +345,7 @@ class Eyes(EyesBase):
         if region.is_empty():
             raise EyesError("region cannot be empty!")
         self._screenshot_type = self._obtain_screenshot_type(is_element=False,
-                                                             inside_a_frame=bool(self._driver.get_frame_chain()),
+                                                             inside_a_frame=bool(self._driver.frame_chain),
                                                              stitch_content=stitch_content,
                                                              force_fullpage=self.force_full_page_screenshot,
                                                              is_region=True)
@@ -363,11 +366,38 @@ class Eyes(EyesBase):
         """
         logger.info("check_region_by_element('%s')" % tag)
         self._screenshot_type = self._obtain_screenshot_type(is_element=True,
-                                                             inside_a_frame=bool(self._driver.get_frame_chain()),
+                                                             inside_a_frame=bool(self._driver.frame_chain),
                                                              stitch_content=stitch_content,
                                                              force_fullpage=self.force_full_page_screenshot)
-        self._region_to_check = element
+
+        self._element_position_provider = ElementPositionProvider(self._driver, element)
+
+        origin_overflow = element.get_overflow()
+        element.set_overflow('hidden')
+
+        element_region = self._get_element_region(element)
+        self._region_to_check = element_region
         self._check_window_base(tag, match_timeout, target)
+        self._element_position_provider = None
+
+        if origin_overflow:
+            element.set_overflow(origin_overflow)
+
+    def _get_element_region(self, element):
+        #  We use a smaller size than the actual screenshot size in order to eliminate duplication
+        #  of bottom scroll bars, as well as footer-like elements with fixed position.
+        pl = element.location
+        # TODO: add correct values for Safari
+        # in the safari browser the returned size has absolute value but not relative as
+        # in other browsers
+        element_width = element.get_client_width()
+        element_height = element.get_client_height()
+        border_left_width = element.get_computed_style_int('border-left-width')
+        border_top_width = element.get_computed_style_int('border-top-width')
+        element_region = Region(pl['x'] + border_left_width,
+                                pl['y'] + border_top_width,
+                                element_width, element_height)
+        return element_region
 
     def check_region_by_selector(self, by, value, tag=None, match_timeout=-1, target=None, stitch_content=False):
         # type: (tp.Text, tp.Text, tp.Optional[tp.Text], int, tp.Optional[Target], bool) -> None
@@ -382,7 +412,9 @@ class Eyes(EyesBase):
         :param target: (Target) The target for the check_window call
         :return: None
         """
-        logger.debug("calling 'check_region_by_element'...")
+        logger.debug("calling 'check_region_by_selector'...")
+        # hack: prevent stale element exception by saving viewport value before catching element
+        self._driver.get_default_content_viewport_size()
         self.check_region_by_element(self._driver.find_element(by, value), tag,
                                      match_timeout, target, stitch_content)
 
@@ -432,8 +464,7 @@ class Eyes(EyesBase):
         if self._last_screenshot is None:
             logger.debug("add_mouse_trigger: Ignoring %s (no screenshot)" % action)
             return
-        if not EyesFrame.is_same_frame_chain(self._driver.get_frame_chain(),
-                                             self._last_screenshot.get_frame_chain()):
+        if not self._driver.frame_chain == self._last_screenshot.frame_chain:
             logger.debug("add_mouse_trigger: Ignoring %s (different frame)" % action)
             return
         control = self._last_screenshot.get_intersected_region_by_element(element)
@@ -461,8 +492,7 @@ class Eyes(EyesBase):
         if self._last_screenshot is None:
             logger.debug("add_text_trigger: Ignoring '%s' (no screenshot)" % text)
             return
-        if not EyesFrame.is_same_frame_chain(self._driver.get_frame_chain(),
-                                             self._last_screenshot.get_frame_chain()):
+        if not self._driver.frame_chain == self._last_screenshot.frame_chain:
             logger.debug("add_text_trigger: Ignoring %s (different frame)" % text)
             return
         control = self._last_screenshot.get_intersected_region_by_element(element)
@@ -479,6 +509,6 @@ class Eyes(EyesBase):
             dom_json = dom_capture.get_full_window_dom(self._driver)
             return dom_json
         except Exception as e:
-            warnings.warn(
+            logger.warning(
                     'Exception raising during capturing DOM Json. Passing...\n Got next error: {}'.format(str(e)))
             return None
