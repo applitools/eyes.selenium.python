@@ -163,7 +163,7 @@ class Target(object):
         self._floating_regions = []  # type: tp.List
 
     def ignore(self, *regions):
-        # type: (*tp.Union['Region', 'IgnoreRegionByElement', 'IgnoreRegionBySelector']) -> Target
+        # type: (*tp.Union[Region, IgnoreRegionByElement, IgnoreRegionBySelector]) -> Target
         """
         Add ignore regions to this target.
         :param regions: Ignore regions to add. Can be of several types:
@@ -182,7 +182,7 @@ class Target(object):
         return self
 
     def floating(self, *regions):
-        # type: (*tp.Union['FloatingRegion', 'FloatingRegionByElement', 'FloatingRegionBySelector']) -> Target
+        # type: (*tp.Union[FloatingRegion, FloatingRegionByElement, FloatingRegionBySelector]) -> Target
         """
         Add floating regions to this target.
         :param regions: Floating regions to add. Can be of several types:

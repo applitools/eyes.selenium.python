@@ -14,16 +14,14 @@ import os
 import sys
 
 import pytest
-from applitools.utils import iteritems
-
 from selenium import webdriver
-
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.remote.remote_connection import RemoteConnection
 
 from applitools.__version__ import __version__
 from applitools.core import logger, StdoutLogger
 from applitools.selenium import Eyes, EyesWebDriver, eyes_selenium_utils
+from applitools.utils import iteritems
 
 from .platfroms import SUPPORTED_PLATFORMS, SUPPORTED_PLATFORMS_DICT
 
