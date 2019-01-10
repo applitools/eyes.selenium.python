@@ -47,6 +47,16 @@ class Eyes(EyesBase):
         assert driver is not None
         eyes_selenium_utils.set_viewport_size(driver, size)
 
+    def get_viewport_size(self):
+        # type: () -> ViewPort
+        """
+        Returns the size of the viewport of the application under test (e.g, the browser).
+        """
+        if self._viewport_size:
+            return self._viewport_size
+        self._viewport_size = self._driver.get_viewport_size()
+        return self._viewport_size
+
     def __init__(self, server_url=EyesBase.DEFAULT_EYES_SERVER):
         super(Eyes, self).__init__(server_url)
 
@@ -88,6 +98,14 @@ class Eyes(EyesBase):
             self.hide_scrollbars = True
             self.send_dom = True
 
+    @property
+    def driver(self):
+        # type: () -> EyesWebDriver
+        """
+        Returns the current web driver.
+        """
+        return self._driver
+
     def _obtain_screenshot_type(self, is_element, inside_a_frame, stitch_content, force_fullpage, is_region=False):
         # type:(bool, bool, bool, bool, bool) -> str
         if stitch_content or force_fullpage:
@@ -111,7 +129,8 @@ class Eyes(EyesBase):
 
         return ScreenshotType.VIEWPORT_SCREENSHOT
 
-    def _get_environment(self):
+    @property
+    def _environment(self):
         os = self.host_os
         # If no host OS was set, check for mobile OS.
         if os is None:
@@ -135,27 +154,11 @@ class Eyes(EyesBase):
                 logger.info('No mobile OS detected.')
         app_env = {'os':          os, 'hostingApp': self.host_app,
                    'displaySize': self._viewport_size,
-                   'inferred':    self._get_inferred_environment()}
+                   'inferred':    self._inferred_environment}
         return app_env
 
-    def get_driver(self):
-        # type: () -> EyesWebDriver
-        """
-        Returns the current web driver.
-        """
-        return self._driver
-
-    def get_viewport_size(self):
-        # type: () -> ViewPort
-        """
-        Returns the size of the viewport of the application under test (e.g, the browser).
-        """
-        if self._viewport_size:
-            return self._viewport_size
-        self._viewport_size = self._driver.get_viewport_size()
-        return self._viewport_size
-
-    def get_title(self):
+    @property
+    def _title(self):
         if self._should_get_title:
             # noinspection PyBroadException
             try:
@@ -165,7 +168,8 @@ class Eyes(EyesBase):
                 # Couldn't get title, return empty string.
         return ''
 
-    def _get_inferred_environment(self):
+    @property
+    def _inferred_environment(self):
         # type: () -> tp.Optional[tp.Text]
         try:
             user_agent = self._driver.execute_script('return navigator.userAgent')
@@ -192,11 +196,11 @@ class Eyes(EyesBase):
         logger.info("Setting scale provider...")
         try:
             scale_provider = ContextBasedScaleProvider(
-                    top_level_context_entire_size=self._driver.get_entire_page_size(),
-                    viewport_size=self.get_viewport_size(),
-                    device_pixel_ratio=device_pixel_ratio,
-                    # always False as in Java version
-                    is_mobile_device=False)  # type: ScaleProvider
+                top_level_context_entire_size=self._driver.get_entire_page_size(),
+                viewport_size=self.get_viewport_size(),
+                device_pixel_ratio=device_pixel_ratio,
+                # always False as in Java version
+                is_mobile_device=False)  # type: ScaleProvider
         except Exception:
             # This can happen in Appium for example.
             logger.info("Failed to set ContextBasedScaleProvider.")
@@ -206,12 +210,21 @@ class Eyes(EyesBase):
         return scale_provider
 
     @contextlib.contextmanager
-    def hide_scrollbars_if_needed(self):
+    def _hide_scrollbars_if_needed(self):
         if self.hide_scrollbars:
             original_overflow = self._driver.hide_scrollbars()
         yield
         if self.hide_scrollbars:
             self._driver.set_overflow(original_overflow)
+
+    def _try_capture_dom(self):
+        try:
+            dom_json = dom_capture.get_full_window_dom(self._driver)
+            return dom_json
+        except Exception as e:
+            logger.warning(
+                'Exception raising during capturing DOM Json. Passing...\n Got next error: {}'.format(str(e)))
+            return None
 
     def _get_screenshot(self):
         scale_provider = self._update_scaling_params()
@@ -236,14 +249,14 @@ class Eyes(EyesBase):
         if hide_scrollbars_called:
             return self._get_screenshot()
         else:
-            with self.hide_scrollbars_if_needed():
+            with self._hide_scrollbars_if_needed():
                 return self._get_screenshot()
 
     def _entire_element_screenshot(self, scale_provider):
         # type: (ScaleProvider) -> EyesWebDriverScreenshot
         logger.info('Entire element screenshot requested')
         screenshot = self._driver.get_stitched_screenshot(self._region_to_check,
-                                                          self.seconds_to_wait_screenshot,
+                                                          self._seconds_to_wait_screenshot,
                                                           scale_provider)
         return EyesWebDriverScreenshot.create_from_image(screenshot, self._driver)
 
@@ -258,7 +271,7 @@ class Eyes(EyesBase):
     def _full_page_screenshot(self, scale_provider):
         # type: (ScaleProvider) -> EyesWebDriverScreenshot
         logger.info('Full page screenshot requested')
-        screenshot = self._driver.get_full_page_screenshot(self.seconds_to_wait_screenshot,
+        screenshot = self._driver.get_full_page_screenshot(self._seconds_to_wait_screenshot,
                                                            scale_provider)
         return EyesWebDriverScreenshot.create_from_image(screenshot, self._driver)
 
@@ -266,7 +279,7 @@ class Eyes(EyesBase):
         # type: (ScaleProvider) -> EyesWebDriverScreenshot
         logger.info('Viewport screenshot requested')
 
-        self._driver._wait_before_screenshot(self.seconds_to_wait_screenshot)
+        self._driver._wait_before_screenshot(self._seconds_to_wait_screenshot)
         if not self._driver.is_mobile_device():
             image64 = self._driver.get_screesnhot_as_base64_from_main_frame()
         else:
@@ -305,7 +318,7 @@ class Eyes(EyesBase):
             eyes_selenium_utils.set_viewport_size(self._driver, viewport_size)
 
         self._ensure_viewport_size()
-        self.open_base(app_name, test_name, viewport_size)
+        self._open_base(app_name, test_name, viewport_size)
 
         return self._driver
 
@@ -503,12 +516,3 @@ class Eyes(EyesBase):
         trigger = TextTrigger(control, text)
         self._user_inputs.append(trigger)
         logger.info("add_text_trigger: Added %s" % trigger)
-
-    def try_capture_dom(self):
-        try:
-            dom_json = dom_capture.get_full_window_dom(self._driver)
-            return dom_json
-        except Exception as e:
-            logger.warning(
-                    'Exception raising during capturing DOM Json. Passing...\n Got next error: {}'.format(str(e)))
-            return None

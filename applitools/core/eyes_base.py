@@ -59,10 +59,10 @@ class ExactMatchSettings(object):
         :param min_diff_height: Minimal non-ignorable diff region height.
         :param match_threshold: The ratio of differing pixels above which images are considered mismatching.
         """
-        self.min_diff_intensity = min_diff_intensity
-        self.min_diff_width = min_diff_width
-        self.min_diff_height = min_diff_height
-        self.match_threshold = match_threshold
+        self.min_diff_intensity = min_diff_intensity  # type: int
+        self.min_diff_width = min_diff_width  # type: int
+        self.min_diff_height = min_diff_height  # type: int
+        self.match_threshold = match_threshold  # type: float
 
     def __getstate__(self):
         return dict(minDiffIntensity=self.min_diff_intensity,
@@ -91,8 +91,8 @@ class ImageMatchSettings(object):
         :param match_level: The "strictness" level of the match.
         :param exact_settings: Parameter for fine tuning the match when "Exact" match level is used.
         """
-        self.match_level = match_level
-        self.exact_settings = exact_settings
+        self.match_level = match_level  # type: tp.Text
+        self.exact_settings = exact_settings  # type: tp.Optional[ExactMatchSettings]
 
     def __getstate__(self):
         return dict(matchLevel=self.match_level, exact=self.exact_settings)
@@ -116,12 +116,12 @@ class BatchInfo(object):
         if started_at is None:
             started_at = datetime.now(general_utils.UTC)
 
-        self.name = name if name else os.environ.get('APPLITOOLS_BATCH_NAME', None)
-        self.started_at = started_at
-        self.id_ = os.environ.get('APPLITOOLS_BATCH_ID', str(uuid.uuid4()))
+        self.name = name if name else os.environ.get('APPLITOOLS_BATCH_NAME', None)  # type: tp.Optional[tp.Text]
+        self.started_at = started_at  # type: datetime
+        self.id = os.environ.get('APPLITOOLS_BATCH_ID', str(uuid.uuid4()))  # type: tp.Text
 
     def __getstate__(self):
-        return dict(name=self.name, startedAt=self.started_at.isoformat(), id=self.id_)
+        return dict(name=self.name, startedAt=self.started_at.isoformat(), id=self.id)
 
     # Required is required in order for jsonpickle to work on this object.
     # noinspection PyMethodMayBeStatic
@@ -129,7 +129,7 @@ class BatchInfo(object):
         raise EyesError('Cannot create BatchInfo instance from dict!')
 
     def __str__(self):
-        return "%s - %s - %s" % (self.name, self.started_at, self.id_)
+        return "%s - %s - %s" % (self.name, self.started_at, self.id)
 
 
 class EyesBase(ABC):
@@ -185,7 +185,7 @@ class EyesBase(ABC):
 
         # A string that, if specified, determines the baseline to compare with and disables automatic baseline
         # inference.
-        self.baseline_name = None  # type: tp.Optional[tp.Text]
+        self.baseline_branch_name = None  # type: tp.Optional[tp.Text]
 
         # A boolean denoting whether new tests should be automatically accepted.
         self.save_new_tests = True  # type: bool
@@ -208,8 +208,19 @@ class EyesBase(ABC):
         # If true, we will send full DOM to the server for analyzing
         self.send_dom = False
 
+    @property
+    def baseline_name(self):
+        logger.warning('DEPRECATED: Use `baseline_branch_name` instead')
+        return self.baseline_branch_name
+
+    @baseline_name.setter
+    def baseline_name(self, value):
+        logger.warning('DEPRECATED: Use `baseline_branch_name` instead')
+        self.baseline_branch_name = value
+
+    @property
     @abc.abstractmethod
-    def get_title(self):
+    def _title(self):
         # type: () -> tp.Text
         """
         Returns the title of the window of the AUT, or empty string if the title is not available.
@@ -235,8 +246,9 @@ class EyesBase(ABC):
         Assign the viewport size we need to be in the default content frame.
         """
 
+    @property
     @abc.abstractmethod
-    def _get_environment(self):
+    def _environment(self):
         # type: () -> AppEnvironment
         """
         Application environment is the environment (e.g., the host OS) which runs the application under test.
@@ -244,12 +256,13 @@ class EyesBase(ABC):
         :return: The current application environment.
         """
 
+    @property
     @abc.abstractmethod
-    def _get_inferred_environment(self):
+    def _inferred_environment(self):
         pass
 
     @property
-    def seconds_to_wait_screenshot(self):
+    def _seconds_to_wait_screenshot(self):
         return self.wait_before_screenshots / 1000.0
 
     @property
@@ -335,7 +348,7 @@ class EyesBase(ABC):
             self._agent_connector.server_url = server_url
 
     @property
-    def _full_agent_id(self):
+    def full_agent_id(self):
         # type: () -> tp.Text
         """
         Gets the agent id, which identifies the current library using the SDK.
@@ -355,6 +368,7 @@ class EyesBase(ABC):
         """
         self._properties.append({'name': name, 'value': value})
 
+    @property
     def is_open(self):
         # type: () -> bool
         """
@@ -455,13 +469,13 @@ class EyesBase(ABC):
         finally:
             logger.close()
 
-    def before_open(self):
+    def _before_open(self):
         pass
 
-    def after_open(self):
+    def _after_open(self):
         pass
 
-    def open_base(self, app_name, test_name, viewport_size=None):
+    def _open_base(self, app_name, test_name, viewport_size=None):
         # type: (tp.Text, tp.Text, tp.Optional[ViewPort]) -> None
         """
         Starts a test.
@@ -476,7 +490,7 @@ class EyesBase(ABC):
         """
         logger.open_()
         if self.is_disabled:
-            logger.debug('open_base(): ignored (disabled)')
+            logger.debug('_open_base(): ignored (disabled)')
             return
 
         if self.api_key is None:
@@ -488,11 +502,11 @@ class EyesBase(ABC):
 
         logger.info("open(%s, %s, %s, %s)" % (app_name, test_name, viewport_size, self.failure_reports))
 
-        if self.is_open():
+        if self.is_open:
             self.abort_if_not_closed()
             raise EyesError('a test is already running')
 
-        self.before_open()
+        self._before_open()
 
         self._app_name = app_name
         self._test_name = test_name
@@ -503,17 +517,17 @@ class EyesBase(ABC):
 
         self._is_open = True
 
-        self.after_open()
+        self._after_open()
 
     def _create_start_info(self):
         # type: () -> None
-        app_env = self._get_environment()
-        self._start_info = {'agentId': self._full_agent_id, 'appIdOrName': self._app_name,
-                            'scenarioIdOrName': self._test_name, 'batchInfo': self.batch,
-                            'envName': self.baseline_name, 'environment': app_env,
+        app_env = self._environment
+        self._start_info = {'agentId':              self.full_agent_id, 'appIdOrName': self._app_name,
+                            'scenarioIdOrName':     self._test_name, 'batchInfo': self.batch,
+                            'envName':              self.baseline_branch_name, 'environment': app_env,
                             'defaultMatchSettings': self.default_match_settings, 'verId': None,
-                            'branchName': self.branch_name, 'parentBranchName': self.parent_branch_name,
-                            'properties': self._properties}
+                            'branchName':           self.branch_name, 'parentBranchName': self.parent_branch_name,
+                            'properties':           self._properties}
 
     def _start_session(self):
         # type: () -> None
@@ -523,8 +537,8 @@ class EyesBase(ABC):
         # initialization of Eyes parameters if empty from ENV variables
         if not self.branch_name:
             self.branch_name = os.environ.get('APPLITOOLS_BRANCH', None)
-        if not self.baseline_name:
-            self.baseline_name = os.environ.get('APPLITOOLS_BASELINE_BRANCH', None)
+        if not self.baseline_branch_name:
+            self.baseline_branch_name = os.environ.get('APPLITOOLS_BASELINE_BRANCH', None)
         if not self.parent_branch_name:
             self.parent_branch_name = os.environ.get('APPLITOOLS_PARENT_BRANCH', None)
         if not self.batch:
@@ -549,12 +563,12 @@ class EyesBase(ABC):
                                                   self._running_session,
                                                   self.match_timeout)
 
-    def before_match_window(self):
+    def _before_match_window(self):
         """
         Allow to add custom behavior after receiving response from the server
         """
 
-    def after_match_window(self):
+    def _after_match_window(self):
         """
         Allow to add custom behavior before sending data to the server
         """
@@ -568,7 +582,7 @@ class EyesBase(ABC):
 
         self._ensure_running_session()
 
-        self.before_match_window()
+        self._before_match_window()
 
         # TODO: implement MatchWIndow_ analog
 
@@ -578,7 +592,7 @@ class EyesBase(ABC):
                                                       default_match_settings=self.default_match_settings,
                                                       target=target,
                                                       run_once_after_wait=self._should_match_once_on_timeout)
-        self.after_match_window()
+        self._after_match_window()
         self._handle_match_result(result, tag)
 
     def _handle_match_result(self, result, tag):
@@ -596,13 +610,13 @@ class EyesBase(ABC):
                                            self._start_info['appIdOrName']))
 
     @abc.abstractmethod
-    def try_capture_dom(self):
+    def _try_capture_dom(self):
         # type: () -> tp.Text
         """
         Returns the string with DOM of the current page in the prepared format or empty string
         """
 
-    def try_post_dom_snapshot(self, dom_json):
+    def _try_post_dom_snapshot(self, dom_json):
         # type: (tp.Text) -> tp.Optional[tp.Text]
         """
         In case DOM data is valid uploads it to the server and return URL where it stored.

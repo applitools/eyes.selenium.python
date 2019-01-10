@@ -207,15 +207,3 @@ class Target(object):
 
     def get_ignore_caret(self):
         return self._ignore_caret
-
-    @property
-    def ignore_regions(self):
-        # type: () -> tp.List
-        """The ignore regions defined on the current target."""
-        return self._ignore_regions
-
-    @property
-    def floating_regions(self):
-        # type: () -> tp.List
-        """The floating regions defined on the current target."""
-        return self._floating_regions

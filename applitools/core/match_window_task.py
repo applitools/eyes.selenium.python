@@ -47,7 +47,7 @@ class MatchWindowTask(object):
         self._agent_connector = agent_connector
         self._running_session = running_session
         self._default_retry_timeout = default_retry_timeout / 1000.0  # type: Num # since we want the time in seconds.
-        self._screenshot = None  # type: tp.Optional[EyesScreenshot]
+        self._last_screenshot = None  # type: tp.Optional[EyesScreenshot]
 
     @staticmethod
     def _create_match_data_bytes(app_output,  # type: AppOutput
@@ -102,13 +102,13 @@ class MatchWindowTask(object):
         ignore = []  # type: tp.List[Region]
         floating = []  # type: tp.List[Region]
         if target is not None:
-            for region_wrapper in target.ignore_regions:
+            for region_wrapper in target._ignore_regions:
                 try:
                     current_region = region_wrapper.get_region(eyes_screenshot)
                     ignore.append(current_region)
                 except OutOfBoundsError as err:
                     logger.info("WARNING: Region specified by {} is out of bounds! {}".format(region_wrapper, err))
-            for floating_wrapper in target.floating_regions:
+            for floating_wrapper in target._floating_regions:
                 try:
                     current_floating = floating_wrapper.get_region(eyes_screenshot)
                     floating.append(current_floating)
@@ -123,17 +123,17 @@ class MatchWindowTask(object):
                                        target,  # type: Target
                                        ignore_mismatch=False):
         # type: (...) -> bytes
-        title = self._eyes.get_title()
+        title = self._eyes._title
 
-        with self._eyes.hide_scrollbars_if_needed():
-            self._screenshot = self._eyes.get_screenshot(hide_scrollbars_called=True)
-            dynamic_regions = MatchWindowTask._get_dynamic_regions(target, self._screenshot)
+        with self._eyes._hide_scrollbars_if_needed():
+            self._last_screenshot = self._eyes.get_screenshot(hide_scrollbars_called=True)
+            dynamic_regions = MatchWindowTask._get_dynamic_regions(target, self._last_screenshot)
         app_output = {'title': title, 'screenshot64': None}  # type: AppOutput
 
         if self._eyes.send_dom:
-            dom_json = self._eyes.try_capture_dom()
+            dom_json = self._eyes._try_capture_dom()
             if dom_json:
-                dom_url = self._eyes.try_post_dom_snapshot(dom_json)
+                dom_url = self._eyes._try_post_dom_snapshot(dom_json)
                 if dom_url is None:
                     logger.warning('Failed to upload DOM. Skipping...')
                 else:
@@ -141,7 +141,7 @@ class MatchWindowTask(object):
 
         logger.debug('AppOutput: {}'.format(app_output))
         return self._create_match_data_bytes(app_output, user_inputs, tag, ignore_mismatch,
-                                             self._screenshot, default_match_settings, target,
+                                             self._last_screenshot, default_match_settings, target,
                                              dynamic_regions['ignore'], dynamic_regions['floating'])
 
     def _run_with_intervals(self, prepare_action, retry_timeout):
@@ -158,7 +158,7 @@ class MatchWindowTask(object):
         logger.debug('First match attempt...')
         as_expected = self._agent_connector.match_window(self._running_session, data)
         if as_expected:
-            return {"as_expected": True, "screenshot": self._screenshot}
+            return {"as_expected": True, "screenshot": self._last_screenshot}
         retry = time.time() - start
         logger.debug("Failed. Elapsed time: {0:.1f} seconds".format(retry))
 
@@ -168,14 +168,14 @@ class MatchWindowTask(object):
             data = prepare_action(ignore_mismatch=True)
             as_expected = self._agent_connector.match_window(self._running_session, data)
             if as_expected:
-                return {"as_expected": True, "screenshot": self._screenshot}
+                return {"as_expected": True, "screenshot": self._last_screenshot}
             retry = time.time() - start
             logger.debug("Elapsed time: {0:.1f} seconds".format(retry))
         # One last try
         logger.debug('One last matching attempt...')
         data = prepare_action()
         as_expected = self._agent_connector.match_window(self._running_session, data)
-        return {"as_expected": as_expected, "screenshot": self._screenshot}
+        return {"as_expected": as_expected, "screenshot": self._last_screenshot}
 
     def _run(self, prepare_action, run_once_after_wait=False, retry_timeout=-1):
         # type: (tp.Callable, bool, Num) -> MatchResult
@@ -193,7 +193,7 @@ class MatchWindowTask(object):
             time.sleep(retry_timeout)
             data = prepare_action()
             as_expected = self._agent_connector.match_window(self._running_session, data)
-            result = {"as_expected": as_expected, "screenshot": self._screenshot}  # type: MatchResult
+            result = {"as_expected": as_expected, "screenshot": self._last_screenshot}  # type: MatchResult
         else:
             result = self._run_with_intervals(prepare_action, retry_timeout)
         logger.debug("Match result: {0}".format(result["as_expected"]))

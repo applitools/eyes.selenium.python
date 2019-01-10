@@ -73,7 +73,7 @@ class TestResults(object):
     def is_passed(self):
         return (self.status is not None) and self.status.lower() == TestResultsStatus.Passed.lower()
 
-    def to_dict(self):
+    def _to_dict(self):
         return dict(steps=self.steps, matches=self.matches, mismatches=self.mismatches,
                     missing=self.missing, exact_matches=self.exact_matches,
                     strict_matches=self.strict_matches, content_matches=self.content_matches,
