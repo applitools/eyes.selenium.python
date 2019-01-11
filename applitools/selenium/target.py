@@ -2,15 +2,15 @@ from __future__ import absolute_import
 
 import typing as tp
 
-from ..core.errors import EyesError
-from ..core.geometry import Region
+from applitools.core.errors import EyesError
+from applitools.core.geometry import Region
 
 if tp.TYPE_CHECKING:
-    from ..utils.custom_types import AnyWebElement
-    from .capture import EyesScreenshot
+    from applitools.utils.custom_types import AnyWebElement
+    from .capture import EyesWebDriverScreenshot
 
 __all__ = ('IgnoreRegionByElement', 'IgnoreRegionBySelector', 'FloatingBounds', 'FloatingRegion',
-           'FloatingRegionByElement', 'FloatingRegionByElement', 'FloatingRegionBySelector', 'Target')
+           'FloatingRegionByElement', 'FloatingRegionBySelector', 'Target')
 
 
 # Ignore regions related classes.
@@ -21,7 +21,7 @@ class IgnoreRegionByElement(object):
         self.element = element
 
     def get_region(self, eyes_screenshot):
-        # type: (EyesScreenshot) -> Region
+        # type: (EyesWebDriverScreenshot) -> Region
         return eyes_screenshot.get_element_region_in_frame_viewport(self.element)
 
     def _str_(self):
@@ -40,7 +40,7 @@ class IgnoreRegionBySelector(object):
         self.value = value
 
     def get_region(self, eyes_screenshot):
-        # type: (EyesScreenshot) -> Region
+        # type: (EyesWebDriverScreenshot) -> Region
         driver = eyes_screenshot._driver
         element = driver.find_element(self.by, self.value)
         return eyes_screenshot.get_element_region_in_frame_viewport(element)
@@ -55,7 +55,7 @@ class _NopRegionWrapper(object):
         self.region = region
 
     def get_region(self, eyes_screenshot):
-        # type: (EyesScreenshot) -> tp.Any
+        # type: (EyesWebDriverScreenshot) -> tp.Any
         return self.region
 
     def __str__(self):
@@ -83,7 +83,7 @@ class FloatingRegion(object):
         self.bounds = bounds
 
     def get_region(self, eyes_screenshot):
-        # type: (EyesScreenshot) -> FloatingRegion
+        # type: (EyesWebDriverScreenshot) -> FloatingRegion
         """Used for compatibility when iterating over regions"""
         return self
 
@@ -117,7 +117,7 @@ class FloatingRegionByElement(object):
         self.bounds = bounds
 
     def get_region(self, eyes_screenshot):
-        # type: (EyesScreenshot) -> FloatingRegion
+        # type: (EyesWebDriverScreenshot) -> FloatingRegion
         region = eyes_screenshot.get_element_region_in_frame_viewport(self.element)
         return FloatingRegion(region, self.bounds)
 
@@ -139,7 +139,7 @@ class FloatingRegionBySelector(object):
         self.bounds = bounds
 
     def get_region(self, eyes_screenshot):
-        # type: (EyesScreenshot) -> FloatingRegion
+        # type: (EyesWebDriverScreenshot) -> FloatingRegion
         driver = eyes_screenshot._driver
         element = driver.find_element(self.by, self.value)
         region = eyes_screenshot.get_element_region_in_frame_viewport(element)
@@ -163,7 +163,7 @@ class Target(object):
         self._floating_regions = []  # type: tp.List
 
     def ignore(self, *regions):
-        # type: (*tp.Union['Region', 'IgnoreRegionByElement', 'IgnoreRegionBySelector']) -> Target
+        # type: (*tp.Union[Region, IgnoreRegionByElement, IgnoreRegionBySelector]) -> Target
         """
         Add ignore regions to this target.
         :param regions: Ignore regions to add. Can be of several types:
@@ -182,7 +182,7 @@ class Target(object):
         return self
 
     def floating(self, *regions):
-        # type: (*tp.Union['FloatingRegion', 'FloatingRegionByElement', 'FloatingRegionBySelector']) -> Target
+        # type: (*tp.Union[FloatingRegion, FloatingRegionByElement, FloatingRegionBySelector]) -> Target
         """
         Add floating regions to this target.
         :param regions: Floating regions to add. Can be of several types:
@@ -207,15 +207,3 @@ class Target(object):
 
     def get_ignore_caret(self):
         return self._ignore_caret
-
-    @property
-    def ignore_regions(self):
-        # type: () -> tp.List
-        """The ignore regions defined on the current target."""
-        return self._ignore_regions
-
-    @property
-    def floating_regions(self):
-        # type: () -> tp.List
-        """The floating regions defined on the current target."""
-        return self._floating_regions

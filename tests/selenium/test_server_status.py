@@ -2,29 +2,11 @@ import uuid
 
 import pytest
 
-from applitools.errors import DiffsFoundError
 from applitools.eyes import Eyes
 from applitools.target import Target
 
 
-@pytest.mark.platform('Linux')
-def test_session_summary_status_new(eyes, driver):
-    driver = eyes.open(driver, "Python SDK", "TestResults-New_{}".format(str(uuid.uuid4())),
-                       {'width': 800, 'height': 600})
-    driver.get('http://applitools.github.io/demo/TestPages/FramesTestPage/')
-    eyes.check_window("initial")
-    eyes.close()
-
-
-@pytest.mark.platform('Linux')
-def test_summary_status_diffsfound(eyes, driver):
-    driver = eyes.open(driver, "Python SDK", "TestResults-DiffsFound", {'width': 800, 'height': 600})
-    driver.get('http://applitools.github.io/demo/TestPages/FramesTestPage/')
-    eyes.check_window("initial")
-    with pytest.raises(DiffsFoundError):
-        eyes.close()
-
-
+@pytest.mark.browser('chrome')
 @pytest.mark.platform('Linux')
 @pytest.mark.skip("Depending on Fluent API. Not implemented yet")
 def test_server_connector(driver):
@@ -37,6 +19,7 @@ def test_server_connector(driver):
     eyes.abort_if_not_closed()
 
 
+@pytest.mark.browser('chrome')
 @pytest.mark.platform('Linux')
 def test_directly_set_viewport_size(eyes, driver):
     required_viewport = {'width': 450, 'height': 300}

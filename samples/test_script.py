@@ -1,10 +1,8 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 
-from applitools import (
-    logger, StdoutLogger,
-    Eyes, StitchMode, Region,
-    Target, IgnoreRegionBySelector, FloatingRegion, FloatingBounds)
+from applitools.core import logger, StdoutLogger, Region
+from applitools.selenium import StitchMode, Eyes, Target, IgnoreRegionBySelector, FloatingRegion, FloatingBounds
 
 # os.environ['HTTPS_PROXY'] = "http://localhost:9999"
 

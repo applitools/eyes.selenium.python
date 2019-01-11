@@ -6,17 +6,21 @@ from applitools.target import Target
 
 
 @pytest.mark.platform('Linux', 'Windows', 'macOS')
-@pytest.mark.usefixtures("eyes_session")
-@pytest.mark.parametrize("eyes_session", [False, True],
+@pytest.mark.usefixtures("eyes_for_class")
+@pytest.mark.parametrize('eyes', [
+    {'force_full_page_screenshot': True},
+    {'force_full_page_screenshot': False},
+],
                          indirect=True,
-                         ids=lambda fsp: "with FSP" if fsp else "no FSP")
+                         ids=lambda o: "with FSP" if o['force_full_page_screenshot'] else "no FSP")
+@pytest.mark.viewport_size({'width': 800, 'height': 600})
+@pytest.mark.test_page_url('http://applitools.github.io/demo/TestPages/FramesTestPage/')
 class TestSetup(object):
-    test_suite_name = None
-    tested_page_url = "http://applitools.github.io/demo/TestPages/FramesTestPage/"
+    pass
 
 
+@pytest.mark.test_suite_name('Eyes Selenium SDK - Classic API')
 class TestClassicAPI(TestSetup):
-    test_suite_name = "Eyes Selenium SDK - Classic API"
 
     def test_check_window(self):
         self.eyes.check_window(tag='Window')
@@ -37,8 +41,8 @@ class TestClassicAPI(TestSetup):
 
 
 @pytest.mark.skip("Not implemented yet")
+@pytest.mark.test_suite_name('Eyes Selenium SDK - Fluent API')
 class TestFluentAPI(TestSetup):
-    test_suite_name = "Eyes Selenium SDK - Fluent API"
 
     def test_check_window_with_ignore_region_fluent(self):
         self.eyes.check("Fluent - Window with Ignore region", Target.window()).fully().timeout(5000).ignore(Region(
@@ -94,24 +98,24 @@ class TestFluentAPI(TestSetup):
 
 
 @pytest.mark.skip("Depending on Fluent API. Not implemented yet")
+@pytest.mark.test_suite_name('Eyes Selenium SDK - Special Cases')
+@pytest.mark.test_page_url('http://applitools.github.io/demo/TestPages/WixLikeTestPage/index.html')
 class TestSpecialCases(TestSetup):
-    test_suite_name = "Eyes Selenium SDK - Special Cases"
-    tested_page_url = "http://applitools.github.io/demo/TestPages/WixLikeTestPage/index.html"
 
     def test_check_region_in_a_very_big_frame(self):
         self.eyes.check("map", Target.frame("frame1").region(By.TAG_NAME, "img"))
 
     def test_check_region_in_a_very_big_frame_after_manual_switch_frame(self):
-        self.driver.switch_to.frame("frame1")
-        element = self.driver.find_element(By.CSS_SELECTOR, "img")
-        # TODO #112: fix bug execute_script method calling with EyesWebElement
-        self.driver.execute_script("arguments[0].scrollIntoView(true);", element.element)
-        self.eyes.check("", Target.region(By.CSS_SELECTOR, "img"))
+        with self.driver.switch_to.frame_and_back("frame1"):
+            element = self.driver.find_element(By.CSS_SELECTOR, "img")
+            # TODO #112: fix bug execute_script method calling with EyesWebElement
+            self.driver.execute_script("arguments[0].scrollIntoView(true);", element.element)
+            self.eyes.check("", Target.region(By.CSS_SELECTOR, "img"))
 
 
 @pytest.mark.skip("Not runnable in java sdk")
+@pytest.mark.test_suite_name('Eyes Selenium SDK - ElementsFrames')
 class ElementsFramesTest(TestSetup):
-    test_suite_name = "Eyes Selenium SDK"
 
     def test_home1(self):
         self.driver.get("https://astappev.github.io/test-html-pages/")

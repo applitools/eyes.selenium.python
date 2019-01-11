@@ -1,6 +1,4 @@
 from .__version__ import __version__
-from .common import StitchMode
-
 from .core import *  # noqa
 from .selenium import *  # noqa
 from .utils import *  # noqa

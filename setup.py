@@ -4,8 +4,7 @@ import re
 import sys
 
 from os import path
-
-from setuptools import setup
+from setuptools import setup, find_packages
 
 here = path.abspath(path.dirname(__file__))
 
@@ -14,45 +13,21 @@ def read(filename):
     return codecs.open(path.join(here, filename), 'r', 'utf-8').read()
 
 
-install_requires = [
-    'requests>=2.1.0',
-    'selenium>=2.53.0',
-    'Pillow>=5.0.0'
-]
-
-install_dev_requires = [
-    'bumpversion',
-    'flake8',
-    'flake8-import-order',
-    'flake8-bugbear']
-
-install_testing_requires = [
-    'pytest >= 3.0.0',
-    'pytest-cov',
-    'pytest-xdist',
-]
-
-if sys.version_info < (3, 5):
-    # typing module was added as builtin in Python 3.5
-    install_requires.append('typing >= 3.5.2')
-
-if sys.version_info > (3, 4):
-    # mypy could be ran only with Python 3
-    install_dev_requires.append('mypy')
-
 # preventing ModuleNotFoundError caused by importing lib before installing deps
-with open(os.path.join(os.path.abspath('.'), 'applitools/__version__.py'), 'r') as f:
-    try:
-        version = re.findall(r"^__version__ = '([^']+)'\r?$",
-                             f.read(), re.M)[0]
-    except IndexError:
-        raise RuntimeError('Unable to determine version.')
+def get_version():
+    with open(os.path.join(os.path.abspath('.'), 'applitools/__version__.py'), 'r') as f:
+        try:
+            version = re.findall(r"^__version__ = '([^']+)'\r?$",
+                                 f.read(), re.M)[0]
+        except IndexError:
+            raise RuntimeError('Unable to determine version.')
+    return version
+
 
 setup(
     name='eyes-selenium',
-    version=version,
-    packages=['applitools', 'applitools.core',
-              'applitools.selenium', 'applitools.utils'],
+    version=get_version(),
+    packages=find_packages(exclude=('tests',)),
     url='http://www.applitools.com',
     license='Apache License, Version 2.0',
     author='Applitools Team',
@@ -72,10 +47,28 @@ setup(
         "Topic :: Software Development :: Testing"
     ],
     keywords='applitools eyes selenium',
-    install_requires=install_requires,
+    install_requires=[
+        'requests>=2.1.0',
+        'selenium>=2.53.0',
+        'Pillow>=5.0.0',
+        'tinycss2>=0.6.1',
+
+        'typing>=3.5.2; python_version<="3.4"',
+    ],
     extras_require={
-        'dev': install_dev_requires,
-        'testing': install_testing_requires,
+        'dev': [
+            'bumpversion',
+            'flake8',
+            'flake8-import-order',
+            'flake8-bugbear',
+            'mypy',
+            'towncrier',
+        ],
+        'testing': [
+            'pytest < 4.0.0',
+            'pytest-cov',
+            'pytest-xdist',
+        ],
     },
     package_data={
         '': ['README.md', 'samples'],

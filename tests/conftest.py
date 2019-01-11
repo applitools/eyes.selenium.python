@@ -14,13 +14,14 @@ import os
 import sys
 
 import pytest
-
 from selenium import webdriver
-
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.remote.remote_connection import RemoteConnection
 
-from applitools import logger, StdoutLogger, Eyes, __version__
+from applitools.__version__ import __version__
+from applitools.core import logger, StdoutLogger
+from applitools.selenium import Eyes, EyesWebDriver, eyes_selenium_utils
+from applitools.utils import iteritems
 
 from .platfroms import SUPPORTED_PLATFORMS, SUPPORTED_PLATFORMS_DICT
 
@@ -34,34 +35,70 @@ def eyes(request):
     eyes = Eyes()
     eyes.hide_scrollbars = True
 
+    # configure eyes options through @pytest.mark.eyes() marker
+    eyes_mark_opts = request.node.get_closest_marker('eyes')
+    eyes_mark_opts = eyes_mark_opts.kwargs if eyes_mark_opts else {}
+
+    # configure eyes through @pytest.mark.parametrize('eyes', [])
+    eyes_parametrized_opts = getattr(request, 'param', {})
+    if set(eyes_mark_opts.keys()).intersection(eyes_parametrized_opts):
+        raise ValueError("Eyes options conflict. The values from .mark.eyes and .mark.parametrize shouldn't intersect.")
+
+    eyes_mark_opts.update(eyes_parametrized_opts)
+    for key, val in iteritems(eyes_mark_opts):
+        setattr(eyes, key, val)
+
     yield eyes
     eyes.abort_if_not_closed()
 
 
-@pytest.fixture(scope="function", name="eyes_session")
-def eyes_session(request, eyes, driver):
-    force_full_page_screenshot = getattr(request, 'param', False)
-    eyes.force_full_page_screenshot = force_full_page_screenshot
+@pytest.fixture(scope="function")
+def eyes_open(request, eyes, driver):
+    test_page_url = request.node.get_closest_marker('test_page_url').args[-1]
 
-    test_suite_name = request.cls.test_suite_name
+    viewport_size = request.node.get_closest_marker('viewport_size')
+    viewport_size = viewport_size.args[-1] if viewport_size else None
+
+    test_suite_name = request.node.get_closest_marker('test_suite_name')
+    test_suite_name = test_suite_name.args[-1] if test_suite_name else 'Python SDK'
+
     # use camel case in method name for fit java sdk tests name
     test_name = request.function.__name__.title().replace('_', '')
 
-    if force_full_page_screenshot:
+    if eyes.force_full_page_screenshot:
         test_suite_name += ' - ForceFPS'
         test_name += '_FPS'
     driver = eyes.open(driver, test_suite_name, test_name,
-                       viewport_size={'width': 800, 'height': 600})
-    driver.get(request.cls.tested_page_url)
+                       viewport_size=viewport_size)
+    driver.get(test_page_url)
 
-    # TODO: implement eyes.setDebugScreenshotsPrefix("Java_" + testName + "_");
-
-    request.cls.eyes = eyes
-    request.cls.driver = driver
-
-    yield
+    yield eyes, driver
     results = eyes.close()
     print(results)
+
+
+@pytest.fixture(scope="function")
+def eyes_for_class(request, eyes_open):
+    # TODO: implement eyes.setDebugScreenshotsPrefix("Java_" + testName + "_");
+
+    eyes, driver = eyes_open
+    request.cls.eyes = eyes
+    request.cls.driver = driver
+    yield
+
+
+@pytest.fixture(scope="function")
+def driver_for_class(request, driver):
+    test_page_url = request.node.get_closest_marker('test_page_url').args[0]
+    viewport_size = request.node.get_closest_marker('viewport_size').args[0]
+
+    driver = EyesWebDriver(driver, None)
+    if viewport_size:
+        eyes_selenium_utils.set_browser_size(driver, viewport_size)
+    request.cls.driver = driver
+
+    driver.get(test_page_url)
+    yield
 
 
 @pytest.yield_fixture(scope='function')
@@ -72,8 +109,9 @@ def driver(request, browser_config):
     username = os.environ.get('SAUCE_USERNAME', None)
     access_key = os.environ.get('SAUCE_ACCESS_KEY', None)
 
+    force_remote = request.config.getoption('remote')
     selenium_url = os.environ.get('SELENIUM_SERVER_URL', 'http://127.0.0.1:4444/wd/hub')
-    if 'ondemand.saucelabs.com' in selenium_url:
+    if 'ondemand.saucelabs.com' in selenium_url or force_remote:
         selenium_url = "https://%s:%s@ondemand.saucelabs.com:443/wd/hub" % (username, access_key)
     logger.debug('SELENIUM_URL={}'.format(selenium_url))
 
@@ -104,14 +142,15 @@ def pytest_addoption(parser):
     parser.addoption("--platform", action="store")
     parser.addoption("--browser", action="store")
     parser.addoption("--headless", action="store")
+    parser.addoption("--remote", action="store")
 
 
 def _get_capabilities(platform_name=None, browser_name=None, headless=False):
     if platform_name is None:
         sys2platform_name = {
-            'linux': 'Linux',
+            'linux':  'Linux',
             'darwin': 'macOS 10.13',
-            'win32': 'Windows 10'
+            'win32':  'Windows 10'
         }
         platform_name = sys2platform_name[sys.platform]
     platform = SUPPORTED_PLATFORMS_DICT[platform_name]
@@ -201,10 +240,17 @@ def pytest_runtest_makereport(item, call):
 
 def pytest_runtest_setup(item):
     """Skip tests that not fit for selected platform"""
-    platform_marker = item.get_marker("platform")
+    platform_marker = item.get_closest_marker("platform")
     platform_cmd = item.config.getoption("platform")
     if platform_marker and platform_cmd:
         platforms = platform_marker.args
         cmd_platform = platform_cmd.split()[0]  # remove platform version
         if cmd_platform and cmd_platform not in platforms:
             pytest.skip("test requires platform %s" % cmd_platform)
+
+    browser_marker = item.get_closest_marker("browser")
+    browser_cmd = item.config.getoption("browser")
+    if browser_marker and browser_cmd:
+        browsers = browser_marker.args
+        if browser_cmd and browser_cmd not in browsers:
+            pytest.skip("test requires browser %s" % browser_cmd)

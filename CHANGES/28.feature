@@ -1,0 +1,1 @@
+Add DomCapture feature which allows to send HTML DOM to the server.

@@ -48,14 +48,14 @@ class Platform(namedtuple('Platform', 'name version browsers extra')):
             options = ChromeOptions()
             options.add_argument('disable-infobars')
         if options and headless:
-            options.set_headless()
+            options.headless = True
 
         # huck for preventing overwriting 'platform' value in desired_capabilities by chrome options
         browser_caps = options.to_capabilities() if options else {}
         browser_name, browser_version = [b for b in self.browsers if browser_name.lower() == b[0].lower()][0]
         browser_caps.update({'browserName': browser_name,
-                             'version': browser_version,
-                             'platform': self.full_name})
+                             'version':     browser_version,
+                             'platform':    self.full_name})
         if isinstance(self.extra, dict):
             browser_caps.update(self.extra)
         return browser_caps
@@ -80,17 +80,33 @@ SUPPORTED_PLATFORMS = [
     Platform(name='Linux', version='', browsers=COMMON_BROWSERS, extra=None),
     Platform(name='macOS', version='10.13', browsers=COMMON_BROWSERS + [('safari', 'latest')], extra=None),
 
-    Platform(name='iPhone', version='10.0', browsers=[], extra={
-        "appiumVersion": "1.7.2",
-        "deviceName": "Iphone Emulator",
+    Platform(name='iOS', version='11.3', browsers=[], extra={
+        "appiumVersion":     "1.9.1",
+        "deviceName":        "iPhone Simulator",
         "deviceOrientation": "portrait",
-        "browserName": "Safari",
+        "browserName":       "Safari",
+        "newCommandTimeout": 60 * 5
     }),
     Platform(name='Android', version='6.0', browsers=[], extra={
-        "appiumVersion": "1.7.2",
-        "deviceName": "Android Emulator",
+        "appiumVersion":     "1.9.1",
+        "deviceName":        "Android Emulator",
         "deviceOrientation": "portrait",
-        "browserName": "Browser",
+        "browserName":       "Chrome",
+        "newCommandTimeout": 60 * 5
+    }),
+    Platform(name='Android', version='7.0', browsers=[], extra={
+        "appiumVersion":     "1.9.1",
+        "deviceName":        "Android Emulator",
+        "deviceOrientation": "portrait",
+        "browserName":       "Chrome",
+        "newCommandTimeout": 60 * 5
+    }),
+    Platform(name='Android', version='8.0', browsers=[], extra={
+        "appiumVersion":     "1.9.1",
+        "deviceName":        "Samsung S9+",
+        "deviceOrientation": "portrait",
+        "browserName":       "Chrome",
+        "newCommandTimeout": 60 * 5
     })
 ]
 SUPPORTED_PLATFORMS_DICT = {platform.full_name: platform for platform in SUPPORTED_PLATFORMS}

@@ -70,8 +70,9 @@ class ContextBasedScaleProvider(ScaleProvider):
             logger.info('Calculating the scale ratio..')
             self._scale_ratio = 1.0 / self.device_pixel_ratio
             if self.is_mobile_device:
+                # FIXME: This code should execute cause strange bugs with calculation
                 logger.info('Mobile device, so using 2 step calculation for scale ration...')
-                logger.info('Scale ratio based on DRP: ' + self._scale_ratio)
+                logger.info('Scale ratio based on DRP: ' + str(self._scale_ratio))
                 self._scale_ratio = self.get_scale_ratio_to_viewport(viewport_width,
                                                                      image_to_scale_width,
                                                                      self._scale_ratio)
