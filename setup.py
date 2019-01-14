@@ -24,6 +24,18 @@ def get_version():
     return version
 
 
+install_requires = [
+    'requests>=2.1.0',
+    'selenium>=2.53.0',
+    'Pillow>=5.0.0',
+    'tinycss2>=0.6.1',
+]
+# using this way of defining instead of 'typing>=3.5.2; python_version<="3.4"'
+# for run on old version of setuptools without issues
+if sys.version_info < (3, 5):
+    # typing module was added as builtin in Python 3.5
+    install_requires.append('typing >= 3.5.2')
+
 setup(
     name='eyes-selenium',
     version=get_version(),
@@ -47,16 +59,9 @@ setup(
         "Topic :: Software Development :: Testing"
     ],
     keywords='applitools eyes selenium',
-    install_requires=[
-        'requests>=2.1.0',
-        'selenium>=2.53.0',
-        'Pillow>=5.0.0',
-        'tinycss2>=0.6.1',
-
-        'typing>=3.5.2; python_version<="3.4"',
-    ],
+    install_requires=install_requires,
     extras_require={
-        'dev': [
+        'dev':     [
             'bumpversion',
             'flake8',
             'flake8-import-order',
@@ -71,14 +76,14 @@ setup(
         ],
     },
     package_data={
-        '': ['README.md', 'samples'],
+        '':           ['README.md', 'samples'],
         'applitools': ['py.typed'],
     },
     project_urls={
-        'Bug Reports': 'https://github.com/applitools/eyes.selenium.python/issues',
-        'Selenium Python example': 'https://applitools.com/resources/tutorial/selenium/python#step-2',
+        'Bug Reports':                  'https://github.com/applitools/eyes.selenium.python/issues',
+        'Selenium Python example':      'https://applitools.com/resources/tutorial/selenium/python#step-2',
         'Python Appium native example': 'https://applitools.com/resources/tutorial/appium/native_python#step-2',
-        'Python Appium web example': 'https://applitools.com/resources/tutorial/appium/python#step-2',
-        'Source': 'https://github.com/applitools/eyes.selenium.python',
+        'Python Appium web example':    'https://applitools.com/resources/tutorial/appium/python#step-2',
+        'Source':                       'https://github.com/applitools/eyes.selenium.python',
     },
 )
