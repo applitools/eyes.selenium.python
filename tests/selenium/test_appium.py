@@ -23,7 +23,7 @@ def test_android_native(eyes, driver):
 ],
                          indirect=True,
                          ids=lambda o: "with FSP" if o['force_full_page_screenshot'] else "no FSP")
-@pytest.mark.test_page_url('http://applitools.com')
+@pytest.mark.test_page_url('http://applitools.github.io/demo/TestPages/FramesTestPage/')
 def test_final_application_android(eyes_open):
     eyes, driver = eyes_open
     eyes.check_window("test2")
@@ -39,7 +39,7 @@ def test_final_application_android(eyes_open):
 ],
                          indirect=True,
                          ids=lambda o: "with FSP" if o['force_full_page_screenshot'] else "no FSP")
-@pytest.mark.test_page_url('http://applitools.com')
+@pytest.mark.test_page_url('http://applitools.github.io/demo/TestPages/FramesTestPage/')
 def test_final_application_ios(eyes_open):
     eyes, driver = eyes_open
     eyes.check_window()

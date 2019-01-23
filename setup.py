@@ -73,6 +73,7 @@ setup(
             'pytest < 4.0.0',
             'pytest-cov',
             'pytest-xdist',
+            'mock'
         ],
     },
     package_data={

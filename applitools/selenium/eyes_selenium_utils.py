@@ -92,9 +92,19 @@ if( navigator.userAgent.match(/Android/i) ||
     """
     # TODO: Implement proper UserAgent handling
     driver = get_underlying_driver(driver)
-    is_mobile_platform = driver.desired_capabilities.get('platformName') in ('Android', 'iOS')
+    platform_name = driver.desired_capabilities.get('platformName', '').lower()
+    # platformName sometime have different names
+    is_mobile_platform = 'android' in platform_name or 'ios' in platform_name
     if not is_mobile_platform:
-        is_mobile_platform = driver.execute_script(is_mobile)
+        try:
+            is_mobile_platform = driver.execute_script(is_mobile)
+        except WebDriverException as e:
+            logger.warning('Got error during checking if current platform is mobile')
+            if 'Method is not implemented' in str(e):
+                # potentially mobile app
+                is_mobile_platform = True
+            else:
+                is_mobile_platform = False
     return is_mobile_platform
 
 
