@@ -1,7 +1,9 @@
 import pytest
+from selenium.webdriver.common.by import By
+
+from applitools import Target, IgnoreRegionBySelector, FloatingRegion, Region, FloatingBounds
 
 
-@pytest.mark.mobile
 @pytest.mark.platform('Android')
 @pytest.mark.capabilities(**{"app":              "http://saucelabs.com/example_files/ContactManager.apk",
                              "clearSystemFiles": True,
@@ -15,7 +17,7 @@ def test_android_native(eyes, driver):
     eyes.close()
 
 
-@pytest.mark.mobile
+@pytest.mark.platform('iOS')
 @pytest.mark.platform('Android')
 @pytest.mark.parametrize('eyes', [
     {'force_full_page_screenshot': True, 'hide_scrollbars': False},
@@ -23,25 +25,14 @@ def test_android_native(eyes, driver):
 ],
                          indirect=True,
                          ids=lambda o: "with FSP" if o['force_full_page_screenshot'] else "no FSP")
-@pytest.mark.test_page_url('http://applitools.github.io/demo/TestPages/FramesTestPage/')
-def test_final_application_android(eyes_open):
+@pytest.mark.test_page_url('http://applitools.com')
+def test_final_application(eyes_open):
     eyes, driver = eyes_open
-    eyes.check_window("test2")
-    btn_element = driver.find_element_by_css_selector('button')
-    eyes.check_region_by_element(btn_element, stitch_content=True)
+    eyes.check_window("Home", target=(Target()
+                                      .ignore(IgnoreRegionBySelector(By.CLASS_NAME, 'hero-container'))
+                                      .floating(FloatingRegion(Region(10, 20, 30, 40), FloatingBounds(10, 0, 20, 10))))
+                      )
 
-
-@pytest.mark.mobile
-@pytest.mark.platform('iOS')
-@pytest.mark.parametrize('eyes', [
-    {'force_full_page_screenshot': True, 'hide_scrollbars': False},
-    {'force_full_page_screenshot': False, 'hide_scrollbars': False},
-],
-                         indirect=True,
-                         ids=lambda o: "with FSP" if o['force_full_page_screenshot'] else "no FSP")
-@pytest.mark.test_page_url('http://applitools.github.io/demo/TestPages/FramesTestPage/')
-def test_final_application_ios(eyes_open):
-    eyes, driver = eyes_open
-    eyes.check_window()
-    btn_element = driver.find_element_by_css_selector('button')
-    eyes.check_region_by_element(btn_element, stitch_content=True)
+    hero = driver.find_element_by_class_name("hero-container")
+    eyes.check_region_by_element(hero, "Page Hero", target=(Target()
+                                                            .ignore(Region(20, 20, 50, 50), Region(40, 40, 10, 20))))

@@ -286,7 +286,8 @@ def timeout(timeout):
 
 def is_landscape_orientation(driver):
     if is_mobile_device(driver):
-        appium_driver = get_underlying_driver(driver)  # type: AppiumRemoteWebDriver
+        # could be AppiumRemoteWebDriver
+        appium_driver = get_underlying_driver(driver)  # type: WebDriver
 
         original_context = None
         try:
