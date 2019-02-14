@@ -1,7 +1,7 @@
 import pytest
 from selenium.webdriver.common.by import By
 
-from applitools.selenium import Target
+from applitools.selenium import Target, StitchMode
 
 
 @pytest.mark.skip("Depending on Fluent API. Not implemented yet")
@@ -32,3 +32,14 @@ def test_w3schools_iframe(eyes, driver):
     eyes.check_region_in_frame_by_selector("iframeResult", By.TAG_NAME, "body", "Entire Frame", stitch_content=False)
     eyes.close()
 
+
+@pytest.mark.platform("Linux")
+def test_omnicomprgroup(eyes, driver):
+    eyes.stitch_mode = StitchMode.CSS
+    eyes.force_full_page_screenshot = True
+    driver = eyes.open(
+        driver, "Python SDK", "TestOmnicomprgroup_FPS", {"width": 400, "height": 600}
+    )
+    driver.get("https://www.omnicomprgroup.com/")
+    eyes.check_window()
+    eyes.close()
