@@ -5,8 +5,6 @@ import typing as tp
 from collections import OrderedDict
 
 from .errors import EyesError
-from .metadata import CoordinatesType
-from .utils import argument_guard
 
 if tp.TYPE_CHECKING:
     from ..utils.custom_types import ViewPort
