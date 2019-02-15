@@ -5,6 +5,8 @@ import typing as tp
 from collections import OrderedDict
 
 from .errors import EyesError
+from .metadata import CoordinatesType
+from .utils import argument_guard
 
 if tp.TYPE_CHECKING:
     from ..utils.custom_types import ViewPort
@@ -46,7 +48,7 @@ class Point(object):
     def __div__(self, scalar):
         return Point(self.x / scalar, self.y / scalar)
 
-    def __str__(self):
+    def __repr__(self):
         return "({0}, {1})".format(self.x, self.y)
 
     def __bool__(self):
@@ -56,6 +58,9 @@ class Point(object):
         if item not in ('x', 'y'):
             raise KeyError
         return getattr(self, item)
+
+    def __eq__(self, other):
+        return self.x == other.x and self.y == other.y
 
     @classmethod
     def create_top_left(cls):
@@ -388,5 +393,5 @@ class Region(object):
             height=int(math.ceil(self.height * scale_ratio))
         )
 
-    def __str__(self):
+    def __repr__(self):
         return "(%s, %s) %s x %s" % (self.left, self.top, self.width, self.height)
