@@ -226,6 +226,10 @@ def warning(msg):
     warnings.warn(msg)
 
 
+def deprecation(msg):
+    warnings.warn("DEPRECATION: {}".format(msg))
+
+
 def save_screenshot(image, suffix, region=None):
     # type: (Image.Image, tp.Text, tp.Optional[Region]) -> None
     """
