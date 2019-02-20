@@ -163,7 +163,7 @@ class EyesWebDriver(object):
                             'current_activity', 'network_connection', 'available_ime_engines',
                             'active_ime_engine', 'device_time', 'w3c', 'contexts', 'current_package',
                             # Appium specific
-                            'battery_info']
+                            'battery_info', 'location']
     _SETTABLE_PROPERTIES = ['orientation', 'file_detector']
 
     # This should pretty much cover all scroll bars (and some fixed position footer elements :) ).
