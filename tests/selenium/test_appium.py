@@ -1,7 +1,7 @@
 import pytest
 from selenium.webdriver.common.by import By
 
-from applitools import Target, IgnoreRegionBySelector, FloatingRegion, Region, FloatingBounds
+from applitools import Target, IgnoreRegionBySelector, FloatingRegion, Region, FloatingBounds, StitchMode
 
 
 @pytest.mark.platform('Android')
@@ -17,15 +17,9 @@ def test_android_native(eyes, driver):
     eyes.close()
 
 
-@pytest.mark.platform('iOS')
-@pytest.mark.platform('Android')
-@pytest.mark.parametrize('eyes', [
-    {'force_full_page_screenshot': True, 'hide_scrollbars': False},
-    {'force_full_page_screenshot': False, 'hide_scrollbars': False},
-],
-                         indirect=True,
-                         ids=lambda o: "with FSP" if o['force_full_page_screenshot'] else "no FSP")
+@pytest.mark.platform('Android', 'iOS')
 @pytest.mark.test_page_url('http://applitools.com')
+@pytest.mark.eyes(force_full_page_screenshot=True, stitch_mode=StitchMode.CSS)
 def test_final_application(eyes_open):
     eyes, driver = eyes_open
     eyes.check_window("Home", target=(Target()

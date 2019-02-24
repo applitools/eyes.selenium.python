@@ -42,9 +42,13 @@ class Eyes(EyesBase):
     _DEFAULT_DEVICE_PIXEL_RATIO = 1
 
     @staticmethod
-    def set_viewport_size(driver, size):
-        # type: (AnyWebDriver, ViewPort) -> None
+    def set_viewport_size(driver, size=None, viewportsize=None):
+        # type: (AnyWebDriver, tp.Optional[ViewPort], tp.Optional[ViewPort]) -> None
         assert driver is not None
+        if size is None and viewportsize is None:
+            raise ValueError("set_viewport_size require `size` parameter")
+        if viewportsize:
+            logger.deprecation("Use `size` parameter instead")
         eyes_selenium_utils.set_viewport_size(driver, size)
 
     def get_viewport_size(self):
