@@ -79,7 +79,9 @@ class MatchWindowTask(object):
                     "IgnoreCaret": target.get_ignore_caret(),
                     "Exact": default_match_settings.exact_settings,
                     "Ignore": ignore,
-                    "Floating": floating
+                    "Floating": floating,
+                    "UseDom": target._use_dom,
+                    "EnablePatterns": target._enable_patterns
                 },
                 "IgnoreMismatch": ignore_mismatch,
                 "Trim": {
