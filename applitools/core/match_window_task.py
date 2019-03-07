@@ -132,7 +132,7 @@ class MatchWindowTask(object):
             dynamic_regions = MatchWindowTask._get_dynamic_regions(target, self._last_screenshot)
         app_output = {'title': title, 'screenshot64': None}  # type: AppOutput
 
-        if self._eyes.send_dom or target._send_dom:
+        if self._eyes.send_dom or (target and target._send_dom):
             dom_json = self._eyes._try_capture_dom()
             if dom_json:
                 dom_url = self._eyes._try_post_dom_snapshot(dom_json)
