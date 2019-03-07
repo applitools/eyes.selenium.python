@@ -12,9 +12,9 @@ from ..core import logger, EyesError
 if tp.TYPE_CHECKING:
     from applitools.utils.custom_types import AnyWebDriver, ViewPort
 
-__all__ = ('get_current_frame_content_entire_size', 'get_device_pixel_ratio', 'get_viewport_size',
-           'get_window_size', 'set_window_size', 'set_browser_size', 'set_browser_size_by_viewport_size',
-           'set_viewport_size', 'hide_scrollbars', 'set_overflow')
+__all__ = ('get_current_frame_content_entire_size', 'get_device_pixel_ratio', 'get_viewport_size', 'get_window_size',
+           'set_window_size', 'set_browser_size', 'set_browser_size_by_viewport_size', 'set_viewport_size',
+           'hide_scrollbars', 'set_overflow')
 
 _NATIVE_APP = 'NATIVE_APP'
 _JS_GET_VIEWPORT_SIZE = """
@@ -65,7 +65,8 @@ _JS_SET_OVERFLOW = """
     return origOF;
   }());
 """
-
+_JS_DATA_APPLITOOLS_SCROLL = "arguments[0].setAttribute('data-applitools-scroll', 'true');"
+_JS_DATA_APPLITOOLS_ORIGINAL_OVERFLOW = "arguments[0].setAttribute('data-applitools-original-overflow', '%s');"
 _JS_TRANSFORM_KEYS = ("transform", "-webkit-transform")
 _OVERFLOW_HIDDEN = 'hidden'
 _MAX_DIFF = 3
@@ -114,6 +115,15 @@ def get_underlying_driver(driver):
     if isinstance(driver, EyesWebDriver):
         driver = driver.driver
     return driver
+
+
+def get_underlying_webelement(element):
+    # type: (AnyWebElement) -> WebElement
+    from applitools.selenium.webelement import EyesWebElement
+
+    if isinstance(element, EyesWebElement):
+        element = element.element
+    return element
 
 
 def get_current_frame_content_entire_size(driver):
@@ -188,10 +198,9 @@ def set_browser_size_by_viewport_size(driver, actual_viewport_size, required_siz
 
     browser_size = get_window_size(driver)
     logger.debug("Current browser size: {}".format(browser_size))
-    required_browser_size = dict(
-            width=browser_size['width'] + (required_size['width'] - actual_viewport_size['width']),
-            height=browser_size['height'] + (required_size['height'] - actual_viewport_size['height'])
-    )
+    required_browser_size = dict(width=browser_size['width'] + (required_size['width'] - actual_viewport_size['width']),
+                                 height=browser_size['height'] + (
+                                             required_size['height'] - actual_viewport_size['height']))
     return set_browser_size(driver, required_browser_size)
 
 
@@ -246,13 +255,11 @@ def set_viewport_size(driver, required_size):
             if abs(curr_height_change) <= height_diff:
                 curr_height_change += height_step
 
-            required_browser_size = dict(
-                    width=browser_size['width'] + curr_width_change,
-                    height=browser_size['height'] + curr_height_change)
+            required_browser_size = dict(width=browser_size['width'] + curr_width_change,
+                                         height=browser_size['height'] + curr_height_change)
             if required_browser_size == last_required_browser_size:
                 logger.info("Browser size is as required but viewport size does not match!")
-                logger.info("Browser size: {}, Viewport size: {}".format(required_browser_size,
-                                                                         actual_viewport_size))
+                logger.info("Browser size: {}, Viewport size: {}".format(required_browser_size, actual_viewport_size))
                 logger.info("Stopping viewport size attempts.")
                 break
 
@@ -276,6 +283,14 @@ def hide_scrollbars(driver):
 def set_overflow(driver, overflow):
     with timeout(0.1):
         return driver.execute_script(_JS_SET_OVERFLOW.format(overflow=overflow))
+
+
+def add_data_overflow_to_element(driver, element, overflow):
+    return driver.execute_script(_JS_DATA_APPLITOOLS_ORIGINAL_OVERFLOW % overflow, element)
+
+
+def add_data_scroll_to_element(driver, element):
+    return driver.execute_script(_JS_DATA_APPLITOOLS_SCROLL, element)
 
 
 @contextmanager

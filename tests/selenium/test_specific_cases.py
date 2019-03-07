@@ -50,3 +50,14 @@ def test_check_window_with_ignore_region_fluent(eyes, driver):
     eyes.check_window("Fluent - Window with Ignore region", target=Target().ignore(
         Region(left=50, top=50, width=100, height=100)))
     eyes.close()
+
+
+@pytest.mark.platform('Linux')
+def test_check_window_with_send_dom(eyes, driver):
+    eyes.open(driver, "Eyes Selenium SDK - Fluent API", "TestCheckWindowWithSendDom",
+              {'width': 800, 'height': 600})
+    driver.get('http://applitools.github.io/demo/TestPages/FramesTestPage/')
+    driver.find_element_by_tag_name('input').send_keys('My Input')
+    eyes.check_window("Fluent - Window with Ignore region", target=Target().send_dom().use_dom())
+    assert 'data-applitools-scroll' in driver.page_source
+    eyes.close()
