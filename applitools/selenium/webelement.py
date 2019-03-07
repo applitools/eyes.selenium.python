@@ -9,6 +9,7 @@ from selenium.webdriver.common.by import By
 from applitools.core.geometry import Region
 from applitools.core import logger
 from applitools.utils import general_utils
+from . import eyes_selenium_utils
 
 if tp.TYPE_CHECKING:
     from selenium.webdriver.remote.webelement import WebElement
@@ -16,7 +17,6 @@ if tp.TYPE_CHECKING:
     from applitools.core.geometry import Point
     from applitools.utils.custom_types import AnyWebDriver
     from .webdriver import EyesWebDriver
-    from .eyes import Eyes
 
 
 class EyesWebElement(object):
@@ -218,6 +218,8 @@ class EyesWebElement(object):
         logger.debug("Original overflow: %s" % original_overflow)
         if stabilization_time is not None:
             time.sleep(stabilization_time / 1000)
+
+        eyes_selenium_utils.add_data_overflow_to_element(self._driver, self.element, original_overflow)
         return original_overflow
 
     def hide_scrollbars(self):

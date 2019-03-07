@@ -582,6 +582,8 @@ class EyesWebDriver(object):
         logger.debug("Original overflow: %s" % original_overflow)
         if stabilization_time is not None:
             time.sleep(stabilization_time / 1000)
+
+        eyes_selenium_utils.add_data_overflow_to_element(self.driver, None, original_overflow)
         return original_overflow
 
     def wait_for_page_load(self, timeout=3, throw_on_timeout=False):
