@@ -49,8 +49,8 @@ class MatchWindowTask(object):
         self._default_retry_timeout = default_retry_timeout / 1000.0  # type: Num # since we want the time in seconds.
         self._last_screenshot = None  # type: tp.Optional[EyesScreenshot]
 
-    @staticmethod
-    def _create_match_data_bytes(app_output,  # type: AppOutput
+    def _create_match_data_bytes(self,
+                                 app_output,  # type: AppOutput
                                  user_inputs,  # type: UserInputs
                                  tag,  # type: tp.Text
                                  ignore_mismatch,  # type: bool
@@ -80,8 +80,8 @@ class MatchWindowTask(object):
                     "Exact": default_match_settings.exact_settings,
                     "Ignore": ignore,
                     "Floating": floating,
-                    "UseDom": target._use_dom,
-                    "EnablePatterns": target._enable_patterns
+                    "UseDom": self._eyes.use_dom or target._use_dom,
+                    "EnablePatterns": self._eyes.enable_patterns or target._enable_patterns
                 },
                 "IgnoreMismatch": ignore_mismatch,
                 "Trim": {
