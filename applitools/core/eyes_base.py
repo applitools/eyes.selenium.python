@@ -216,6 +216,9 @@ class EyesBase(ABC):
 
         # If true, we will send full DOM to the server for analyzing
         self.send_dom = False
+        # If true, use DOM for comparision
+        self.use_dom = False
+        self.enable_patterns = False
 
     @property
     def baseline_name(self):
