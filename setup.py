@@ -25,10 +25,10 @@ def get_version():
 
 
 install_requires = [
-    'requests>=2.1.0',
-    'selenium>=2.53.0',
-    'Pillow>=5.0.0',
-    'tinycss2>=0.6.1',
+    "requests>=2.1.0,<2.21.0",
+    "selenium>=2.53.0,<4",
+    "Pillow>=5.0.0,<7.0.0",
+    "tinycss2==0.6.1",
 ]
 # using this way of defining instead of 'typing>=3.5.2; python_version<="3.4"'
 # for run on old version of setuptools without issues

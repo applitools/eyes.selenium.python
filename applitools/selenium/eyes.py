@@ -217,6 +217,7 @@ class Eyes(EyesBase):
     def _hide_scrollbars_if_needed(self):
         if self.hide_scrollbars:
             original_overflow = self._driver.hide_scrollbars()
+            eyes_selenium_utils.add_data_overflow_to_element(self.driver, None, original_overflow)
         yield
         if self.hide_scrollbars:
             self._driver.set_overflow(original_overflow)
@@ -390,6 +391,7 @@ class Eyes(EyesBase):
         self._element_position_provider = ElementPositionProvider(self._driver, element)
 
         origin_overflow = element.get_overflow()
+        eyes_selenium_utils.add_data_overflow_to_element(self.driver, element, origin_overflow)
         element.set_overflow('hidden')
 
         element_region = self._get_element_region(element)

@@ -158,6 +158,9 @@ class Target(object):
 
     def __init__(self):
         # type: () -> None
+        self._send_dom = False
+        self._use_dom = False
+        self._enable_patterns = False
         self._ignore_caret = True
         self._ignore_regions = []  # type: tp.List
         self._floating_regions = []  # type: tp.List
@@ -207,3 +210,15 @@ class Target(object):
 
     def get_ignore_caret(self):
         return self._ignore_caret
+
+    def send_dom(self, use=True):
+        self._send_dom = use
+        return self
+
+    def use_dom(self, use=True):
+        self._use_dom = use
+        return self
+
+    def enable_patterns(self, enable=True):
+        self._enable_patterns = enable
+        return self
