@@ -76,3 +76,13 @@ def test_check_window_with_send_dom(eyes, driver):
     assert 'data-applitools-scroll' in driver.page_source
     assert 'data-applitools-original-overflow' in driver.page_source
     eyes.close()
+
+
+def test_check_element_with_original_driver(eyes, driver):
+    eyes.open(driver, "Eyes Selenium SDK",
+              "TestCheckElementWithOriginalDriver",
+              {'width': 800, 'height': 600})
+    driver.get('http://applitools.github.io/demo/TestPages/FramesTestPage/')
+    element = driver.find_element_by_id('overflowing-div')
+    eyes.check_region_by_element(element)
+    eyes.close()

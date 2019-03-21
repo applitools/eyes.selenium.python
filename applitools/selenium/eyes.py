@@ -21,6 +21,7 @@ from .webdriver import EyesWebDriver
 from .capture import EyesWebDriverScreenshot, dom_capture
 from .target import Target
 from .positioning import StitchMode, ElementPositionProvider
+from .webelement import EyesWebElement
 
 if tp.TYPE_CHECKING:
     from applitools.core.scaling import ScaleProvider
@@ -387,7 +388,8 @@ class Eyes(EyesBase):
                                                              inside_a_frame=bool(self._driver.frame_chain),
                                                              stitch_content=stitch_content,
                                                              force_fullpage=self.force_full_page_screenshot)
-
+        if not isinstance(element, EyesWebElement):
+            element = EyesWebElement(element, self.driver)
         self._element_position_provider = ElementPositionProvider(self._driver, element)
 
         origin_overflow = element.get_overflow()
