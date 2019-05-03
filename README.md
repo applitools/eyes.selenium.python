@@ -1,3 +1,6 @@
+# DEPRECATED 
+This repository is deprecated. Check out our updated repo: https://github.com/applitools/eyes.sdk.python .
+
 [![Build Status](https://travis-ci.org/applitools/eyes.selenium.python.svg?branch=master)](https://travis-ci.org/applitools/eyes.selenium.python)
 
 eyes.selenium
