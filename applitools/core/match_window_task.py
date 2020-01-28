@@ -8,7 +8,7 @@ from struct import pack
 # noinspection PyProtectedMember
 from ..utils import general_utils
 from . import logger
-from .errors import OutOfBoundsError
+from .errors import OutOfBoundsError, EyesError
 from .geometry import Region
 
 if tp.TYPE_CHECKING:
@@ -69,6 +69,12 @@ class MatchWindowTask(object):
             from applitools.selenium.target import Target  # noqa
             target = Target()
 
+        screenshot_bytes = screenshot.get_bytes()
+        if not self._agent_connector._try_upload_image(app_output, screenshot_bytes):
+            raise EyesError(
+                "MatchWindow failed: could not upload image to storage service."
+            )
+
         match_data = {
             "IgnoreMismatch": ignore_mismatch,
             "Options": {
@@ -94,8 +100,7 @@ class MatchWindowTask(object):
         }
         match_data_json_bytes = general_utils.to_json(match_data).encode('utf-8')
         match_data_size_bytes = pack(">L", len(match_data_json_bytes))
-        screenshot_bytes = screenshot.get_bytes()
-        body = match_data_size_bytes + match_data_json_bytes + screenshot_bytes
+        body = match_data_size_bytes + match_data_json_bytes
         return body
 
     @staticmethod

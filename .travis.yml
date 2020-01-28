@@ -1,11 +1,7 @@
 sudo: required
 dist: trusty
 addons:
- apt:
-  sources:
-   - google-chrome
-  packages:
-   - google-chrome-stable
+ chrome: stable
 # latest version of firefox already installed by default
 language: python
 python:

@@ -23,6 +23,7 @@ class TestSetup(object):
 class TestClassicAPI(TestSetup):
 
     def test_check_window(self):
+        self.eyes.hide_scrollbars = True
         self.eyes.check_window(tag='Window')
 
     def test_check_region(self):
