@@ -1,17 +1,20 @@
 from __future__ import absolute_import
 
+import itertools
 import time
 import typing as tp
+import uuid
 
 import requests
 from requests.packages import urllib3
 
 from applitools.utils import general_utils
 from applitools.utils.compat import urljoin, gzip_compress  # type: ignore
-from . import logger
+from . import logger, EyesError
 from .test_results import TestResults
 
 if tp.TYPE_CHECKING:
+    from typing import Dict, Optional, Text
     from requests.models import Response
     from ..utils.custom_types import RunningSession, SessionStartInfo, Num
 
@@ -28,6 +31,37 @@ def _parse_response_with_json_data(response):
     # type: (Response) -> tp.Dict[tp.Text, tp.Any]
     response.raise_for_status()
     return response.json()
+
+
+def retry(delays=(0, 100, 500), exception=Exception, report=lambda *args: None):
+    """
+    This is a Python decorator which helps implementing an aspect oriented
+    implementation of a retrying of certain steps which might fail sometimes.
+    https://code.activestate.com/recipes/580745-retry-decorator-in-python/
+    """
+
+    def wrapper(function):
+        def wrapped(*args, **kwargs):
+            problems = []
+            for delay in itertools.chain(delays, [None]):
+                try:
+                    return function(*args, **kwargs)
+                except exception as problem:
+                    problems.append(problem)
+                    if delay is None:
+                        report("retryable failed definitely: {}".format(problems))
+                        raise
+                    else:
+                        report(
+                            "retryable failed: {} -- delaying for {}".format(
+                                problem, delay
+                            )
+                        )
+                        time.sleep(delay)
+
+        return wrapped
+
+    return wrapper
 
 
 class AgentConnector(object):
@@ -47,6 +81,7 @@ class AgentConnector(object):
         # Used inside the server_url property.
         self._server_url = None
         self._endpoint_uri = None
+        self._render_info = None
 
         self.api_key = None  # type: ignore
         self.server_url = server_url
@@ -119,6 +154,68 @@ class AgentConnector(object):
         return TestResults(pr['steps'], pr['matches'], pr['mismatches'], pr['missing'],
                            pr['exactMatches'], pr['strictMatches'], pr['contentMatches'],
                            pr['layoutMatches'], pr['noneMatches'], pr['status'])
+
+    def render_info(self):
+        # type: () -> Optional[Dict]
+        logger.debug("render_info() called.")
+        headers = AgentConnector._DEFAULT_HEADERS.copy()
+        headers["Content-Type"] = "application/json"
+        response = requests.get(
+            urljoin(self._endpoint_uri, "/api/sessions/renderinfo"),
+            params=dict(apiKey=self.api_key), verify=False,
+            headers=headers, timeout=AgentConnector._TIMEOUT
+        )
+        if not response.ok:
+            raise EyesError(
+                "Cannot get render info: \n Status: {}, Content: {}".format(
+                    response.status_code, response.content
+                )
+            )
+        self._render_info = response.json()
+        return self._render_info
+
+    def _try_upload_image(self, app_output, screenshot_bytes):
+        # type: (Dict, bytes) -> bool
+        rendering_info = self.render_info()
+
+        if rendering_info and 'resultsUrl' in rendering_info:
+            try:
+                image_target_url = rendering_info['resultsUrl']
+                guid = uuid.uuid4()
+                image_target_url = image_target_url.replace("__random__", str(guid))
+                logger.info("uploading image to {}".format(image_target_url))
+                if self._upload_image(
+                        screenshot_bytes, rendering_info, image_target_url
+                ):
+                    app_output['screenshotUrl'] = image_target_url
+                    return True
+            except Exception as e:
+                logger.debug("Error uploading image")
+                logger.debug(str(e))
+
+    @retry(delays=(0.5, 1, 10), exception=EyesError, report=logger.debug)
+    def _upload_image(self, screenshot_bytes, rendering_info, image_target_url):
+        # type: (bytes, Dict, Text) -> bool
+        headers = AgentConnector._DEFAULT_HEADERS.copy()
+        headers["Content-Type"] = "image/png"
+        headers["Content-Length"] = str(len(screenshot_bytes))
+        headers["Media-Type"] = "image/png"
+        headers["X-Auth-Token"] = rendering_info['accessToken']
+        headers["x-ms-blob-type"] = "BlockBlob"
+
+        response = requests.put(
+            image_target_url,
+            data=screenshot_bytes,
+            headers=headers,
+            timeout=AgentConnector._TIMEOUT,
+            verify=False,
+        )
+        if response.status_code in [requests.codes.ok, requests.codes.created]:
+            logger.info("Upload Status Code: {}".format(response.status_code))
+            return True
+        raise EyesError(
+            "Failed to Upload Image. Status Code: {}".format(response.status_code)
+        )
 
     def match_window(self, running_session, data):
         # type: (RunningSession, tp.Text) -> bool

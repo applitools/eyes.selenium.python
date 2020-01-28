@@ -536,7 +536,7 @@ class EyesBase(ABC):
         app_env = self._environment
         self._start_info = {'agentId':              self.full_agent_id, 'appIdOrName': self._app_name,
                             'scenarioIdOrName':     self._test_name, 'batchInfo': self.batch,
-                            'envName':              self.baseline_branch_name, 'environment': app_env,
+                            'baselineBranchName':   self.baseline_branch_name, 'environment': app_env,
                             'defaultMatchSettings': self.default_match_settings, 'verId': None,
                             'branchName':           self.branch_name, 'parentBranchName': self.parent_branch_name,
                             'properties':           self._properties}

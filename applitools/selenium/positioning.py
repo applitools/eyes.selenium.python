@@ -163,6 +163,11 @@ class CSSTranslatePositionProvider(PositionProvider):
         translate_command = "translate(-{}px, -{}px)".format(location.x, location.y)
         logger.debug(translate_command)
         transform_list = dict((key, translate_command) for key in self._JS_TRANSFORM_KEYS)
+        # fix for CSS stitching in Chrome 78
+        self._execute_script(
+            "document.documentElement.style['transform']='translate(10px,-{:d}px';".format(
+                location.y)
+        )
         self._set_transform(transform_list)
         self._current_position = location.clone()
         self._add_data_attribute_to_element()

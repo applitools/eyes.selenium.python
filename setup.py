@@ -70,9 +70,9 @@ setup(
             'towncrier',
         ],
         'testing': [
-            'pytest < 4.0.0',
-            'pytest-cov',
-            'pytest-xdist',
+            'pytest==3.9.3',
+            'pytest-cov==2.6.1',
+            'pytest-xdist==1.26.1',
             'mock'
         ],
     },
