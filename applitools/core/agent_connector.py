@@ -1,9 +1,11 @@
 from __future__ import absolute_import
 
 import itertools
+import math
 import time
 import typing as tp
 import uuid
+from datetime import datetime
 
 import requests
 from requests.packages import urllib3
@@ -12,9 +14,10 @@ from applitools.utils import general_utils
 from applitools.utils.compat import urljoin, gzip_compress  # type: ignore
 from . import logger, EyesError
 from .test_results import TestResults
+from ..utils.general_utils import UTC
 
 if tp.TYPE_CHECKING:
-    from typing import Dict, Optional, Text
+    from typing import Dict, Optional, Text, Callable, Any
     from requests.models import Response
     from ..utils.custom_types import RunningSession, SessionStartInfo, Num
 
@@ -31,6 +34,45 @@ def _parse_response_with_json_data(response):
     # type: (Response) -> tp.Dict[tp.Text, tp.Any]
     response.raise_for_status()
     return response.json()
+
+
+def to_rfc1123_datetime(dt):
+    # type: (datetime) -> Text
+    """Return a string representation of a date according to RFC 1123
+    (HTTP/1.1).
+
+    The supplied date must be in UTC.
+
+    """
+    weekday = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][dt.weekday()]
+    month = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+    ][dt.month - 1]
+    return "%s, %02d %s %04d %02d:%02d:%02d GMT" % (
+        weekday,
+        dt.day,
+        month,
+        dt.year,
+        dt.hour,
+        dt.minute,
+        dt.second,
+    )
+
+
+def current_time_in_rfc1123():
+    # type: () -> Text
+    return to_rfc1123_datetime(datetime.now(UTC))
 
 
 def retry(delays=(0, 100, 500), exception=Exception, report=lambda *args: None):
@@ -69,6 +111,9 @@ class AgentConnector(object):
     Provides an API for communication with the Applitools server.
     """
     _TIMEOUT = 60 * 5  # Seconds
+    LONG_REQUEST_DELAY_MS = 2000  # type: int
+    MAX_LONG_REQUEST_DELAY_MS = 10000  # type: int
+    LONG_REQUEST_DELAY_MULTIPLICATIVE_INCREASE_FACTOR = 1.5  # type: float
     _DEFAULT_HEADERS = {'Accept': 'application/json', 'Content-Type': 'application/json'}
 
     def __init__(self, server_url):
@@ -97,22 +142,53 @@ class AgentConnector(object):
         self._server_url = server_url  # type: ignore
         self._endpoint_uri = server_url.rstrip('/') + '/api/sessions/running'  # type: ignore
 
-    @staticmethod
-    def _send_long_request(name, method, *args, **kwargs):
-        # type: (tp.Text, tp.Callable, *tp.Any, **tp.Any) -> Response
-        delay = 2  # type: Num  # Seconds
-        headers = kwargs['headers'].copy()
-        headers['Eyes-Expect'] = '202-accepted'
-        while True:
-            # Sending the current time of the request (in RFC 1123 format)
-            headers['Eyes-Date'] = time.strftime('%a, %d %b %Y %H:%M:%S GMT', time.gmtime())
-            kwargs['headers'] = headers
-            response = method(*args, **kwargs)
-            if response.status_code != 202:
-                return response
-            logger.debug("{0}: Still running... Retrying in {1}s".format(name, delay))
-            time.sleep(delay)
-            delay = min(10, delay * 1.5)
+    def long_request(self, method, url, **kwargs):
+        # type: (Callable, Text, **Any) -> Response
+        headers = kwargs.get("headers", AgentConnector._DEFAULT_HEADERS).copy()
+        headers["Eyes-Expect"] = "202+location"
+        headers["Eyes-Date"] = current_time_in_rfc1123()
+        kwargs["headers"] = headers
+        response = method(url, **kwargs)
+        return self._long_request_check_status(response)
+
+    def _long_request_check_status(self, response):
+        if response.status_code == requests.codes.ok:
+            # request ends successful
+            return response
+        elif response.status_code == requests.codes.accepted:
+            # long request here; calling received url to know that request was processed
+            url = response.headers["Location"]
+            response = self._long_request_loop(url)
+            return self._long_request_check_status(response)
+        elif response.status_code == requests.codes.created:
+            # delete url that was used before
+            url = response.headers["Location"]
+            return requests.delete(
+                url,
+                headers={"Eyes-Date": current_time_in_rfc1123()},
+                verify=False, params=dict(apiKey=self.api_key)
+            )
+        elif response.status_code == requests.codes.gone:
+            raise EyesError("The server task has gone.")
+        else:
+            raise EyesError("Unknown error during long request: {}".format(response))
+
+    def _long_request_loop(self, url, delay=LONG_REQUEST_DELAY_MS):
+        delay = min(
+            self.MAX_LONG_REQUEST_DELAY_MS,
+            math.floor(delay * self.LONG_REQUEST_DELAY_MULTIPLICATIVE_INCREASE_FACTOR),
+        )
+        logger.debug("Still running... Retrying in {} ms".format(delay))
+
+        time.sleep(delay / 1000.)
+        response = requests.get(
+            url,
+            headers={"Eyes-Date": current_time_in_rfc1123()},
+            verify=False, params=dict(apiKey=self.api_key)
+        )
+        if response.status_code != requests.codes.ok:
+            return response
+        return self._long_request_loop(url, delay)
 
     def start_session(self, session_start_info):
         # type: (SessionStartInfo) -> RunningSession
@@ -125,7 +201,7 @@ class AgentConnector(object):
         :return: Represents the current running session.
         """
         data = '{"startInfo": %s}' % (general_utils.to_json(session_start_info))
-        response = requests.post(self._endpoint_uri, data=data, verify=False, params=dict(apiKey=self.api_key),
+        response = self.long_request(requests.post, self._endpoint_uri, data=data, verify=False, params=dict(apiKey=self.api_key),
                                  headers=AgentConnector._DEFAULT_HEADERS,
                                  timeout=AgentConnector._TIMEOUT)
         parsed_response = _parse_response_with_json_data(response)
@@ -145,7 +221,7 @@ class AgentConnector(object):
         logger.debug('Stop session called..')
         session_uri = "%s/%s" % (self._endpoint_uri, running_session['session_id'])
         params = {'aborted': is_aborted, 'updateBaseline': save, 'apiKey': self.api_key}
-        response = AgentConnector._send_long_request("stop_session", requests.delete, session_uri,
+        response = self.long_request(requests.delete, session_uri,
                                                      params=params, verify=False,
                                                      headers=AgentConnector._DEFAULT_HEADERS,
                                                      timeout=AgentConnector._TIMEOUT)
@@ -233,8 +309,10 @@ class AgentConnector(object):
         # Using the default headers, but modifying the "content type" to binary
         headers = AgentConnector._DEFAULT_HEADERS.copy()
         headers['Content-Type'] = 'application/octet-stream'
-        response = requests.post(session_uri, params=dict(apiKey=self.api_key), data=data, verify=False,
-                                 headers=headers, timeout=AgentConnector._TIMEOUT)
+
+        response = self.long_request(requests.post, session_uri, params=dict(apiKey=self.api_key),
+                                     data=data, verify=False,
+                                     headers=headers, timeout=AgentConnector._TIMEOUT)
         parsed_response = _parse_response_with_json_data(response)
         return parsed_response['asExpected']
 
