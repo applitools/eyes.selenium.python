@@ -156,8 +156,11 @@ class AgentConnector(object):
         return self._long_request_check_status(response)
 
     def _long_request_check_status(self, response):
-        if response.status_code == requests.codes.ok:
-            # request ends successful
+        if (
+            response.status_code == requests.codes.ok
+            or "Location" not in response.headers
+        ):
+            # request ends successful or it doesn't support Long request
             return response
         elif response.status_code == requests.codes.accepted:
             # long request here; calling received url to know that request was processed
@@ -264,7 +267,7 @@ class AgentConnector(object):
         logger.debug("render_info() called.")
         headers = AgentConnector._DEFAULT_HEADERS.copy()
         headers["Content-Type"] = "application/json"
-        response = requests.get(
+        response = self.long_request(
             urljoin(self._endpoint_uri, "/api/sessions/renderinfo"),
             params=dict(apiKey=self.api_key),
             verify=False,
