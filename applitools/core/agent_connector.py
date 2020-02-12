@@ -153,6 +153,7 @@ class AgentConnector(object):
         headers["Eyes-Date"] = current_time_in_rfc1123()
         kwargs["headers"] = headers
         response = method(url, **kwargs)
+        logger.debug("Long request `{}` for {}".format(method.__name__, response.url))
         return self._long_request_check_status(response)
 
     def _long_request_check_status(self, response):
@@ -268,7 +269,8 @@ class AgentConnector(object):
         headers = AgentConnector._DEFAULT_HEADERS.copy()
         headers["Content-Type"] = "application/json"
         response = self.long_request(
-            urljoin(self._endpoint_uri, "/api/sessions/renderinfo"),
+            requests.get,
+            url=urljoin(self._endpoint_uri, "/api/sessions/renderinfo"),
             params=dict(apiKey=self.api_key),
             verify=False,
             headers=headers,
