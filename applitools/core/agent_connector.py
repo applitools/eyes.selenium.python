@@ -251,16 +251,16 @@ class AgentConnector(object):
         pr = _parse_response_with_json_data(response)
         logger.debug("stop_session(): parsed response: {}".format(pr))
         return TestResults(
-            pr["steps"],
-            pr["matches"],
-            pr["mismatches"],
-            pr["missing"],
-            pr["exactMatches"],
-            pr["strictMatches"],
-            pr["contentMatches"],
-            pr["layoutMatches"],
-            pr["noneMatches"],
-            pr["status"],
+            pr.get("steps"),
+            pr.get("matches"),
+            pr.get("mismatches"),
+            pr.get("missing"),
+            pr.get("exactMatches"),
+            pr.get("strictMatches"),
+            pr.get("contentMatches"),
+            pr.get("layoutMatches"),
+            pr.get("noneMatches"),
+            pr.get("status"),
         )
 
     def render_info(self):
