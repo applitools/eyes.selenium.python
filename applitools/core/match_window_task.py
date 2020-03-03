@@ -69,12 +69,12 @@ class MatchWindowTask(object):
             from applitools.selenium.target import Target  # noqa
             target = Target()
 
-        screenshot_bytes = screenshot.get_bytes()
-        if not self._agent_connector._try_upload_image(app_output, screenshot_bytes):
+        screenshot_url =  self._agent_connector._try_upload_data(screenshot.get_bytes(), "image/png", "image/png")
+        if screenshot_url is None:
             raise EyesError(
                 "MatchWindow failed: could not upload image to storage service."
             )
-
+        app_output['screenshotUrl'] = screenshot_url
         match_data = {
             "IgnoreMismatch": ignore_mismatch,
             "Options": {
@@ -140,7 +140,7 @@ class MatchWindowTask(object):
         if self._eyes.send_dom or (target and target._send_dom):
             dom_json = self._eyes._try_capture_dom()
             if dom_json:
-                dom_url = self._eyes._try_post_dom_snapshot(dom_json)
+                dom_url = self._eyes._try_post_dom_capture(dom_json)
                 if dom_url is None:
                     logger.warning('Failed to upload DOM. Skipping...')
                 else:

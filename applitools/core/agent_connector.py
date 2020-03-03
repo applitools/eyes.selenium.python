@@ -285,38 +285,37 @@ class AgentConnector(object):
         self._render_info = response.json()
         return self._render_info
 
-    def _try_upload_image(self, app_output, screenshot_bytes):
-        # type: (Dict, bytes) -> bool
+    def _try_upload_data(self, data_bytes, content_type, media_type):
+        # type: (bytes, Text, Text) -> Optional[Text]
         rendering_info = self.render_info()
 
         if rendering_info and "resultsUrl" in rendering_info:
             try:
-                image_target_url = rendering_info["resultsUrl"]
+                target_url = rendering_info["resultsUrl"]
                 guid = uuid.uuid4()
-                image_target_url = image_target_url.replace("__random__", str(guid))
-                logger.info("uploading image to {}".format(image_target_url))
-                if self._upload_image(
-                    screenshot_bytes, rendering_info, image_target_url
+                target_url = target_url.replace("__random__", str(guid))
+                logger.info("uploading image to {}".format(target_url))
+                if self._upload_data(
+                    data_bytes, rendering_info, target_url, content_type, media_type
                 ):
-                    app_output["screenshotUrl"] = image_target_url
-                    return True
+                    return target_url
             except Exception as e:
                 logger.debug("Error uploading image")
                 logger.debug(str(e))
 
     @retry(delays=(0.5, 1, 10), exception=EyesError, report=logger.debug)
-    def _upload_image(self, screenshot_bytes, rendering_info, image_target_url):
-        # type: (bytes, Dict, Text) -> bool
+    def _upload_data(self, data_bytes, rendering_info, target_url, content_type, media_type):
+        # type: (bytes, Dict, Text, Text, Text) -> bool
         headers = AgentConnector._DEFAULT_HEADERS.copy()
-        headers["Content-Type"] = "image/png"
-        headers["Content-Length"] = str(len(screenshot_bytes))
-        headers["Media-Type"] = "image/png"
+        headers["Content-Type"] = content_type
+        headers["Content-Length"] = str(len(data_bytes))
+        headers["Media-Type"] = media_type
         headers["X-Auth-Token"] = rendering_info["accessToken"]
         headers["x-ms-blob-type"] = "BlockBlob"
 
         response = requests.put(
-            image_target_url,
-            data=screenshot_bytes,
+            target_url,
+            data=data_bytes,
             headers=headers,
             timeout=AgentConnector._TIMEOUT,
             verify=False,
@@ -357,7 +356,7 @@ class AgentConnector(object):
         parsed_response = _parse_response_with_json_data(response)
         return parsed_response["asExpected"]
 
-    def post_dom_snapshot(self, dom_json):
+    def post_dom_capture(self, dom_json):
         # type: (tp.Text) -> tp.Optional[tp.Text]
         """
         Upload the DOM of the tested page.

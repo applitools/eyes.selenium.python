@@ -628,7 +628,7 @@ class EyesBase(ABC):
         Returns the string with DOM of the current page in the prepared format or empty string
         """
 
-    def _try_post_dom_snapshot(self, dom_json):
+    def _try_post_dom_capture(self, dom_json):
         # type: (tp.Text) -> tp.Optional[tp.Text]
         """
         In case DOM data is valid uploads it to the server and return URL where it stored.
@@ -636,7 +636,7 @@ class EyesBase(ABC):
         if dom_json is None:
             return None
         try:
-            return self._agent_connector.post_dom_snapshot(dom_json)
+            return self._agent_connector.post_dom_capture(dom_json)
         except Exception as e:
             logger.warning("Couldn't send DOM Json. Passing...\n Got next error: {}".format(e))
             return None
