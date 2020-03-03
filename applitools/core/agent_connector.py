@@ -362,17 +362,5 @@ class AgentConnector(object):
         Upload the DOM of the tested page.
         Return an URL of uploaded resource which should be posted to AppOutput.
         """
-        headers = AgentConnector._DEFAULT_HEADERS.copy()
-        headers["Content-Type"] = "application/octet-stream"
         dom_bytes = gzip_compress(dom_json.encode("utf-8"))
-        response = requests.post(
-            url=urljoin(self._endpoint_uri, "running/data"),
-            data=dom_bytes,
-            params=dict(apiKey=self.api_key),
-            headers=headers,
-            timeout=AgentConnector._TIMEOUT,
-        )
-        dom_url = None
-        if response.ok:
-            dom_url = response.headers["Location"]
-        return dom_url
+        return self._try_upload_data(dom_bytes, "application/octet-stream", "application/json")
