@@ -118,10 +118,11 @@ class AgentConnector(object):
     _DEFAULT_HEADERS = {
         "Accept": "application/json",
         "Content-Type": "application/json",
+        "x-applitools-eyes-client": None,
     }
 
-    def __init__(self, server_url):
-        # type: (tp.Text) -> None
+    def __init__(self, server_url, full_agent_id):
+        # type: (tp.Text, tp.Text) -> None
         """
         Ctor.
 
@@ -134,6 +135,7 @@ class AgentConnector(object):
 
         self.api_key = None  # type: ignore
         self.server_url = server_url
+        self._DEFAULT_HEADERS['x-applitools-eyes-client'] = full_agent_id
 
     @property
     def server_url(self):
@@ -173,7 +175,10 @@ class AgentConnector(object):
             url = response.headers["Location"]
             return requests.delete(
                 url,
-                headers={"Eyes-Date": current_time_in_rfc1123()},
+                headers={
+                    "Eyes-Date": current_time_in_rfc1123(),
+                    "x-applitools-eyes-client": self._DEFAULT_HEADERS['x-applitools-eyes-client']
+                },
                 verify=False,
                 params=dict(apiKey=self.api_key),
             )
@@ -192,7 +197,10 @@ class AgentConnector(object):
         time.sleep(delay / 1000.0)
         response = requests.get(
             url,
-            headers={"Eyes-Date": current_time_in_rfc1123()},
+            headers={
+                "Eyes-Date": current_time_in_rfc1123(),
+                "x-applitools-eyes-client": self._DEFAULT_HEADERS['x-applitools-eyes-client']
+                },
             verify=False,
             params=dict(apiKey=self.api_key),
         )
@@ -324,7 +332,7 @@ class AgentConnector(object):
             logger.info("Upload Status Code: {}".format(response.status_code))
             return True
         raise EyesError(
-            "Failed to Upload Image. Status Code: {}".format(response.status_code)
+            "Failed to Upload Data. Status Code: {}".format(response.status_code)
         )
 
     def match_window(self, running_session, data):
