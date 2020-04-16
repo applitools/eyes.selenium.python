@@ -154,7 +154,10 @@ class EyesBase(ABC):
 
         :param server_url: The URL of the Eyes server
         """
-        self._agent_connector = AgentConnector(server_url)  # type: AgentConnector
+        # An optional string identifying the current library using the SDK.
+        self.agent_id = None  # type: tp.Optional[tp.Text]
+
+        self._agent_connector = AgentConnector(server_url, self.full_agent_id)  # type: AgentConnector
         self._should_get_title = False  # type: bool
         self._is_open = False  # type: bool
         self._app_name = None  # type: tp.Optional[tp.Text]
@@ -173,9 +176,6 @@ class EyesBase(ABC):
 
         # Disables Applitools Eyes and uses the webdriver directly.
         self.is_disabled = False  # type: bool
-
-        # An optional string identifying the current library using the SDK.
-        self.agent_id = None  # type: tp.Optional[tp.Text]
 
         # Should the test report mismatches immediately or when it is finished. See FailureReports.
         self.failure_reports = FailureReports.ON_CLOSE  # type: tp.Text
@@ -628,7 +628,7 @@ class EyesBase(ABC):
         Returns the string with DOM of the current page in the prepared format or empty string
         """
 
-    def _try_post_dom_snapshot(self, dom_json):
+    def _try_post_dom_capture(self, dom_json):
         # type: (tp.Text) -> tp.Optional[tp.Text]
         """
         In case DOM data is valid uploads it to the server and return URL where it stored.
@@ -636,7 +636,7 @@ class EyesBase(ABC):
         if dom_json is None:
             return None
         try:
-            return self._agent_connector.post_dom_snapshot(dom_json)
+            return self._agent_connector.post_dom_capture(dom_json)
         except Exception as e:
             logger.warning("Couldn't send DOM Json. Passing...\n Got next error: {}".format(e))
             return None
