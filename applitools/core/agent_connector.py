@@ -232,7 +232,7 @@ class AgentConnector(object):
         return dict(
             session_id=parsed_response["id"],
             session_url=parsed_response["url"],
-            is_new_session=(response.status_code == requests.codes.created),
+            is_new_session=parsed_response["isNew"],
         )
 
     def stop_session(self, running_session, is_aborted, save):
